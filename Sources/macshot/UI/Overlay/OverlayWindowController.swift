@@ -642,16 +642,6 @@ extension OverlayWindowController: OverlayViewDelegate {
             filename: FilenameFormatter.defaultImageFilename(windowTitle: capturedWindowTitle))
         try? imageData.write(to: tempURL)
 
-        // Get the screen position of the share button
-        let screenRect: NSRect
-        if let anchor = anchorView, let win = anchor.window {
-            let viewRect = anchor.convert(anchor.bounds, to: nil)
-            screenRect = win.convertToScreen(viewRect)
-        } else {
-            let mid = NSScreen.main?.frame ?? NSRect(x: 400, y: 400, width: 100, height: 100)
-            screenRect = NSRect(x: mid.midX - 20, y: mid.midY - 20, width: 40, height: 40)
-        }
-
         // Temporarily lower the overlay so the system share picker popover appears on top.
         // NSSharingServicePicker creates its own window at a standard level that we can't control.
         let savedLevel = overlayWindow?.level ?? NSWindow.Level(257)

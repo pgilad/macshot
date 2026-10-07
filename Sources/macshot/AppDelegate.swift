@@ -1004,7 +1004,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // all of them. A display that cannot be captured gets no overlay.
         let progressive = ProgressiveOverlayState()
         Task { [weak self] in
-            let captures = await ScreenCaptureManager.captureAllScreensImmediately(
+            _ = await ScreenCaptureManager.captureAllScreensImmediately(
                 priorityScreen: mouseScreen,
                 onCapture: { capture in
                     guard let self = self, self.isCapturing,

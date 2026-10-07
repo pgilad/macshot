@@ -267,7 +267,6 @@ private class PinView: NSView {
         // Close button top-right, edit button to its left, zoom label to its left
         let btnSize: CGFloat = 24
         let btnY = bounds.maxY - 30
-        let btnCenterY = btnY + btnSize / 2
         closeButton?.frame = NSRect(x: bounds.maxX - 30, y: btnY, width: btnSize, height: btnSize)
         editButton?.frame  = NSRect(x: bounds.maxX - 58, y: btnY, width: btnSize, height: btnSize)
         if let label = zoomLabel {

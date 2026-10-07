@@ -807,7 +807,7 @@ private class ThumbnailView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         let p = convert(event.locationInWindow, from: nil)
-        var rects = [closeBtnRect, pinBtnRect, editBtnRect, copyBtnRect, saveBtnRect]
+        let rects = [closeBtnRect, pinBtnRect, editBtnRect, copyBtnRect, saveBtnRect]
         let hit = rects.first { $0.contains(p) } ?? .zero
         if hit != hoveredRect {
             hoveredRect = hit
@@ -858,7 +858,7 @@ private class ThumbnailView: NSView {
         let cornerD = scaled(28, minimum: 18)
 
         // Corner button definitions: (center, symbol, keyPath to write rect)
-        var cornerDefs: [(NSPoint, String)] = [
+        let cornerDefs: [(NSPoint, String)] = [
             (NSPoint(x: r.minX + pad + cornerD/2, y: r.maxY - pad - cornerD/2), "xmark"),
             (NSPoint(x: r.maxX - pad - cornerD/2, y: r.maxY - pad - cornerD/2), "pin.fill"),
             (NSPoint(x: r.minX + pad + cornerD/2, y: r.minY + pad + cornerD/2), "pencil"),
@@ -1088,7 +1088,7 @@ private class ThumbnailView: NSView {
     }
 
     private func actionButtonRect(containing point: NSPoint) -> NSRect? {
-        var rects = [closeBtnRect, pinBtnRect, editBtnRect, copyBtnRect, saveBtnRect]
+        let rects = [closeBtnRect, pinBtnRect, editBtnRect, copyBtnRect, saveBtnRect]
         return rects.first { !$0.isEmpty && $0.contains(point) }
     }
 
