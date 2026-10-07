@@ -19,12 +19,12 @@ struct HistoryEntry {
         guard timestamp.timeIntervalSinceReferenceDate.isFinite,
               timestamp >= .distantPast, timestamp <= .distantFuture else { return "-" }
         let seconds = SafeNumerics.int((-timestamp.timeIntervalSinceNow).rounded(.towardZero))
-        if seconds < 5 { return L("just now") }
-        if seconds < 60 { return String(format: L("%ds ago"), seconds) }
+        if seconds < 5 { return "just now" }
+        if seconds < 60 { return String(format: "%ds ago", seconds) }
         let minutes = seconds / 60
-        if minutes < 60 { return String(format: L("%dm ago"), minutes) }
+        if minutes < 60 { return String(format: "%dm ago", minutes) }
         let hours = minutes / 60
-        if hours < 24 { return String(format: L("%dh ago"), hours) }
+        if hours < 24 { return String(format: "%dh ago", hours) }
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, HH:mm"
         return formatter.string(from: timestamp)
@@ -151,7 +151,7 @@ final class ScreenshotHistory {
 
     private func saveQueueBusyError() -> NSError {
         NSError(domain: "macshot.history", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: L("History is busy saving. Please try again shortly.")])
+                userInfo: [NSLocalizedDescriptionKey: "History is busy saving. Please try again shortly."])
     }
 
     private func checkSaveCapacity() throws {
@@ -194,7 +194,7 @@ final class ScreenshotHistory {
     }
 
     private func report(_ error: Error) {
-        ImageSaveService.reportFailure(L("Could not save the screenshot to history.") + " " + error.localizedDescription)
+        ImageSaveService.reportFailure("Could not save the screenshot to history." + " " + error.localizedDescription)
     }
 
     private func publishEntries() {

@@ -204,11 +204,11 @@ enum SettingsPortability {
         var errorDescription: String? {
             switch self {
             case .notJSON, .wrongFileType:
-                return L("This file is not a valid macshot settings file.")
+                return "This file is not a valid macshot settings file."
             case .newerSchema:
-                return L("This settings file was made by a newer version of macshot. Please update macshot first.")
+                return "This settings file was made by a newer version of macshot. Please update macshot first."
             case .missingSettings:
-                return L("This settings file contains no settings.")
+                return "This settings file contains no settings."
             }
         }
     }

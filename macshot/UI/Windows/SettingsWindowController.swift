@@ -111,7 +111,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     private var scrollMaxHeightField: NSTextField!
     private var scrollMaxHeightStepper: NSStepper!
     private var scrollFrozenDetectionCheckbox: NSButton!
-    private var languagePopup: NSPopUpButton!
 
     var onHotkeyChanged: (() -> Void)?
     var onEditorCommandShortcutChanged: (() -> Void)?
@@ -123,7 +122,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             backing: .buffered,
             defer: false
         )
-        window.title = "macshot \(L("Settings"))"
+        window.title = "macshot Settings"
         window.center()
         window.isReleasedWhenClosed = false
         // Window is non-resizable (no .resizable in styleMask), so content size
@@ -182,7 +181,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         sep.translatesAutoresizingMaskIntoConstraints = false
 
         // Footer labels
-        let madeBy = NSTextField(labelWithString: "\(L("Made by")) sw33tLie")
+        let madeBy = NSTextField(labelWithString: "Made by sw33tLie")
         madeBy.font = NSFont.systemFont(ofSize: 11)
         madeBy.textColor = .secondaryLabelColor
         madeBy.translatesAutoresizingMaskIntoConstraints = false
@@ -244,7 +243,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
         currentTabID = id
-        window?.title = "macshot \(L("Settings")) · \(L(Self.tabDefs.first(where: { $0.id == id })?.label ?? ""))"
+        window?.title = "macshot Settings · \(Self.tabDefs.first(where: { $0.id == id })?.label ?? "")"
     }
 
     @objc private func toolbarTabSelected(_ sender: NSToolbarItem) {
@@ -268,8 +267,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         guard let def = Self.tabDefs.first(where: { $0.id == itemIdentifier.rawValue }) else { return nil }
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
-        item.label = L(def.label)
-        item.paletteLabel = L(def.label)
+        item.label = def.label
+        item.paletteLabel = def.label
         if #available(macOS 11.0, *) {
             item.image = NSImage(systemSymbolName: def.symbolName, accessibilityDescription: def.label)
         } else {
@@ -360,43 +359,20 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     private func makeGeneralTabView() -> NSView {
         let (scroll, stack) = makeSettingsScrollStack()
 
-        // ── Language ──────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Language")))
-        stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
-
-        languagePopup = NSPopUpButton()
-        for lang in LanguageManager.availableLanguages {
-            languagePopup.addItem(withTitle: lang.name)
-        }
-        let currentLang = LanguageManager.shared.currentLanguage
-        if let idx = LanguageManager.availableLanguages.firstIndex(where: { $0.code == currentLang }) {
-            languagePopup.selectItem(at: idx)
-        }
-        languagePopup.target = self
-        languagePopup.action = #selector(languageChanged(_:))
-
-        stack.addArrangedSubview(labeledRow(L("Language:"), controls: [languagePopup]))
-        stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
-
-        let langNote = NSTextField(wrappingLabelWithString: L("Restart the app to fully apply the new language."))
-        langNote.font = NSFont.systemFont(ofSize: 10)
-        langNote.textColor = .secondaryLabelColor
-        stack.addArrangedSubview(indented(langNote))
-        stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Application ──────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Application")))
+        stack.addArrangedSubview(sectionHeader("Application"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
-        launchAtLoginCheckbox = NSButton(checkboxWithTitle: L("Launch at login"), target: self, action: #selector(launchAtLoginChanged(_:)))
+        launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at login", target: self, action: #selector(launchAtLoginChanged(_:)))
         stack.addArrangedSubview(indented(launchAtLoginCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        hideMenuBarIconCheckbox = NSButton(checkboxWithTitle: L("Hide menu bar icon"), target: self, action: #selector(hideMenuBarIconChanged(_:)))
+        hideMenuBarIconCheckbox = NSButton(checkboxWithTitle: "Hide menu bar icon", target: self, action: #selector(hideMenuBarIconChanged(_:)))
         stack.addArrangedSubview(indented(hideMenuBarIconCheckbox))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let hideNote = NSTextField(wrappingLabelWithString: L("Hotkeys still work. To show the icon again, re-launch macshot."))
+        let hideNote = NSTextField(wrappingLabelWithString: "Hotkeys still work. To show the icon again, re-launch macshot.")
         hideNote.font = NSFont.systemFont(ofSize: 10)
         hideNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(hideNote))
@@ -404,11 +380,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         // Menu bar icon: keep the bundled icon or pick any SF Symbol.
         menuBarIconModePopup = NSPopUpButton()
-        menuBarIconModePopup.addItem(withTitle: L("Default"))
-        menuBarIconModePopup.addItem(withTitle: L("Custom symbol"))
+        menuBarIconModePopup.addItem(withTitle: "Default")
+        menuBarIconModePopup.addItem(withTitle: "Custom symbol")
         menuBarIconModePopup.target = self
         menuBarIconModePopup.action = #selector(menuBarIconModeChanged(_:))
-        stack.addArrangedSubview(labeledRow(L("Menu bar icon:"), controls: [menuBarIconModePopup]))
+        stack.addArrangedSubview(labeledRow("Menu bar icon:", controls: [menuBarIconModePopup]))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         menuBarIconSymbolField = NSTextField()
@@ -421,7 +397,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         // Pull-down quick-picker: index 0 is the "Presets" label, symbols follow.
         menuBarIconPresetPopup = NSPopUpButton(frame: .zero, pullsDown: true)
-        menuBarIconPresetPopup.addItem(withTitle: L("Presets"))
+        menuBarIconPresetPopup.addItem(withTitle: "Presets")
         for symbol in Self.menuBarIconPresetSymbols {
             menuBarIconPresetPopup.addItem(withTitle: symbol)
         }
@@ -435,19 +411,19 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.addArrangedSubview(indented(iconSymbolRow))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let iconNote = NSTextField(wrappingLabelWithString: L("Enter any SF Symbol name (e.g. camera.fill) or pick a preset. Browse names in Apple's SF Symbols app. Invalid names fall back to the default icon."))
+        let iconNote = NSTextField(wrappingLabelWithString: "Enter any SF Symbol name (e.g. camera.fill) or pick a preset. Browse names in Apple's SF Symbols app. Invalid names fall back to the default icon.")
         iconNote.font = NSFont.systemFont(ofSize: 10)
         iconNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(iconNote))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        let urlSchemeCheckbox = NSButton(checkboxWithTitle: L("Enable macshot:// URL scheme"), target: self, action: #selector(urlSchemeChanged(_:)))
+        let urlSchemeCheckbox = NSButton(checkboxWithTitle: "Enable macshot:// URL scheme", target: self, action: #selector(urlSchemeChanged(_:)))
         urlSchemeCheckbox.state = (UserDefaults.standard.object(forKey: "urlSchemeEnabled") as? Bool ?? true) ? .on : .off
 
         let urlSchemeInfoIcon = HoverPopoverIconView(
-            image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: L("URL scheme info")),
+            image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: "URL scheme info"),
             tintColor: .secondaryLabelColor,
-            toolTip: L("Show supported URL scheme commands")
+            toolTip: "Show supported URL scheme commands"
         )
         urlSchemeInfoIcon.onHover = { [weak self] sourceView, shown in
             if shown { self?.showURLSchemeInfoPopover(near: sourceView) }
@@ -464,18 +440,18 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Appearance ───────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Appearance")))
+        stack.addArrangedSubview(sectionHeader("Appearance"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Theme preset dropdown
         themePresetPopup = NSPopUpButton()
         for preset in ThemePreset.all {
-            themePresetPopup.addItem(withTitle: L(preset.name))
+            themePresetPopup.addItem(withTitle: preset.name)
         }
-        themePresetPopup.addItem(withTitle: L("Custom"))
+        themePresetPopup.addItem(withTitle: "Custom")
         themePresetPopup.target = self
         themePresetPopup.action = #selector(themePresetChanged(_:))
-        stack.addArrangedSubview(indented(labeledRow(L("Theme:"), controls: [themePresetPopup])))
+        stack.addArrangedSubview(indented(labeledRow("Theme:", controls: [themePresetPopup])))
         stack.setCustomSpacing(12, after: stack.arrangedSubviews.last!)
 
         // Three color wells in a single row with labels underneath
@@ -494,9 +470,9 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         bgColorWell.target = self
         bgColorWell.action = #selector(bgColorChanged(_:))
 
-        let accentCol = makeColorColumn(well: accentColorWell, caption: L("Accent"))
-        let iconCol   = makeColorColumn(well: iconColorWell,   caption: L("Icon"))
-        let bgCol     = makeColorColumn(well: bgColorWell,     caption: L("Background"))
+        let accentCol = makeColorColumn(well: accentColorWell, caption: "Accent")
+        let iconCol   = makeColorColumn(well: iconColorWell,   caption: "Icon")
+        let bgCol     = makeColorColumn(well: bgColorWell,     caption: "Background")
 
         let colorsRow = NSStackView(views: [accentCol, iconCol, bgCol])
         colorsRow.orientation = .horizontal
@@ -510,12 +486,12 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         // ── Settings Backup ──────────────────────────────────
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
-        stack.addArrangedSubview(sectionHeader(L("Settings Backup")))
+        stack.addArrangedSubview(sectionHeader("Settings Backup"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
-        let exportBtn = NSButton(title: L("Export Settings…"), target: self, action: #selector(exportSettingsClicked(_:)))
+        let exportBtn = NSButton(title: "Export Settings…", target: self, action: #selector(exportSettingsClicked(_:)))
         exportBtn.bezelStyle = .rounded
-        let importBtn = NSButton(title: L("Import Settings…"), target: self, action: #selector(importSettingsClicked(_:)))
+        let importBtn = NSButton(title: "Import Settings…", target: self, action: #selector(importSettingsClicked(_:)))
         importBtn.bezelStyle = .rounded
 
         let backupButtonsRow = NSStackView(views: [exportBtn, importBtn])
@@ -525,13 +501,13 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.addArrangedSubview(indented(backupButtonsRow))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        let backupNote = NSTextField(wrappingLabelWithString: L("Export your preferences to a file to move them to another Mac or a clean install. Your save folder and screenshot history are not included. Settings are stored inside macshot's app container."))
+        let backupNote = NSTextField(wrappingLabelWithString: "Export your preferences to a file to move them to another Mac or a clean install. Your save folder and screenshot history are not included. Settings are stored inside macshot's app container.")
         backupNote.font = NSFont.systemFont(ofSize: 10)
         backupNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(backupNote))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        let revealSettingsBtn = NSButton(title: L("Reveal Settings File in Finder"), target: self, action: #selector(revealSettingsFileClicked(_:)))
+        let revealSettingsBtn = NSButton(title: "Reveal Settings File in Finder", target: self, action: #selector(revealSettingsFileClicked(_:)))
         revealSettingsBtn.bezelStyle = .inline
         revealSettingsBtn.controlSize = .small
         stack.addArrangedSubview(indented(revealSettingsBtn))
@@ -548,12 +524,12 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         do {
             result = try SettingsPortability.exportData()
         } catch {
-            presentBackupError(error, title: L("Export failed"))
+            presentBackupError(error, title: "Export failed")
             return
         }
 
         let panel = NSSavePanel()
-        panel.title = L("Export Settings")
+        panel.title = "Export Settings"
         panel.nameFieldStringValue = SettingsPortability.suggestedExportFilename()
         panel.allowedContentTypes = [.json]
         panel.isExtensionHidden = false
@@ -564,14 +540,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
                 if !result.skippedLargeKeys.isEmpty {
                     let message: String
                     if result.skippedLargeKeys == ["beautifyCustomBgImageData"] {
-                        message = L("Your custom Beautify background image was too large to include. Everything else was saved.")
+                        message = "Your custom Beautify background image was too large to include. Everything else was saved."
                     } else {
-                        message = L("A few large items were too big to include. Everything else was saved.")
+                        message = "A few large items were too big to include. Everything else was saved."
                     }
-                    self?.presentBackupInfo(title: L("Settings exported"), message: message)
+                    self?.presentBackupInfo(title: "Settings exported", message: message)
                 }
             } catch {
-                self?.presentBackupError(error, title: L("Export failed"))
+                self?.presentBackupError(error, title: "Export failed")
             }
         }
     }
@@ -579,7 +555,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func importSettingsClicked(_ sender: NSButton) {
         guard let window = window else { return }
         let panel = NSOpenPanel()
-        panel.title = L("Import Settings")
+        panel.title = "Import Settings"
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
@@ -595,15 +571,15 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         do {
             data = try Data(contentsOf: url)
         } catch {
-            presentBackupError(error, title: L("Import failed"))
+            presentBackupError(error, title: "Import failed")
             return
         }
 
         let confirm = NSAlert()
-        confirm.messageText = L("Replace your current settings?")
-        confirm.informativeText = L("Importing will replace your current preferences with the ones in this file. Your save folder and screenshot history are kept. This cannot be undone.")
-        confirm.addButton(withTitle: L("Import"))
-        confirm.addButton(withTitle: L("Cancel"))
+        confirm.messageText = "Replace your current settings?"
+        confirm.informativeText = "Importing will replace your current preferences with the ones in this file. Your save folder and screenshot history are kept. This cannot be undone."
+        confirm.addButton(withTitle: "Import")
+        confirm.addButton(withTitle: "Cancel")
         confirm.alertStyle = .warning
         confirm.beginSheetModal(for: window) { [weak self] resp in
             guard resp == .alertFirstButtonReturn else { return }
@@ -616,7 +592,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         do {
             result = try SettingsPortability.importData(data)
         } catch {
-            presentBackupError(error, title: L("Import failed"))
+            presentBackupError(error, title: "Import failed")
             return
         }
 
@@ -627,10 +603,10 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         rebuildAllTabsAfterImport()
 
         let alert = NSAlert()
-        alert.messageText = L("Settings imported")
-        alert.informativeText = String(format: L("%d settings were applied. Relaunch macshot to apply all changes."), result.appliedCount)
-        alert.addButton(withTitle: L("Relaunch Now"))
-        alert.addButton(withTitle: L("Later"))
+        alert.messageText = "Settings imported"
+        alert.informativeText = String(format: "%d settings were applied. Relaunch macshot to apply all changes.", result.appliedCount)
+        alert.addButton(withTitle: "Relaunch Now")
+        alert.addButton(withTitle: "Later")
         guard let window = window else { return }
         alert.beginSheetModal(for: window) { resp in
             guard resp == .alertFirstButtonReturn else { return }
@@ -666,7 +642,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         alert.messageText = title
         alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
-        alert.addButton(withTitle: L("OK"))
+        alert.addButton(withTitle: "OK")
         if let window = window { alert.beginSheetModal(for: window, completionHandler: nil) }
         else { alert.runModal() }
     }
@@ -675,7 +651,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: L("OK"))
+        alert.addButton(withTitle: "OK")
         if let window = window { alert.beginSheetModal(for: window, completionHandler: nil) }
         else { alert.runModal() }
     }
@@ -686,7 +662,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let (scroll, stack) = makeSettingsScrollStack()
 
         // ── Capture ──────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Capture")))
+        stack.addArrangedSubview(sectionHeader("Capture"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Enter key action
@@ -698,44 +674,44 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         quickModePopup.target = self
         quickModePopup.action = #selector(quickModeChanged(_:))
 
-        stack.addArrangedSubview(labeledRow(L("Enter / Quick Capture:"), controls: [quickModePopup]))
+        stack.addArrangedSubview(labeledRow("Enter / Quick Capture:", controls: [quickModePopup]))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        quickCaptureOpenEditorCheckbox = NSButton(checkboxWithTitle: L("Also open in Editor"), target: self, action: #selector(quickCaptureOpenEditorChanged(_:)))
+        quickCaptureOpenEditorCheckbox = NSButton(checkboxWithTitle: "Also open in Editor", target: self, action: #selector(quickCaptureOpenEditorChanged(_:)))
         stack.addArrangedSubview(indented(quickCaptureOpenEditorCheckbox))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        closeEditorAfterCopyCheckbox = NSButton(checkboxWithTitle: L("Close editor after copying"), target: self, action: #selector(closeEditorAfterCopyChanged(_:)))
+        closeEditorAfterCopyCheckbox = NSButton(checkboxWithTitle: "Close editor after copying", target: self, action: #selector(closeEditorAfterCopyChanged(_:)))
         stack.addArrangedSubview(indented(closeEditorAfterCopyCheckbox))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // OCR & QR action dropdown
         ocrActionPopup = NSPopUpButton()
         ocrActionPopup.addItems(withTitles: [
-            L("Show window + copy to clipboard"),
-            L("Show window only"),
-            L("Copy to clipboard only"),
+            "Show window + copy to clipboard",
+            "Show window only",
+            "Copy to clipboard only",
         ])
         ocrActionPopup.target = self
         ocrActionPopup.action = #selector(ocrActionChanged(_:))
 
-        stack.addArrangedSubview(labeledRow(L("OCR & QR Capture:"), controls: [ocrActionPopup]))
+        stack.addArrangedSubview(labeledRow("OCR & QR Capture:", controls: [ocrActionPopup]))
         stack.setCustomSpacing(12, after: stack.arrangedSubviews.last!)
 
         // Checkboxes
-        copySoundCheckbox = NSButton(checkboxWithTitle: L("Play sound on capture"), target: self, action: #selector(copySoundChanged(_:)))
-        rememberToolCheckbox = NSButton(checkboxWithTitle: L("Remember last selected tool"), target: self, action: #selector(rememberToolChanged(_:)))
-        thumbnailCheckbox = NSButton(checkboxWithTitle: L("Show floating thumbnail after capture"), target: self, action: #selector(thumbnailChanged(_:)))
-        snapGuidesCheckbox = NSButton(checkboxWithTitle: L("Show snap alignment guides"), target: self, action: #selector(snapGuidesChanged(_:)))
-        boundarySnapCheckbox = NSButton(checkboxWithTitle: L("Snap selection edges to image boundaries"), target: self, action: #selector(boundarySnapChanged(_:)))
+        copySoundCheckbox = NSButton(checkboxWithTitle: "Play sound on capture", target: self, action: #selector(copySoundChanged(_:)))
+        rememberToolCheckbox = NSButton(checkboxWithTitle: "Remember last selected tool", target: self, action: #selector(rememberToolChanged(_:)))
+        thumbnailCheckbox = NSButton(checkboxWithTitle: "Show floating thumbnail after capture", target: self, action: #selector(thumbnailChanged(_:)))
+        snapGuidesCheckbox = NSButton(checkboxWithTitle: "Show snap alignment guides", target: self, action: #selector(snapGuidesChanged(_:)))
+        boundarySnapCheckbox = NSButton(checkboxWithTitle: "Snap selection edges to image boundaries", target: self, action: #selector(boundarySnapChanged(_:)))
         browserElementSnapCheckbox = NSButton(
-            checkboxWithTitle: L("Enhance browser and Electron element snapping"),
+            checkboxWithTitle: "Enhance browser and Electron element snapping",
             target: self,
             action: #selector(browserElementSnapChanged(_:)))
-        captureCursorCheckbox = NSButton(checkboxWithTitle: L("Capture mouse cursor in screenshot"), target: self, action: #selector(captureCursorChanged(_:)))
-        doubleClickToCopyCheckbox = NSButton(checkboxWithTitle: L("Double-click selection to copy"), target: self, action: #selector(doubleClickToCopyChanged(_:)))
-        hideCaptureInstructionsCheckbox = NSButton(checkboxWithTitle: L("Hide capture instructions"), target: self, action: #selector(hideCaptureInstructionsChanged(_:)))
-        disableSelectionShadowCheckbox = NSButton(checkboxWithTitle: L("Disable shadow outside selection"), target: self, action: #selector(disableSelectionShadowChanged(_:)))
+        captureCursorCheckbox = NSButton(checkboxWithTitle: "Capture mouse cursor in screenshot", target: self, action: #selector(captureCursorChanged(_:)))
+        doubleClickToCopyCheckbox = NSButton(checkboxWithTitle: "Double-click selection to copy", target: self, action: #selector(doubleClickToCopyChanged(_:)))
+        hideCaptureInstructionsCheckbox = NSButton(checkboxWithTitle: "Hide capture instructions", target: self, action: #selector(hideCaptureInstructionsChanged(_:)))
+        disableSelectionShadowCheckbox = NSButton(checkboxWithTitle: "Disable shadow outside selection", target: self, action: #selector(disableSelectionShadowChanged(_:)))
         filenameTemplateField = NSTextField()
         filenameTemplateField.placeholderString = FilenameFormatter.defaultTemplate
         filenameTemplateField.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -769,27 +745,27 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         thumbnailAutoDismissStepper.target = self
         thumbnailAutoDismissStepper.action = #selector(thumbnailAutoDismissChanged(_:))
 
-        let dismissNote = NSTextField(labelWithString: L("sec (0 = never)"))
+        let dismissNote = NSTextField(labelWithString: "sec (0 = never)")
         dismissNote.font = NSFont.systemFont(ofSize: 11)
         dismissNote.textColor = .secondaryLabelColor
 
-        stack.addArrangedSubview(indented(labeledRow(L("  Dismiss after:"), controls: [thumbnailAutoDismissField!, thumbnailAutoDismissStepper!, dismissNote])))
+        stack.addArrangedSubview(indented(labeledRow("  Dismiss after:", controls: [thumbnailAutoDismissField!, thumbnailAutoDismissStepper!, dismissNote])))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         // Thumbnail stacking popup
         thumbnailStackingPopup = NSPopUpButton()
-        thumbnailStackingPopup.addItems(withTitles: [L("Stack (keep all)"), L("Replace (show only latest)")])
+        thumbnailStackingPopup.addItems(withTitles: ["Stack (keep all)", "Replace (show only latest)"])
         thumbnailStackingPopup.target = self
         thumbnailStackingPopup.action = #selector(thumbnailStackingChanged(_:))
 
-        stack.addArrangedSubview(indented(labeledRow(L("  Multiple previews:"), controls: [thumbnailStackingPopup!])))
+        stack.addArrangedSubview(indented(labeledRow("  Multiple previews:", controls: [thumbnailStackingPopup!])))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         thumbnailCornerPopup = NSPopUpButton()
-        thumbnailCornerPopup.addItems(withTitles: [L("Bottom Right"), L("Bottom Left"), L("Top Right"), L("Top Left")])
+        thumbnailCornerPopup.addItems(withTitles: ["Bottom Right", "Bottom Left", "Top Right", "Top Left"])
         thumbnailCornerPopup.target = self
         thumbnailCornerPopup.action = #selector(thumbnailCornerChanged(_:))
-        stack.addArrangedSubview(indented(labeledRow(L("  Position:"), controls: [thumbnailCornerPopup!])))
+        stack.addArrangedSubview(indented(labeledRow("  Position:", controls: [thumbnailCornerPopup!])))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         let sizeSlider = NSSlider(value: UserDefaults.standard.object(forKey: "thumbnailScale") as? Double ?? 1.0,
@@ -799,11 +775,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         thumbnailScaleLabel = NSTextField(labelWithString: scalePercentString(sizeSlider.doubleValue))
         thumbnailScaleLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         thumbnailScaleLabel.textColor = .secondaryLabelColor
-        stack.addArrangedSubview(indented(labeledRow(L("  Preview size:"), controls: [sizeSlider, thumbnailScaleLabel])))
+        stack.addArrangedSubview(indented(labeledRow("  Preview size:", controls: [sizeSlider, thumbnailScaleLabel])))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         thumbnailLetterboxCheckbox = NSButton(
-            checkboxWithTitle: L("Fit image in preview (letterbox)"),
+            checkboxWithTitle: "Fit image in preview (letterbox)",
             target: self,
             action: #selector(thumbnailLetterboxChanged(_:))
         )
@@ -817,7 +793,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         stack.addArrangedSubview(indented(browserElementSnapCheckbox))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
-        let browserElementSnapNote = NSTextField(wrappingLabelWithString: L("Builds the target app's accessibility tree in Element mode. Disable this if a browser or Electron app becomes slow or has input issues."))
+        let browserElementSnapNote = NSTextField(wrappingLabelWithString: "Builds the target app's accessibility tree in Element mode. Disable this if a browser or Electron app becomes slow or has input issues.")
         browserElementSnapNote.font = NSFont.systemFont(ofSize: 10)
         browserElementSnapNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(browserElementSnapNote))
@@ -836,7 +812,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Output ───────────────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Output")))
+        stack.addArrangedSubview(sectionHeader("Output"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         // Default save action
@@ -848,7 +824,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         saveActionPopup.target = self
         saveActionPopup.action = #selector(saveActionChanged(_:))
 
-        stack.addArrangedSubview(labeledRow(L("Save action:"), controls: [saveActionPopup]))
+        stack.addArrangedSubview(labeledRow("Save action:", controls: [saveActionPopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // Save folder
@@ -857,14 +833,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         savePathField.isSelectable = false
         savePathField.lineBreakMode = .byTruncatingMiddle
 
-        let browseBtn = NSButton(title: L("Browse…"), target: self, action: #selector(browseSavePath(_:)))
+        let browseBtn = NSButton(title: "Browse…", target: self, action: #selector(browseSavePath(_:)))
         browseBtn.bezelStyle = .rounded
 
-        stack.addArrangedSubview(labeledRow(L("Save folder:"), controls: [savePathField, browseBtn]))
+        stack.addArrangedSubview(labeledRow("Save folder:", controls: [savePathField, browseBtn]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         copyPathAfterSaveCheckbox = NSButton(
-            checkboxWithTitle: L("Copy Path"),
+            checkboxWithTitle: "Copy Path",
             target: self,
             action: #selector(copyPathAfterSaveChanged(_:))
         )
@@ -872,19 +848,19 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // Filename template
-        let filenameResetBtn = NSButton(title: L("Reset"), target: self, action: #selector(filenameTemplateReset(_:)))
+        let filenameResetBtn = NSButton(title: "Reset", target: self, action: #selector(filenameTemplateReset(_:)))
         filenameResetBtn.bezelStyle = .rounded
 
         let filenameInfoIcon = HoverPopoverIconView(
-            image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: L("Filename tokens")),
+            image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: "Filename tokens"),
             tintColor: .secondaryLabelColor,
-            toolTip: L("Show available filename tokens")
+            toolTip: "Show available filename tokens"
         )
         filenameInfoIcon.onHover = { [weak self] sourceView, shown in
             if shown { self?.showFilenameTemplateInfoPopover(near: sourceView) }
         }
 
-        stack.addArrangedSubview(labeledRow(L("Filename:"), controls: [filenameTemplateField, filenameInfoIcon, filenameResetBtn]))
+        stack.addArrangedSubview(labeledRow("Filename:", controls: [filenameTemplateField, filenameInfoIcon, filenameResetBtn]))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
         stack.addArrangedSubview(indented(filenameTemplatePreview))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
@@ -899,15 +875,15 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         imageFormatPopup.target = self
         imageFormatPopup.action = #selector(imageFormatChanged(_:))
 
-        stack.addArrangedSubview(labeledRow(L("Image format:"), controls: [imageFormatPopup]))
+        stack.addArrangedSubview(labeledRow("Image format:", controls: [imageFormatPopup]))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
-        clipboardFormatCheckbox = NSButton(checkboxWithTitle: L("Also copy to the clipboard in this format"),
+        clipboardFormatCheckbox = NSButton(checkboxWithTitle: "Also copy to the clipboard in this format",
                                            target: self, action: #selector(clipboardFormatChanged(_:)))
         stack.addArrangedSubview(indented(clipboardFormatCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
-        let clipboardFormatNote = NSTextField(labelWithString: L("PNG is always included so every app can paste"))
+        let clipboardFormatNote = NSTextField(labelWithString: "PNG is always included so every app can paste")
         clipboardFormatNote.font = NSFont.systemFont(ofSize: 10)
         clipboardFormatNote.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(indented(clipboardFormatNote))
@@ -921,11 +897,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         qualitySlider.action = #selector(qualityChanged(_:))
         qualitySlider.widthAnchor.constraint(equalToConstant: 160).isActive = true
 
-        qualityLabel = NSTextField(labelWithString: String(format: L("%d%%"), 85))
+        qualityLabel = NSTextField(labelWithString: String(format: "%d%%", 85))
         qualityLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         qualityLabel.widthAnchor.constraint(equalToConstant: 44).isActive = true
 
-        qualityRowLabel = NSTextField(labelWithString: L("Quality:"))
+        qualityRowLabel = NSTextField(labelWithString: "Quality:")
         qualityRowLabel.font = NSFont.systemFont(ofSize: 13)
         qualityRowLabel.alignment = .right
         qualityRowLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -941,11 +917,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         // Downscale Retina
-        downscaleRetinaCheckbox = NSButton(checkboxWithTitle: L("Save at standard resolution (1x)"), target: self, action: #selector(downscaleRetinaChanged(_:)))
+        downscaleRetinaCheckbox = NSButton(checkboxWithTitle: "Save at standard resolution (1x)", target: self, action: #selector(downscaleRetinaChanged(_:)))
         stack.addArrangedSubview(indented(downscaleRetinaCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
-        let downscaleNote = NSTextField(labelWithString: L("Halves dimensions on Retina displays, ~4x smaller files"))
+        let downscaleNote = NSTextField(labelWithString: "Halves dimensions on Retina displays, ~4x smaller files")
         downscaleNote.font = NSFont.systemFont(ofSize: 10)
         downscaleNote.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(indented(downscaleNote))
@@ -967,43 +943,43 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         historySizeStepper.target = self
         historySizeStepper.action = #selector(historySizeChanged(_:))
 
-        historyUnlimitedCheckbox = NSButton(checkboxWithTitle: L("Unlimited"), target: self, action: #selector(historyUnlimitedChanged(_:)))
+        historyUnlimitedCheckbox = NSButton(checkboxWithTitle: "Unlimited", target: self, action: #selector(historyUnlimitedChanged(_:)))
         historyUnlimitedCheckbox.font = NSFont.systemFont(ofSize: 11)
 
-        let histNote = NSTextField(labelWithString: L("(0 = off)"))
+        let histNote = NSTextField(labelWithString: "(0 = off)")
         histNote.font = NSFont.systemFont(ofSize: 11)
         histNote.textColor = .secondaryLabelColor
 
-        stack.addArrangedSubview(labeledRow(L("History size:"), controls: [historySizeField, historySizeStepper, histNote, historyUnlimitedCheckbox]))
+        stack.addArrangedSubview(labeledRow("History size:", controls: [historySizeField, historySizeStepper, histNote, historyUnlimitedCheckbox]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         historyOrderByLastEditCheckbox = NSButton(
-            checkboxWithTitle: L("Order history by last edit"),
+            checkboxWithTitle: "Order history by last edit",
             target: self, action: #selector(historyOrderByLastEditChanged(_:)))
         historyOrderByLastEditCheckbox.state = ScreenshotHistory.orderByLastEdit ? .on : .off
         stack.addArrangedSubview(indented(historyOrderByLastEditCheckbox))
         stack.setCustomSpacing(2, after: stack.arrangedSubviews.last!)
 
-        let orderNote = NSTextField(labelWithString: L("Edited screenshots move to the top. Off keeps them in capture order."))
+        let orderNote = NSTextField(labelWithString: "Edited screenshots move to the top. Off keeps them in capture order.")
         orderNote.font = NSFont.systemFont(ofSize: 10)
         orderNote.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(indented(orderNote))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Scroll Capture ───────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Scroll Capture")))
+        stack.addArrangedSubview(sectionHeader("Scroll Capture"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
-        scrollAutoScrollCheckbox = NSButton(checkboxWithTitle: L("Auto-scroll (sends synthetic scroll events)"),
+        scrollAutoScrollCheckbox = NSButton(checkboxWithTitle: "Auto-scroll (sends synthetic scroll events)",
                                             target: self, action: #selector(scrollAutoScrollChanged(_:)))
         stack.addArrangedSubview(indented(scrollAutoScrollCheckbox))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         scrollSpeedPopup = NSPopUpButton()
-        scrollSpeedPopup.addItems(withTitles: [L("Slow"), L("Medium"), L("Fast"), L("Very fast")])
+        scrollSpeedPopup.addItems(withTitles: ["Slow", "Medium", "Fast", "Very fast"])
         scrollSpeedPopup.target = self
         scrollSpeedPopup.action = #selector(scrollSpeedChanged(_:))
-        stack.addArrangedSubview(labeledRow(L("Scroll speed:"), controls: [scrollSpeedPopup]))
+        stack.addArrangedSubview(labeledRow("Scroll speed:", controls: [scrollSpeedPopup]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
         scrollMaxHeightField = NSTextField()
@@ -1021,22 +997,22 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         scrollMaxHeightStepper.target = self
         scrollMaxHeightStepper.action = #selector(scrollMaxHeightChanged(_:))
 
-        let maxHeightNote = NSTextField(labelWithString: L("px (0 = unlimited)"))
+        let maxHeightNote = NSTextField(labelWithString: "px (0 = unlimited)")
         maxHeightNote.font = .systemFont(ofSize: 11)
         maxHeightNote.textColor = .secondaryLabelColor
-        stack.addArrangedSubview(labeledRow(L("Max height:"), controls: [scrollMaxHeightField, scrollMaxHeightStepper, maxHeightNote]))
+        stack.addArrangedSubview(labeledRow("Max height:", controls: [scrollMaxHeightField, scrollMaxHeightStepper, maxHeightNote]))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        scrollFrozenDetectionCheckbox = NSButton(checkboxWithTitle: L("Detect fixed/sticky headers"),
+        scrollFrozenDetectionCheckbox = NSButton(checkboxWithTitle: "Detect fixed/sticky headers",
                                                  target: self, action: #selector(scrollFrozenDetectionChanged(_:)))
         stack.addArrangedSubview(indented(scrollFrozenDetectionCheckbox))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Menu Bar Order ──────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Menu Bar Order")))
+        stack.addArrangedSubview(sectionHeader("Menu Bar Order"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
-        let menuOrderNote = NSTextField(wrappingLabelWithString: L("Choose the order of capture actions in the macshot menu bar menu."))
+        let menuOrderNote = NSTextField(wrappingLabelWithString: "Choose the order of capture actions in the macshot menu bar menu.")
         menuOrderNote.font = NSFont.systemFont(ofSize: 10)
         menuOrderNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(menuOrderNote))
@@ -1046,7 +1022,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.addArrangedSubview(indented(makeCaptureMenuOrderView()))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        let resetMenuOrderButton = NSButton(title: L("Reset to default"), target: self, action: #selector(resetCaptureMenuOrder(_:)))
+        let resetMenuOrderButton = NSButton(title: "Reset to default", target: self, action: #selector(resetCaptureMenuOrder(_:)))
         resetMenuOrderButton.bezelStyle = .rounded
         stack.addArrangedSubview(indented(resetMenuOrderButton))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
@@ -1109,14 +1085,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
                 symbolName: "chevron.up",
                 action: #selector(moveCaptureMenuItemUp(_:)),
                 tag: index,
-                toolTip: L("Move up"))
+                toolTip: "Move up")
             upButton.isEnabled = index > 0
 
             let downButton = captureMenuOrderButton(
                 symbolName: "chevron.down",
                 action: #selector(moveCaptureMenuItemDown(_:)),
                 tag: index,
-                toolTip: L("Move down"))
+                toolTip: "Move down")
             downButton.isEnabled = index < captureMenuOrder.count - 1
 
             let row = NSStackView(views: [icon, label, spacer, upButton, downButton])
@@ -1189,7 +1165,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
-        stack.addArrangedSubview(sectionHeader(L("Keyboard Shortcuts")))
+        stack.addArrangedSubview(sectionHeader("Keyboard Shortcuts"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         for slot in HotkeyManager.HotkeySlot.allCases {
@@ -1201,28 +1177,28 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             field.widthAnchor.constraint(equalToConstant: 80).isActive = true
             field.stringValue = HotkeyManager.displayString(for: slot)
 
-            let btn = NSButton(title: L("Set"), target: self, action: #selector(recordShortcut(_:)))
+            let btn = NSButton(title: "Set", target: self, action: #selector(recordShortcut(_:)))
             btn.bezelStyle = .rounded
             btn.tag = slot.rawValue
 
             let clearBtn = NSButton(title: "", target: self, action: #selector(clearShortcut(_:)))
             clearBtn.bezelStyle = .inline
             clearBtn.isBordered = false
-            clearBtn.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: L("None"))
+            clearBtn.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "None")
             clearBtn.contentTintColor = .secondaryLabelColor
             clearBtn.imagePosition = .imageOnly
             clearBtn.tag = slot.rawValue
-            clearBtn.toolTip = L("None")
+            clearBtn.toolTip = "None"
             clearBtn.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
             let resetBtn = NSButton(title: "", target: self, action: #selector(resetShortcut(_:)))
             resetBtn.bezelStyle = .inline
             resetBtn.isBordered = false
-            resetBtn.image = NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: L("Reset to default"))
+            resetBtn.image = NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: "Reset to default")
             resetBtn.contentTintColor = .secondaryLabelColor
             resetBtn.imagePosition = .imageOnly
             resetBtn.tag = slot.rawValue
-            resetBtn.toolTip = L("Reset to default")
+            resetBtn.toolTip = "Reset to default"
             resetBtn.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
             hotkeyFields[slot] = field
@@ -1234,14 +1210,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        let note = NSTextField(wrappingLabelWithString: L("Click \"Set\" and press a key combination with at least one modifier (⌘, ⌥, ⌃, ⇧) to set a shortcut."))
+        let note = NSTextField(wrappingLabelWithString: "Click \"Set\" and press a key combination with at least one modifier (⌘, ⌥, ⌃, ⇧) to set a shortcut.")
         note.font = NSFont.systemFont(ofSize: 10)
         note.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(note))
 
         // ── Undo / Redo command shortcuts ───────────────────
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
-        stack.addArrangedSubview(sectionHeader("\(L("Undo")) / \(L("Redo"))"))
+        stack.addArrangedSubview(sectionHeader("Undo / Redo"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         for action in EditorCommandShortcutManager.Action.allCases {
@@ -1254,28 +1230,28 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             field.widthAnchor.constraint(equalToConstant: 100).isActive = true
             field.stringValue = EditorCommandShortcutManager.displayString(for: action)
 
-            let button = NSButton(title: L("Set"), target: self, action: #selector(recordCommandShortcut(_:)))
+            let button = NSButton(title: "Set", target: self, action: #selector(recordCommandShortcut(_:)))
             button.bezelStyle = .rounded
             button.tag = index
 
             let clearButton = NSButton(title: "", target: self, action: #selector(clearCommandShortcut(_:)))
             clearButton.bezelStyle = .inline
             clearButton.isBordered = false
-            clearButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: L("None"))
+            clearButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "None")
             clearButton.contentTintColor = .secondaryLabelColor
             clearButton.imagePosition = .imageOnly
             clearButton.tag = index
-            clearButton.toolTip = L("None")
+            clearButton.toolTip = "None"
             clearButton.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
             let resetButton = NSButton(title: "", target: self, action: #selector(resetCommandShortcut(_:)))
             resetButton.bezelStyle = .inline
             resetButton.isBordered = false
-            resetButton.image = NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: L("Reset to default"))
+            resetButton.image = NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: "Reset to default")
             resetButton.contentTintColor = .secondaryLabelColor
             resetButton.imagePosition = .imageOnly
             resetButton.tag = index
-            resetButton.toolTip = L("Reset to default")
+            resetButton.toolTip = "Reset to default"
             resetButton.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
             commandShortcutFields[action] = field
@@ -1286,11 +1262,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         // ── Overlay / Editor Tool Shortcuts ──────────────────
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
-        stack.addArrangedSubview(sectionHeader(L("Overlay / Editor Shortcuts")))
+        stack.addArrangedSubview(sectionHeader("Overlay / Editor Shortcuts"))
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         showToolShortcutsInTooltipsCheckbox = NSButton(
-            checkboxWithTitle: L("Show shortcuts in tooltips"),
+            checkboxWithTitle: "Show shortcuts in tooltips",
             target: self,
             action: #selector(showToolShortcutsInTooltipsChanged(_:)))
         stack.addArrangedSubview(indented(showToolShortcutsInTooltipsCheckbox))
@@ -1305,28 +1281,28 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             field.widthAnchor.constraint(equalToConstant: 80).isActive = true
             field.stringValue = ToolShortcutManager.displayString(for: action)
 
-            let btn = NSButton(title: L("Set"), target: self, action: #selector(recordToolShortcut(_:)))
+            let btn = NSButton(title: "Set", target: self, action: #selector(recordToolShortcut(_:)))
             btn.bezelStyle = .rounded
             btn.tag = ToolShortcutManager.Action.allCases.firstIndex(of: action)!
 
             let clearBtn = NSButton(title: "", target: self, action: #selector(clearToolShortcut(_:)))
             clearBtn.bezelStyle = .inline
             clearBtn.isBordered = false
-            clearBtn.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: L("None"))
+            clearBtn.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "None")
             clearBtn.contentTintColor = .secondaryLabelColor
             clearBtn.imagePosition = .imageOnly
             clearBtn.tag = ToolShortcutManager.Action.allCases.firstIndex(of: action)!
-            clearBtn.toolTip = L("None")
+            clearBtn.toolTip = "None"
             clearBtn.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
             let resetBtn = NSButton(title: "", target: self, action: #selector(resetToolShortcut(_:)))
             resetBtn.bezelStyle = .inline
             resetBtn.isBordered = false
-            resetBtn.image = NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: L("Reset to default"))
+            resetBtn.image = NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: "Reset to default")
             resetBtn.contentTintColor = .secondaryLabelColor
             resetBtn.imagePosition = .imageOnly
             resetBtn.tag = ToolShortcutManager.Action.allCases.firstIndex(of: action)!
-            resetBtn.toolTip = L("Reset to default")
+            resetBtn.toolTip = "Reset to default"
             resetBtn.widthAnchor.constraint(equalToConstant: 20).isActive = true
 
             toolShortcutFields[action] = field
@@ -1336,7 +1312,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
         }
 
-        let toolNote = NSTextField(wrappingLabelWithString: L("Press a single key to assign it as the shortcut for that tool. These work when the overlay or editor is active."))
+        let toolNote = NSTextField(wrappingLabelWithString: "Press a single key to assign it as the shortcut for that tool. These work when the overlay or editor is active.")
         toolNote.font = NSFont.systemFont(ofSize: 10)
         toolNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(toolNote))
@@ -1374,8 +1350,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stopToolShortcutRecording()
 
         recordingSlot = slot
-        sender.title = L("Press keys...")
-        hotkeyFields[slot]?.stringValue = L("Waiting...")
+        sender.title = "Press keys..."
+        hotkeyFields[slot]?.stringValue = "Waiting..."
 
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
@@ -1403,7 +1379,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         guard let slot = HotkeyManager.HotkeySlot(rawValue: sender.tag) else { return }
         stopShortcutRecording()
         HotkeyManager.disableHotkey(for: slot)
-        hotkeyFields[slot]?.stringValue = L("None")
+        hotkeyFields[slot]?.stringValue = "None"
         onHotkeyChanged?()
     }
 
@@ -1417,7 +1393,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     private func stopShortcutRecording() {
         if let slot = recordingSlot {
-            hotkeyButtons[slot]?.title = L("Set")
+            hotkeyButtons[slot]?.title = "Set"
             hotkeyFields[slot]?.stringValue = HotkeyManager.displayString(for: slot)
         }
         recordingSlot = nil
@@ -1439,8 +1415,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stopCommandShortcutRecording()
         stopToolShortcutRecording()
         recordingCommandAction = action
-        sender.title = L("Press keys...")
-        commandShortcutFields[action]?.stringValue = L("Waiting...")
+        sender.title = "Press keys..."
+        commandShortcutFields[action]?.stringValue = "Waiting..."
 
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
@@ -1472,7 +1448,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let action = actions[sender.tag]
         stopCommandShortcutRecording()
         EditorCommandShortcutManager.disable(action)
-        commandShortcutFields[action]?.stringValue = L("None")
+        commandShortcutFields[action]?.stringValue = "None"
         onEditorCommandShortcutChanged?()
     }
 
@@ -1489,7 +1465,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     private func stopCommandShortcutRecording() {
         if let action = recordingCommandAction {
             commandShortcutFields[action]?.stringValue = EditorCommandShortcutManager.displayString(for: action)
-            commandShortcutButtons[action]?.title = L("Set")
+            commandShortcutButtons[action]?.title = "Set"
         }
         recordingCommandAction = nil
         if let monitor = localMonitor { NSEvent.removeMonitor(monitor); localMonitor = nil }
@@ -1513,7 +1489,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stopToolShortcutRecording()
 
         recordingToolAction = action
-        sender.title = L("Press...")
+        sender.title = "Press..."
         toolShortcutFields[action]?.stringValue = "…"
 
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -1541,7 +1517,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let action = allActions[sender.tag]
         stopToolShortcutRecording()
         ToolShortcutManager.setKey("", for: action)
-        toolShortcutFields[action]?.stringValue = L("None")
+        toolShortcutFields[action]?.stringValue = "None"
     }
 
     @objc private func resetToolShortcut(_ sender: NSButton) {
@@ -1560,7 +1536,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     private func stopToolShortcutRecording() {
         if let action = recordingToolAction {
             toolShortcutFields[action]?.stringValue = ToolShortcutManager.displayString(for: action)
-            toolShortcutButtons[action]?.title = L("Set")
+            toolShortcutButtons[action]?.title = "Set"
         }
         recordingToolAction = nil
         if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
@@ -1584,22 +1560,22 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 16, right: 20)
 
         // ── Annotation Tools ─────────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Annotation Tools")))
+        stack.addArrangedSubview(sectionHeader("Annotation Tools"))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let noteA = NSTextField(labelWithString: L("Hidden tools are removed from the bottom toolbar."))
+        let noteA = NSTextField(labelWithString: "Hidden tools are removed from the bottom toolbar.")
         noteA.font = NSFont.systemFont(ofSize: 11)
         noteA.textColor = .secondaryLabelColor
         stack.addArrangedSubview(noteA)
         stack.setCustomSpacing(10, after: stack.arrangedSubviews.last!)
 
         let annotationTools: [(AnnotationTool, String)] = [
-            (.pencil, L("Pencil")), (.line, L("Line")), (.arrow, L("Arrow")),
-            (.rectangle, L("Rectangle")),
-            (.ellipse, L("Ellipse")), (.marker, L("Marker")), (.text, L("Text")),
-            (.number, L("Number / Counter")), (.pixelate, L("Censor")),
-            (.highlight, L("Highlight (Spotlight)")),
-            (.loupe, L("Magnify (Loupe)")), (.stamp, L("Stamp / Emoji")), (.colorSampler, L("Color Picker")), (.measure, L("Measure")),
+            (.pencil, "Pencil"), (.line, "Line"), (.arrow, "Arrow"),
+            (.rectangle, "Rectangle"),
+            (.ellipse, "Ellipse"), (.marker, "Marker"), (.text, "Text"),
+            (.number, "Number / Counter"), (.pixelate, "Censor"),
+            (.highlight, "Highlight (Spotlight)"),
+            (.loupe, "Magnify (Loupe)"), (.stamp, "Stamp / Emoji"), (.colorSampler, "Color Picker"), (.measure, "Measure"),
         ]
         let enabledTools = UserDefaults.standard.array(forKey: "enabledTools") as? [Int]
         let toolsGrid = makeToggleGrid(items: annotationTools.map { (tag: $0.rawValue, label: $1) },
@@ -1609,10 +1585,10 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Bottom Toolbar Actions ───────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Bottom Toolbar Actions")))
+        stack.addArrangedSubview(sectionHeader("Bottom Toolbar Actions"))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let noteB = NSTextField(labelWithString: L("Hidden actions are removed from the bottom toolbar."))
+        let noteB = NSTextField(labelWithString: "Hidden actions are removed from the bottom toolbar.")
         noteB.font = NSFont.systemFont(ofSize: 11)
         noteB.textColor = .secondaryLabelColor
         stack.addArrangedSubview(noteB)
@@ -1629,10 +1605,10 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Right Toolbar Actions ────────────────────────────
-        stack.addArrangedSubview(sectionHeader(L("Right Toolbar Actions")))
+        stack.addArrangedSubview(sectionHeader("Right Toolbar Actions"))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
 
-        let noteC = NSTextField(labelWithString: L("Hidden actions are removed from the right toolbar."))
+        let noteC = NSTextField(labelWithString: "Hidden actions are removed from the right toolbar.")
         noteC.font = NSFont.systemFont(ofSize: 11)
         noteC.textColor = .secondaryLabelColor
         stack.addArrangedSubview(noteC)
@@ -1695,14 +1671,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         // Version
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
-        let versionLabel = NSTextField(labelWithString: String(format: L("Version %@ (%@)"), version, build))
+        let versionLabel = NSTextField(labelWithString: String(format: "Version %@ (%@)", version, build))
         versionLabel.font = NSFont.systemFont(ofSize: 12)
         versionLabel.textColor = .secondaryLabelColor
         stack.addArrangedSubview(versionLabel)
         stack.setCustomSpacing(20, after: versionLabel)
 
         // Description
-        let desc = NSTextField(wrappingLabelWithString: L("A free, open-source screenshot tool for macOS.\nFully native, built with Swift and AppKit."))
+        let desc = NSTextField(wrappingLabelWithString: "A free, open-source screenshot tool for macOS.\nFully native, built with Swift and AppKit.")
         desc.font = NSFont.systemFont(ofSize: 13)
         desc.textColor = .labelColor
         desc.alignment = .center
@@ -1710,20 +1686,20 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(20, after: desc)
 
         // License
-        let license = NSTextField(labelWithString: L("Licensed under the GPLv3"))
+        let license = NSTextField(labelWithString: "Licensed under the GPLv3")
         license.font = NSFont.systemFont(ofSize: 11)
         license.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(license)
         stack.setCustomSpacing(20, after: license)
 
         // Screen Info (debug) — gathers display & capture metadata, copies to clipboard
-        let screenInfoBtn = NSButton(title: L("Copy Screen Info"), target: self, action: #selector(copyScreenInfo))
+        let screenInfoBtn = NSButton(title: "Copy Screen Info", target: self, action: #selector(copyScreenInfo))
         screenInfoBtn.bezelStyle = .rounded
         screenInfoBtn.font = NSFont.systemFont(ofSize: 11)
         screenInfoBtn.tag = 9999  // tag for lookup in action handler
         stack.addArrangedSubview(screenInfoBtn)
 
-        let screenInfoHint = NSTextField(labelWithString: L("Copies display and capture diagnostics to clipboard"))
+        let screenInfoHint = NSTextField(labelWithString: "Copies display and capture diagnostics to clipboard")
         screenInfoHint.font = NSFont.systemFont(ofSize: 10)
         screenInfoHint.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(screenInfoHint)
@@ -1786,8 +1762,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
                 NSPasteboard.general.setString(result, forType: .string)
                 // Flash the button title to confirm
                 if let btn = self.window?.contentView?.viewWithTag(9999) as? NSButton {
-                    btn.title = L("Copied!")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { btn.title = L("Copy Screen Info") }
+                    btn.title = "Copied!"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { btn.title = "Copy Screen Info" }
                 }
             }
         }
@@ -2032,7 +2008,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         let quality = Int(ImageEncoder.quality * 100)
         qualitySlider.integerValue = quality
-        qualityLabel.stringValue = String(format: L("%d%%"), quality)
+        qualityLabel.stringValue = String(format: "%d%%", quality)
 
         downscaleRetinaCheckbox.state = ImageEncoder.downscaleRetina ? .on : .off
         updateQualityVisibility()
@@ -2153,12 +2129,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func closeEditorAfterCopyChanged(_ sender: NSButton) {
         UserDefaults.standard.set(sender.state == .on, forKey: "closeEditorAfterCopy")
     }
-    @objc private func languageChanged(_ sender: NSPopUpButton) {
-        let languages = LanguageManager.availableLanguages
-        let idx = sender.indexOfSelectedItem
-        guard idx >= 0, idx < languages.count else { return }
-        LanguageManager.shared.currentLanguage = languages[idx].code
-    }
     @objc private func openGitHub() {
         if let url = URL(string: "https://github.com/sw33tLie/macshot") { NSWorkspace.shared.open(url) }
     }
@@ -2171,7 +2141,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         updateQualityVisibility()
     }
     @objc private func qualityChanged(_ sender: NSSlider) {
-        qualityLabel.stringValue = String(format: L("%d%%"), sender.integerValue)
+        qualityLabel.stringValue = String(format: "%d%%", sender.integerValue)
         UserDefaults.standard.set(Double(sender.integerValue) / 100.0, forKey: "imageQuality")
     }
     @objc private func clipboardFormatChanged(_ sender: NSButton) {
@@ -2393,7 +2363,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let base = FilenameFormatter.formatRelativePath(
             template: template, windowTitle: sampleWindow, appName: "Safari", index: sampleIndex, date: sampleDate
         ).joined(separator: "/")
-        preview.stringValue = "\(L("Preview:")) \(base).\(ImageEncoder.fileExtension)"
+        preview.stringValue = "Preview: \(base).\(ImageEncoder.fileExtension)"
     }
 
     private func sampleFilenameDate() -> Date {
@@ -2428,23 +2398,23 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         if let existing = urlSchemeInfoPopover, existing.isShown { return }
 
         let commands: [(String, String)] = [
-            ("macshot://capture",             L("Start area capture")),
-            ("macshot://capture-fullscreen",  L("Capture the full screen")),
-            ("macshot://capture-last",        L("Re-capture the last selected area")),
-            ("macshot://quick-capture",       L("Quick capture (uses your Enter action)")),
-            ("macshot://ocr",                 L("Capture area and read text/QR codes")),
-            ("macshot://scroll-capture",      L("Start scroll capture")),
-            ("macshot://history",             L("Open the recent captures overlay")),
-            ("macshot://settings",            L("Open this settings window")),
-            ("macshot://open?file=/path.png", L("Open an image file in the editor")),
-            ("macshot://edit?id=<id>",        L("Open a history entry in the editor (keeps annotations editable)")),
+            ("macshot://capture",             "Start area capture"),
+            ("macshot://capture-fullscreen",  "Capture the full screen"),
+            ("macshot://capture-last",        "Re-capture the last selected area"),
+            ("macshot://quick-capture",       "Quick capture (uses your Enter action)"),
+            ("macshot://ocr",                 "Capture area and read text/QR codes"),
+            ("macshot://scroll-capture",      "Start scroll capture"),
+            ("macshot://history",             "Open the recent captures overlay"),
+            ("macshot://settings",            "Open this settings window"),
+            ("macshot://open?file=/path.png", "Open an image file in the editor"),
+            ("macshot://edit?id=<id>",        "Open a history entry in the editor (keeps annotations editable)"),
         ]
 
-        let title = NSTextField(labelWithString: L("Supported URL Scheme Commands"))
+        let title = NSTextField(labelWithString: "Supported URL Scheme Commands")
         title.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let subtitle = NSTextField(wrappingLabelWithString: L("Trigger macshot from Raycast, Alfred, Shortcuts, or any tool that opens URLs."))
+        let subtitle = NSTextField(wrappingLabelWithString: "Trigger macshot from Raycast, Alfred, Shortcuts, or any tool that opens URLs.")
         subtitle.font = NSFont.systemFont(ofSize: 11)
         subtitle.textColor = .secondaryLabelColor
         subtitle.preferredMaxLayoutWidth = 440
@@ -2608,20 +2578,20 @@ extension SettingsWindowController {
             ("{time}",      "14-22-05"),
             ("{timestamp}", "2026-04-17_14-22-05"),
             ("{unix}",      "1745592125"),
-            ("{window}",    L("Captured window title (screenshots only, blank otherwise)")),
-            ("{index}",     L("Counter for multi-screen captures")),
-            ("{random}",    L("8-character random string (e.g. k3j7x9q2)")),
+            ("{window}",    "Captured window title (screenshots only, blank otherwise)"),
+            ("{index}",     "Counter for multi-screen captures"),
+            ("{random}",    "8-character random string (e.g. k3j7x9q2)"),
             ("{app}",       "Safari"),
             ("{yyyy}/{MM}/{dd}", "2026/04/17"),
             ("{HH}.{mm}.{ss}",   "14.22.05"),
             ("{ms}",        "042"),
         ]
 
-        let title = NSTextField(labelWithString: L("Filename Template Tokens"))
+        let title = NSTextField(labelWithString: "Filename Template Tokens")
         title.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         title.translatesAutoresizingMaskIntoConstraints = false
 
-        let subtitle = NSTextField(wrappingLabelWithString: L("The file extension is appended automatically. Slashes and colons in {window} become dashes."))
+        let subtitle = NSTextField(wrappingLabelWithString: "The file extension is appended automatically. Slashes and colons in {window} become dashes.")
         subtitle.font = NSFont.systemFont(ofSize: 11)
         subtitle.textColor = .secondaryLabelColor
         subtitle.preferredMaxLayoutWidth = 380

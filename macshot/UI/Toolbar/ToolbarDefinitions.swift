@@ -91,16 +91,16 @@ enum ToolbarCustomAction: Int {
 
     var settingsLabel: String {
         switch self {
-        case .pin: return L("Pin (floating window)")
-        case .ocr: return L("OCR & QR")
-        case .beautify: return L("Beautify")
-        case .removeBackground: return L("Remove Background")
-        case .autoRedact: return L("Auto-Redact sensitive data")
+        case .pin: return "Pin (floating window)"
+        case .ocr: return "OCR & QR"
+        case .beautify: return "Beautify"
+        case .removeBackground: return "Remove Background"
+        case .autoRedact: return "Auto-Redact sensitive data"
         case .reserved1007: return ""
-        case .scrollCapture: return L("Scroll Capture")
-        case .invertColors: return L("Invert Colors")
-        case .share: return L("Share")
-        case .effects: return L("Adjust (Image Effects)")
+        case .scrollCapture: return "Scroll Capture"
+        case .invertColors: return "Invert Colors"
+        case .share: return "Share"
+        case .effects: return "Adjust (Image Effects)"
         }
     }
 
@@ -111,11 +111,11 @@ enum ToolbarCustomAction: Int {
     ) -> ToolbarButton? {
         switch self {
         case .pin:
-            return ToolbarButton(action: .pin, sfSymbol: "pin.fill", tooltip: L("Pin"))
+            return ToolbarButton(action: .pin, sfSymbol: "pin.fill", tooltip: "Pin")
         case .ocr:
-            return ToolbarButton(action: .ocr, sfSymbol: "doc.text.viewfinder", tooltip: L("OCR & QR"))
+            return ToolbarButton(action: .ocr, sfSymbol: "doc.text.viewfinder", tooltip: "OCR & QR")
         case .beautify:
-            var button = ToolbarButton(action: .beautify, sfSymbol: "sparkles", tooltip: L("Beautify"))
+            var button = ToolbarButton(action: .beautify, sfSymbol: "sparkles", tooltip: "Beautify")
             if beautifyEnabled {
                 let enabledColor = NSColor(calibratedRed: 1.0, green: 0.8, blue: 0.2, alpha: 1.0)
                 button.tintColor = enabledColor
@@ -127,7 +127,7 @@ enum ToolbarCustomAction: Int {
                 return ToolbarButton(
                     action: .removeBackground,
                     sfSymbol: "person.crop.circle.dashed",
-                    tooltip: L("Remove Background")
+                    tooltip: "Remove Background"
                 )
             }
             return nil
@@ -135,17 +135,17 @@ enum ToolbarCustomAction: Int {
             return nil
         case .scrollCapture:
             guard !isEditorMode else { return nil }
-            return ToolbarButton(action: .scrollCapture, sfSymbol: "scroll", tooltip: L("Scroll Capture"))
+            return ToolbarButton(action: .scrollCapture, sfSymbol: "scroll", tooltip: "Scroll Capture")
         case .invertColors:
             return ToolbarButton(
                 action: .invertColors,
                 sfSymbol: "circle.righthalf.filled.inverse",
-                tooltip: L("Invert Colors")
+                tooltip: "Invert Colors"
             )
         case .share:
-            return ToolbarButton(action: .share, sfSymbol: "square.and.arrow.up", tooltip: L("Share"))
+            return ToolbarButton(action: .share, sfSymbol: "square.and.arrow.up", tooltip: "Share")
         case .effects:
-            var button = ToolbarButton(action: .effects, sfSymbol: "slider.horizontal.3", tooltip: L("Adjust"))
+            var button = ToolbarButton(action: .effects, sfSymbol: "slider.horizontal.3", tooltip: "Adjust")
             if effectsActive {
                 button.tintColor = NSColor(calibratedRed: 1.0, green: 0.8, blue: 0.2, alpha: 1.0)
             }
@@ -292,23 +292,23 @@ class ToolbarLayout {
         }
 
         let tools: [(AnnotationTool, String, String)] = [
-            (.pencil, "scribble", L("Pencil (Draw)")),
-            (.line, "line.diagonal", L("Line")),
-            (.arrow, "arrow.up.right", L("Arrow")),
-            (.rectangle, "rectangle", L("Rectangle")),
-            (.ellipse, "oval", L("Ellipse")),
+            (.pencil, "scribble", "Pencil (Draw)"),
+            (.line, "line.diagonal", "Line"),
+            (.arrow, "arrow.up.right", "Arrow"),
+            (.rectangle, "rectangle", "Rectangle"),
+            (.ellipse, "oval", "Ellipse"),
             (.marker, {
                 if #available(macOS 14.0, *) { return "highlighter" }
                 return "paintbrush.pointed.fill"
-            }(), L("Marker")),
-            (.text, "textformat", L("Text")),
-            (.number, "1.circle.fill", L("Number")),
-            (.pixelate, "_custom.checkerboard", L("Censor (Pixelate / Blur / Solid)")),
-            (.highlight, "sun.max", L("Highlight (Spotlight)")),
-            (.loupe, "magnifyingglass", L("Magnify (Loupe)")),
-            (.stamp, "face.smiling", L("Stamp / Emoji")),
-            (.colorSampler, "eyedropper", L("Color Picker")),
-            (.measure, "ruler", L("Measure (px)")),
+            }(), "Marker"),
+            (.text, "textformat", "Text"),
+            (.number, "1.circle.fill", "Number"),
+            (.pixelate, "_custom.checkerboard", "Censor (Pixelate / Blur / Solid)"),
+            (.highlight, "sun.max", "Highlight (Spotlight)"),
+            (.loupe, "magnifyingglass", "Magnify (Loupe)"),
+            (.stamp, "face.smiling", "Stamp / Emoji"),
+            (.colorSampler, "eyedropper", "Color Picker"),
+            (.measure, "ruler", "Measure (px)"),
         ]
 
         for (tool, symbol, tip) in tools {
@@ -328,17 +328,17 @@ class ToolbarLayout {
         }
 
         // Color button
-        var colorBtn = ToolbarButton(action: .color, sfSymbol: nil, tooltip: L("Color"))
+        var colorBtn = ToolbarButton(action: .color, sfSymbol: nil, tooltip: "Color")
         colorBtn.bgColor = selectedColor
         buttons.append(colorBtn)
 
         // Undo / Redo
         buttons.append(
             ToolbarButton(
-                action: .undo, sfSymbol: "arrow.uturn.backward", tooltip: L("Undo")))
+                action: .undo, sfSymbol: "arrow.uturn.backward", tooltip: "Undo"))
         buttons.append(
             ToolbarButton(
-                action: .redo, sfSymbol: "arrow.uturn.forward", tooltip: L("Redo")))
+                action: .redo, sfSymbol: "arrow.uturn.forward", tooltip: "Redo"))
 
         let enabledActions = ToolbarActionPreferences.enabledRawValuesAfterMigration()
         for action in ToolbarCustomAction.bottomToolbarActions {
@@ -366,25 +366,25 @@ class ToolbarLayout {
         // Cancel, move-selection, editor — not shown in editor window
         if !isEditorMode {
             buttons.append(
-                ToolbarButton(action: .cancel, sfSymbol: "xmark", tooltip: L("Cancel")))
+                ToolbarButton(action: .cancel, sfSymbol: "xmark", tooltip: "Cancel"))
             buttons.append(
                 ToolbarButton(
                     action: .moveSelection, sfSymbol: "arrow.up.and.down.and.arrow.left.and.right",
-                    tooltip: L("Move Selection")))
+                    tooltip: "Move Selection"))
             buttons.append(
                 ToolbarButton(
                     action: .detach, sfSymbol: "arrow.up.forward.app",
-                    tooltip: L("Open in Editor Window")))
+                    tooltip: "Open in Editor Window"))
         }
         // Copy and save are always present
         buttons.append(
-            ToolbarButton(action: .copy, sfSymbol: "doc.on.doc", tooltip: L("Copy")))
+            ToolbarButton(action: .copy, sfSymbol: "doc.on.doc", tooltip: "Copy"))
         let saveTooltip: String = {
             switch SaveActionPreference.current {
             case .saveToFolder:
-                return "\(L("Save to")) \(URL(fileURLWithPath: SaveDirectoryAccess.displayPath).lastPathComponent)"
+                return "Save to \(URL(fileURLWithPath: SaveDirectoryAccess.displayPath).lastPathComponent)"
             case .askWhereToSave:
-                return L("Ask where to save")
+                return "Ask where to save"
             }
         }()
         var saveBtn = ToolbarButton(

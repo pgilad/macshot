@@ -286,11 +286,11 @@ class DetachedEditorWindowController: NSObject, NSWindowDelegate {
         guard hasChanges else { return true }
 
         let alert = NSAlert()
-        alert.messageText = L("Save changes?")
-        alert.informativeText = L("Your annotations will be lost if you close without saving.")
-        alert.addButton(withTitle: L("Save & Close"))
-        alert.addButton(withTitle: L("Discard"))
-        alert.addButton(withTitle: L("Cancel"))
+        alert.messageText = "Save changes?"
+        alert.informativeText = "Your annotations will be lost if you close without saving."
+        alert.addButton(withTitle: "Save & Close")
+        alert.addButton(withTitle: "Discard")
+        alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .warning
 
         alert.beginSheetModal(for: sender) { [weak self, weak sender] response in

@@ -35,31 +35,31 @@ enum ToolShortcutManager {
 
         var label: String {
             switch self {
-            case .pencil: return L("Pencil")
-            case .arrow: return L("Arrow")
-            case .line: return L("Line")
-            case .rectangle: return L("Rectangle")
-            case .ellipse: return L("Ellipse")
-            case .marker: return L("Marker")
-            case .text: return L("Text")
-            case .number: return L("Number")
-            case .censor: return L("Censor")
-            case .highlight: return L("Highlight")
-            case .colorSampler: return L("Color Picker")
-            case .stamp: return L("Stamp")
-            case .measure: return L("Measure")
-            case .loupe: return L("Loupe")
-            case .moveSelection: return L("Move Selection")
-            case .adjustSelection: return L("Auto-Adjust Selection")
-            case .openInEditor: return L("Open in Editor")
-            case .pin: return L("Pin")
-            case .copy: return L("Copy")
-            case .save: return L("Save")
-            case .ocr: return L("OCR & QR")
-            case .scrollCapture: return L("Scroll Capture")
-            case .beautify: return L("Beautify")
-            case .invertColors: return L("Invert Colors")
-            case .removeBackground: return L("Remove Background")
+            case .pencil: return "Pencil"
+            case .arrow: return "Arrow"
+            case .line: return "Line"
+            case .rectangle: return "Rectangle"
+            case .ellipse: return "Ellipse"
+            case .marker: return "Marker"
+            case .text: return "Text"
+            case .number: return "Number"
+            case .censor: return "Censor"
+            case .highlight: return "Highlight"
+            case .colorSampler: return "Color Picker"
+            case .stamp: return "Stamp"
+            case .measure: return "Measure"
+            case .loupe: return "Loupe"
+            case .moveSelection: return "Move Selection"
+            case .adjustSelection: return "Auto-Adjust Selection"
+            case .openInEditor: return "Open in Editor"
+            case .pin: return "Pin"
+            case .copy: return "Copy"
+            case .save: return "Save"
+            case .ocr: return "OCR & QR"
+            case .scrollCapture: return "Scroll Capture"
+            case .beautify: return "Beautify"
+            case .invertColors: return "Invert Colors"
+            case .removeBackground: return "Remove Background"
             }
         }
 
@@ -162,8 +162,8 @@ enum ToolShortcutManager {
     /// Display string for a key (for UI).
     static func displayString(for action: Action) -> String {
         let k = key(for: action)
-        if k == " " { return L("Space") }
-        return k.isEmpty ? L("None") : k.uppercased()
+        if k == " " { return "Space" }
+        return k.isEmpty ? "None" : k.uppercased()
     }
 
     /// Raw configured shortcut text for toolbar tooltip suffixes.

@@ -22,7 +22,7 @@ final class PermissionOnboardingTests: XCTestCase {
             let content = try XCTUnwrap(controller.window?.contentView)
             content.layoutSubtreeIfNeeded()
             let labels = content.subviews.compactMap { $0 as? NSTextField }.filter { !$0.isHidden }
-            let note = labels.first { $0.stringValue.hasPrefix(L("After some updates, macOS asks you to allow macshot again.")) }
+            let note = labels.first { $0.stringValue.hasPrefix("After some updates, macOS asks you to allow macshot again.") }
             XCTAssertEqual(note != nil, returning)
             if let note {
                 let images = content.subviews.compactMap { $0 as? NSImageView }

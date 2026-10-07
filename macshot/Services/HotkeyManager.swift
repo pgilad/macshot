@@ -59,16 +59,16 @@ class HotkeyManager {
 
         var label: String {
             switch self {
-            case .captureArea: return L("Capture Area")
-            case .captureFullScreen: return L("Capture Screen")
-            case .historyOverlay: return L("History")
-            case .captureOCR: return L("Capture OCR & QR")
-            case .quickCapture: return L("Quick Capture")
-            case .scrollCapture: return L("Scroll Capture")
-            case .openFromClipboard: return L("Open from Clipboard")
-            case .captureLastArea: return L("Capture Last Area")
-            case .pinFromClipboard: return L("Pin from Clipboard")
-            case .clearHistory: return L("Clear History")
+            case .captureArea: return "Capture Area"
+            case .captureFullScreen: return "Capture Screen"
+            case .historyOverlay: return "History"
+            case .captureOCR: return "Capture OCR & QR"
+            case .quickCapture: return "Quick Capture"
+            case .scrollCapture: return "Scroll Capture"
+            case .openFromClipboard: return "Open from Clipboard"
+            case .captureLastArea: return "Capture Last Area"
+            case .pinFromClipboard: return "Pin from Clipboard"
+            case .clearHistory: return "Clear History"
             }
         }
 
@@ -225,7 +225,7 @@ class HotkeyManager {
     /// Display string for a slot's current hotkey.
     static func displayString(for slot: HotkeySlot) -> String {
         let (keyCode, modifiers) = readHotkey(for: slot)
-        if keyCode == 0 && modifiers == 0 { return L("None") }
+        if keyCode == 0 && modifiers == 0 { return "None" }
         return modifierString(from: modifiers) + keyString(from: keyCode)
     }
 

@@ -21,9 +21,9 @@ enum SaveActionPreference: Int, CaseIterable {
     var title: String {
         switch self {
         case .saveToFolder:
-            return L("Save to default folder")
+            return "Save to default folder"
         case .askWhereToSave:
-            return L("Ask where to save")
+            return "Ask where to save"
         }
     }
 }
@@ -50,11 +50,11 @@ enum QuickCaptureMode: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .saveToFile: return L("Save to file")
-        case .copyImage: return L("Copy to clipboard")
-        case .saveAndCopyImage: return L("Save + copy to clipboard")
-        case .doNothing: return L("Do nothing")
-        case .saveAndCopyPath: return [L("Save"), L("Copy Path")].joined(separator: " + ")
+        case .saveToFile: return "Save to file"
+        case .copyImage: return "Copy to clipboard"
+        case .saveAndCopyImage: return "Save + copy to clipboard"
+        case .doNothing: return "Do nothing"
+        case .saveAndCopyPath: return ["Save", "Copy Path"].joined(separator: " + ")
         }
     }
 
@@ -224,7 +224,7 @@ enum ImageSaveService {
     private static func prepare(_ image: NSImage, completion: Completion?) -> ImageEncoder.PreparedImage? {
         do { return try ImageEncoder.PreparedImage(image) }
         catch {
-            reportFailure(L("Could not encode the screenshot."))
+            reportFailure("Could not encode the screenshot.")
             completionOnMain(completion, false)
             return nil
         }
@@ -268,7 +268,7 @@ enum ImageSaveService {
             switch result {
             case .success: completion?(true)
             case .failure(let error):
-                reportFailure(String(format: L("Could not save the screenshot: %@"), error.localizedDescription))
+                reportFailure(String(format: "Could not save the screenshot: %@", error.localizedDescription))
                 completion?(false)
             }
         })
@@ -299,7 +299,7 @@ enum ImageSaveService {
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
-        panel.prompt = L("Choose a folder")
+        panel.prompt = "Choose a folder"
         panel.directoryURL = SaveDirectoryAccess.directoryHint()
         if let panelLevel {
             panel.level = panelLevel

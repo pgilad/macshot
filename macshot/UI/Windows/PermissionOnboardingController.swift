@@ -42,7 +42,7 @@ class PermissionOnboardingController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = returningUser ? L("Welcome back to macshot") : L("Welcome to macshot")
+        window.title = returningUser ? "Welcome back to macshot" : "Welcome to macshot"
         window.center()
         window.isReleasedWhenClosed = false
         window.titlebarAppearsTransparent = false
@@ -79,7 +79,7 @@ class PermissionOnboardingController: NSWindowController {
         cv.addSubview(logoView)
 
         // Title
-        let title = NSTextField(labelWithString: isReturningUser ? L("Turn Screen Recording back on") : L("macshot needs one permission"))
+        let title = NSTextField(labelWithString: isReturningUser ? "Turn Screen Recording back on" : "macshot needs one permission")
         title.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
         title.textColor = .labelColor
         title.alignment = .center
@@ -88,7 +88,7 @@ class PermissionOnboardingController: NSWindowController {
 
         // Returning users: reassure, and give the fix for a stale entry that
         // still shows as on in System Settings.
-        let note = NSTextField(wrappingLabelWithString: L("After some updates, macOS asks you to allow macshot again. Your settings and captures are safe. If macshot is already in the list, select it, click the minus button (−) to remove it, then click the plus button (+) and add macshot again."))
+        let note = NSTextField(wrappingLabelWithString: "After some updates, macOS asks you to allow macshot again. Your settings and captures are safe. If macshot is already in the list, select it, click the minus button (−) to remove it, then click the plus button (+) and add macshot again.")
         note.font = NSFont.systemFont(ofSize: 12)
         note.textColor = .secondaryLabelColor
         note.alignment = .center
@@ -117,7 +117,7 @@ class PermissionOnboardingController: NSWindowController {
         cv.addSubview(stepBox)
 
         // Status label (inside box)
-        let statusLbl = NSTextField(labelWithString: L("Screen Recording not yet granted"))
+        let statusLbl = NSTextField(labelWithString: "Screen Recording not yet granted")
         statusLbl.font = NSFont.systemFont(ofSize: 12, weight: .medium)
         statusLbl.textColor = .secondaryLabelColor
         statusLbl.alignment = .center
@@ -144,7 +144,7 @@ class PermissionOnboardingController: NSWindowController {
         self.checkmark = check
 
         // Primary button
-        let openBtn = NSButton(title: L("Open Screen Recording Settings"), target: self, action: #selector(openSettings))
+        let openBtn = NSButton(title: "Open Screen Recording Settings", target: self, action: #selector(openSettings))
         openBtn.bezelStyle = .rounded
         openBtn.controlSize = .large
         openBtn.keyEquivalent = "\r"
@@ -153,7 +153,7 @@ class PermissionOnboardingController: NSWindowController {
         self.actionButton = openBtn
 
         // Continue button (hidden until granted)
-        let contBtn = NSButton(title: L("Continue"), target: self, action: #selector(continueClicked))
+        let contBtn = NSButton(title: "Continue", target: self, action: #selector(continueClicked))
         contBtn.bezelStyle = .rounded
         contBtn.controlSize = .large
         contBtn.isHidden = true
@@ -225,7 +225,7 @@ class PermissionOnboardingController: NSWindowController {
         spinner?.isHidden = false
         spinner?.startAnimation(nil)
         checkmark?.isHidden = true
-        statusLabel?.stringValue = L("Screen Recording not yet granted")
+        statusLabel?.stringValue = "Screen Recording not yet granted"
         statusLabel?.textColor = .secondaryLabelColor
         actionButton?.isHidden = false
         continueButton?.isHidden = true
@@ -274,7 +274,7 @@ class PermissionOnboardingController: NSWindowController {
         spinner?.stopAnimation(nil)
         spinner?.isHidden = true
         checkmark?.isHidden = false
-        statusLabel?.stringValue = L("Screen Recording granted!")
+        statusLabel?.stringValue = "Screen Recording granted!"
         statusLabel?.textColor = .systemGreen
         actionButton?.isHidden = true
         continueButton?.isHidden = false
@@ -297,7 +297,7 @@ class PermissionOnboardingController: NSWindowController {
             NSWorkspace.shared.open(url)
         }
 
-        statusLabel?.stringValue = L("Enable macshot, then try taking a screenshot")
+        statusLabel?.stringValue = "Enable macshot, then try taking a screenshot"
     }
 
     @objc private func continueClicked() {

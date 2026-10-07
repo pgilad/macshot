@@ -293,34 +293,34 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
 
         let menu = NSMenu()
 
-        let copyItem = ImageContextMenu.item(title: L("Copy"), symbolName: "doc.on.doc", action: #selector(contextCopy(_:)), target: self, keyEquivalent: "c")
+        let copyItem = ImageContextMenu.item(title: "Copy", symbolName: "doc.on.doc", action: #selector(contextCopy(_:)), target: self, keyEquivalent: "c")
         copyItem.keyEquivalentModifierMask = [.command]
         copyItem.tag = globalIndex
         menu.addItem(copyItem)
 
-        let saveItem = ImageContextMenu.item(title: L("Save As..."), symbolName: "square.and.arrow.down", action: #selector(contextSave(_:)), target: self, keyEquivalent: "s")
+        let saveItem = ImageContextMenu.item(title: "Save As...", symbolName: "square.and.arrow.down", action: #selector(contextSave(_:)), target: self, keyEquivalent: "s")
         saveItem.keyEquivalentModifierMask = [.command]
         saveItem.tag = globalIndex
         menu.addItem(saveItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let editorItem = ImageContextMenu.item(title: L("Open in Editor"), symbolName: "pencil", action: #selector(contextOpenEditor(_:)), target: self, keyEquivalent: "e")
+        let editorItem = ImageContextMenu.item(title: "Open in Editor", symbolName: "pencil", action: #selector(contextOpenEditor(_:)), target: self, keyEquivalent: "e")
         editorItem.keyEquivalentModifierMask = [.command]
         editorItem.tag = globalIndex
         menu.addItem(editorItem)
 
-        let pinItem = ImageContextMenu.item(title: L("Pin to Screen"), symbolName: "pin.fill", action: #selector(contextPin(_:)), target: self)
+        let pinItem = ImageContextMenu.item(title: "Pin to Screen", symbolName: "pin.fill", action: #selector(contextPin(_:)), target: self)
         pinItem.tag = globalIndex
         menu.addItem(pinItem)
 
 
-        let qlItem = ImageContextMenu.item(title: L("Quick Look"), symbolName: "eye", action: #selector(contextQuickLook(_:)), target: self, keyEquivalent: " ")
+        let qlItem = ImageContextMenu.item(title: "Quick Look", symbolName: "eye", action: #selector(contextQuickLook(_:)), target: self, keyEquivalent: " ")
         qlItem.keyEquivalentModifierMask = []
         qlItem.tag = globalIndex
         menu.addItem(qlItem)
 
-        let ocrItem = ImageContextMenu.item(title: L("Run OCR & QR"), symbolName: "text.viewfinder", action: #selector(contextOCR(_:)), target: self)
+        let ocrItem = ImageContextMenu.item(title: "Run OCR & QR", symbolName: "text.viewfinder", action: #selector(contextOCR(_:)), target: self)
         ocrItem.tag = globalIndex
         menu.addItem(ocrItem)
 
@@ -338,7 +338,7 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
 
         menu.addItem(NSMenuItem.separator())
 
-        let deleteItem = ImageContextMenu.item(title: L("Delete"), symbolName: "trash", action: #selector(contextDelete(_:)), target: self, keyEquivalent: "\u{8}")
+        let deleteItem = ImageContextMenu.item(title: "Delete", symbolName: "trash", action: #selector(contextDelete(_:)), target: self, keyEquivalent: "\u{8}")
         deleteItem.keyEquivalentModifierMask = []
         deleteItem.tag = globalIndex
         menu.addItem(deleteItem)
@@ -699,8 +699,8 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
 
     private func localizedFilterLabel(_ filter: HistoryFilter) -> String {
         switch filter {
-        case .all: return L("All")
-        case .screenshots: return L("Screenshots")
+        case .all: return "All"
+        case .screenshots: return "Screenshots"
         }
     }
 
@@ -755,7 +755,7 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
             y: tabY + (tabH - trashSize) / 2,
             width: trashSize, height: trashSize)
         trashButtonRect = trashRect
-        if let trashIcon = NSImage(systemSymbolName: "trash", accessibilityDescription: L("Clear History"))?
+        if let trashIcon = NSImage(systemSymbolName: "trash", accessibilityDescription: "Clear History")?
             .withSymbolConfiguration(.init(pointSize: 12, weight: .medium)) {
             let tinted = trashIcon.copy() as! NSImage
             tinted.isTemplate = false
@@ -834,7 +834,7 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
                 clipPath.fill()
 
                 // Hint text
-                let hint = L("Click to copy · Drag to app") as NSString
+                let hint = "Click to copy · Drag to app" as NSString
                 let hintAttrs: [NSAttributedString.Key: Any] = [
                     .font: NSFont.systemFont(ofSize: 10, weight: .semibold),
                     .foregroundColor: NSColor.white.withAlphaComponent(0.9),
@@ -887,7 +887,7 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
     }
 
     private func drawEmptyState() {
-        let str = L("No captures yet") as NSString
+        let str = "No captures yet" as NSString
         let attrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 14, weight: .medium),
             .foregroundColor: NSColor.white.withAlphaComponent(0.3),

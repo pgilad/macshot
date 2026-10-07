@@ -20,10 +20,10 @@ class EditorTopBarView: NSView {
         sizeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
         sizeLabel.textColor = ToolbarLayout.iconColor.withAlphaComponent(0.45)
 
-        let cropBtn = makeButton("crop", tooltip: L("Crop"), action: #selector(cropClicked))
-        let flipHBtn = makeButton("arrow.left.and.right.righttriangle.left.righttriangle.right", tooltip: L("Flip Horizontal"), action: #selector(flipHClicked))
-        let flipVBtn = makeButton("arrow.up.and.down.righttriangle.up.righttriangle.down", tooltip: L("Flip Vertical"), action: #selector(flipVClicked))
-        let addCaptureBtn = makeButton("rectangle.badge.plus", tooltip: L("Add Capture"), action: #selector(addCaptureClicked))
+        let cropBtn = makeButton("crop", tooltip: "Crop", action: #selector(cropClicked))
+        let flipHBtn = makeButton("arrow.left.and.right.righttriangle.left.righttriangle.right", tooltip: "Flip Horizontal", action: #selector(flipHClicked))
+        let flipVBtn = makeButton("arrow.up.and.down.righttriangle.up.righttriangle.down", tooltip: "Flip Vertical", action: #selector(flipVClicked))
+        let addCaptureBtn = makeButton("rectangle.badge.plus", tooltip: "Add Capture", action: #selector(addCaptureClicked))
 
         // Zoom dropdown button
         zoomButton = NSButton()
@@ -121,19 +121,19 @@ class EditorTopBarView: NSView {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let zoomIn = NSMenuItem(title: L("Zoom In"), action: #selector(zoomInAction), keyEquivalent: "+")
+        let zoomIn = NSMenuItem(title: "Zoom In", action: #selector(zoomInAction), keyEquivalent: "+")
         zoomIn.keyEquivalentModifierMask = .command
         zoomIn.target = self
         menu.addItem(zoomIn)
 
-        let zoomOut = NSMenuItem(title: L("Zoom Out"), action: #selector(zoomOutAction), keyEquivalent: "-")
+        let zoomOut = NSMenuItem(title: "Zoom Out", action: #selector(zoomOutAction), keyEquivalent: "-")
         zoomOut.keyEquivalentModifierMask = .command
         zoomOut.target = self
         menu.addItem(zoomOut)
 
         menu.addItem(.separator())
 
-        let fitCanvas = NSMenuItem(title: L("Fit Canvas"), action: #selector(fitCanvasAction), keyEquivalent: "1")
+        let fitCanvas = NSMenuItem(title: "Fit Canvas", action: #selector(fitCanvasAction), keyEquivalent: "1")
         fitCanvas.keyEquivalentModifierMask = .command
         fitCanvas.target = self
         menu.addItem(fitCanvas)
@@ -199,7 +199,7 @@ class EditorTopBarView: NSView {
         let btn = NSButton()
         btn.bezelStyle = .recessed
         btn.isBordered = true
-        btn.title = L("Done")
+        btn.title = "Done"
         btn.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         btn.contentTintColor = ToolbarLayout.accentColor
         btn.target = self

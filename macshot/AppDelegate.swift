@@ -25,12 +25,12 @@ enum CaptureMenuItemID: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .captureArea: return L("Capture Area")
-        case .captureScreen: return L("Capture Screen")
-        case .captureOCR: return L("Capture OCR & QR")
-        case .quickCapture: return L("Quick Capture")
-        case .captureLastArea: return L("Capture Last Area")
-        case .scrollCapture: return L("Scroll Capture")
+        case .captureArea: return "Capture Area"
+        case .captureScreen: return "Capture Screen"
+        case .captureOCR: return "Capture OCR & QR"
+        case .quickCapture: return "Quick Capture"
+        case .captureLastArea: return "Capture Last Area"
+        case .scrollCapture: return "Scroll Capture"
         }
     }
 
@@ -508,7 +508,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Sort by title so the menu order is stable across dock-menu openings.
         for window in windows.sorted(by: { $0.title < $1.title }) {
             let item = NSMenuItem(
-                title: window.title.isEmpty ? L("Untitled") : window.title,
+                title: window.title.isEmpty ? "Untitled" : window.title,
                 action: #selector(activateWindowFromDockMenu(_:)),
                 keyEquivalent: ""
             )
@@ -661,10 +661,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(editMenuItem)
 
         let editMenu = NSMenu(title: "Edit")
-        let undoItem = NSMenuItem(title: L("Undo"), action: Selector(("undo:")), keyEquivalent: "")
+        let undoItem = NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "")
         EditorCommandShortcutManager.applyPrimaryMenuShortcut(for: .undo, to: undoItem)
         editMenu.addItem(undoItem)
-        let redoItem = NSMenuItem(title: L("Redo"), action: Selector(("redo:")), keyEquivalent: "")
+        let redoItem = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "")
         EditorCommandShortcutManager.applyPrimaryMenuShortcut(for: .redo, to: redoItem)
         editMenu.addItem(redoItem)
         editMenu.addItem(NSMenuItem.separator())
@@ -771,13 +771,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Capture Delay submenu
-        let delayItem = NSMenuItem(title: L("Capture Delay"), action: nil, keyEquivalent: "")
+        let delayItem = NSMenuItem(title: "Capture Delay", action: nil, keyEquivalent: "")
         delayItem.image = NSImage(systemSymbolName: "timer", accessibilityDescription: nil)
         let delaySubmenu = NSMenu()
         delaySubmenu.autoenablesItems = false
         let currentDelay = UserDefaults.standard.integer(forKey: "captureDelaySeconds")
         for seconds in [0, 3, 5, 10, 30] {
-            let title = seconds == 0 ? L("None") : String(format: L("%d seconds"), seconds)
+            let title = seconds == 0 ? "None" : String(format: "%d seconds", seconds)
             let item = NSMenuItem(title: title, action: #selector(setDelaySeconds(_:)), keyEquivalent: "")
             item.target = self
             item.tag = seconds
@@ -790,7 +790,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         // Recent Captures submenu
-        let historyItem = NSMenuItem(title: L("Recent Captures"), action: nil, keyEquivalent: "")
+        let historyItem = NSMenuItem(title: "Recent Captures", action: nil, keyEquivalent: "")
         historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: nil)
         let historySubmenu = NSMenu()
         historySubmenu.delegate = self
@@ -798,7 +798,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         self.historyMenu = historySubmenu
         menu.addItem(historyItem)
 
-        let historyOverlayItem = NSMenuItem(title: L("Show History Panel"), action: #selector(showHistoryOverlay), keyEquivalent: "")
+        let historyOverlayItem = NSMenuItem(title: "Show History Panel", action: #selector(showHistoryOverlay), keyEquivalent: "")
         historyOverlayItem.target = self
         historyOverlayItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: nil)
         HotkeyManager.applyMenuShortcut(for: .historyOverlay, to: historyOverlayItem)
@@ -806,18 +806,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let openImageItem = NSMenuItem(title: L("Open Image..."), action: #selector(openImageFromMenu), keyEquivalent: "")
+        let openImageItem = NSMenuItem(title: "Open Image...", action: #selector(openImageFromMenu), keyEquivalent: "")
         openImageItem.target = self
         openImageItem.image = NSImage(systemSymbolName: "photo.on.rectangle.angled", accessibilityDescription: nil)
         menu.addItem(openImageItem)
 
-        let pasteImageItem = NSMenuItem(title: L("Open from Clipboard"), action: #selector(openImageFromClipboard), keyEquivalent: "")
+        let pasteImageItem = NSMenuItem(title: "Open from Clipboard", action: #selector(openImageFromClipboard), keyEquivalent: "")
         pasteImageItem.target = self
         pasteImageItem.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: nil)
         HotkeyManager.applyMenuShortcut(for: .openFromClipboard, to: pasteImageItem)
         menu.addItem(pasteImageItem)
 
-        let pinClipboardTitle = L("Pin from Clipboard")
+        let pinClipboardTitle = "Pin from Clipboard"
         let pinClipboardItem = NSMenuItem(title: pinClipboardTitle, action: #selector(pinFromClipboard), keyEquivalent: "")
         pinClipboardItem.target = self
         pinClipboardItem.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: pinClipboardTitle)
@@ -826,14 +826,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let prefsItem = NSMenuItem(title: L("Settings..."), action: #selector(openSettings), keyEquivalent: ",")
+        let prefsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
         prefsItem.target = self
         prefsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: nil)
         menu.addItem(prefsItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: L("Quit macshot"), action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: "Quit macshot", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -1959,10 +1959,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let image = NSImage(pasteboard: pasteboard), image.isValid,
               image.size.width > 0, image.size.height > 0 else {
             let alert = NSAlert()
-            alert.messageText = L("No Image on Clipboard")
-            alert.informativeText = L("Copy an image to the clipboard first, then try again.")
+            alert.messageText = "No Image on Clipboard"
+            alert.informativeText = "Copy an image to the clipboard first, then try again."
             alert.alertStyle = .informational
-            alert.addButton(withTitle: L("OK"))
+            alert.addButton(withTitle: "OK")
             alert.runModal()
             return
         }
@@ -1985,10 +1985,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showNoPinClipboardContentAlert() {
         let alert = NSAlert()
-        alert.messageText = L("No Image or Text on Clipboard")
-        alert.informativeText = L("Copy an image or text to the clipboard first, then try again.")
+        alert.messageText = "No Image or Text on Clipboard"
+        alert.informativeText = "Copy an image or text to the clipboard first, then try again."
         alert.alertStyle = .informational
-        alert.addButton(withTitle: L("OK"))
+        alert.addButton(withTitle: "OK")
         alert.runModal()
     }
 
@@ -2295,11 +2295,11 @@ extension AppDelegate: OverlayWindowControllerDelegate {
             let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
             AXIsProcessTrustedWithOptions(opts)
             let alert = NSAlert()
-            alert.messageText = L("Accessibility Access Required")
-            alert.informativeText = L("macshot needs Accessibility permission for scroll capture. Please grant access in System Settings, then try again.")
+            alert.messageText = "Accessibility Access Required"
+            alert.informativeText = "macshot needs Accessibility permission for scroll capture. Please grant access in System Settings, then try again."
             alert.alertStyle = .warning
-            alert.addButton(withTitle: L("Open Settings"))
-            alert.addButton(withTitle: L("Cancel"))
+            alert.addButton(withTitle: "Open Settings")
+            alert.addButton(withTitle: "Cancel")
             let response = alert.runModal()
             if response == .alertFirstButtonReturn {
                 if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -2380,11 +2380,11 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         AXIsProcessTrustedWithOptions(opts)
         let alert = NSAlert()
-        alert.messageText = L("Accessibility Access Required")
-        alert.informativeText = L("macshot needs Accessibility permission to snap to individual interface elements. Please grant access in System Settings, then try again.")
+        alert.messageText = "Accessibility Access Required"
+        alert.informativeText = "macshot needs Accessibility permission to snap to individual interface elements. Please grant access in System Settings, then try again."
         alert.alertStyle = .warning
-        alert.addButton(withTitle: L("Open Settings"))
-        alert.addButton(withTitle: L("Cancel"))
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Cancel")
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -2411,11 +2411,11 @@ extension AppDelegate: OverlayWindowControllerDelegate {
                 let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
                 AXIsProcessTrustedWithOptions(opts)
                 let alert = NSAlert()
-                alert.messageText = L("Accessibility Access Required")
-                alert.informativeText = L("macshot needs Accessibility permission to auto-scroll other apps. Please grant access in System Settings, then try again.")
+                alert.messageText = "Accessibility Access Required"
+                alert.informativeText = "macshot needs Accessibility permission to auto-scroll other apps. Please grant access in System Settings, then try again."
                 alert.alertStyle = .warning
-                alert.addButton(withTitle: L("Open Settings"))
-                alert.addButton(withTitle: L("Cancel"))
+                alert.addButton(withTitle: "Open Settings")
+                alert.addButton(withTitle: "Cancel")
                 let response = alert.runModal()
                 if response == .alertFirstButtonReturn {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -2571,7 +2571,7 @@ extension AppDelegate: NSMenuDelegate {
 
         let entries = ScreenshotHistory.shared.entries
         if entries.isEmpty {
-            let emptyItem = NSMenuItem(title: L("No recent captures"), action: nil, keyEquivalent: "")
+            let emptyItem = NSMenuItem(title: "No recent captures", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
             return
@@ -2588,7 +2588,7 @@ extension AppDelegate: NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let clearItem = NSMenuItem(title: L("Clear History"), action: #selector(clearHistory), keyEquivalent: "")
+        let clearItem = NSMenuItem(title: "Clear History", action: #selector(clearHistory), keyEquivalent: "")
         clearItem.target = self
         clearItem.tag = 9000
         menu.addItem(clearItem)
@@ -2622,10 +2622,10 @@ extension AppDelegate: NSMenuDelegate {
     /// Show a confirmation dialog before clearing all history. Reused by history panel trash button.
     func confirmClearHistory() {
         let alert = NSAlert()
-        alert.messageText = L("Clear History?")
-        alert.informativeText = L("This will permanently delete all screenshots from history.")
-        alert.addButton(withTitle: L("Clear All"))
-        alert.addButton(withTitle: L("Cancel"))
+        alert.messageText = "Clear History?"
+        alert.informativeText = "This will permanently delete all screenshots from history."
+        alert.addButton(withTitle: "Clear All")
+        alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .warning
         if alert.runModal() == .alertFirstButtonReturn {
             ScreenshotHistory.shared.clear()

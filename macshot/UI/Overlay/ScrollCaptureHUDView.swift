@@ -26,7 +26,7 @@ class ScrollCaptureHUDView: NSView {
         infoLabel.lineBreakMode = .byTruncatingTail
         addSubview(infoLabel)
 
-        autoScrollButton.title = L("Auto Scroll")
+        autoScrollButton.title = "Auto Scroll"
         autoScrollButton.bezelStyle = .recessed
         autoScrollButton.isBordered = false
         autoScrollButton.wantsLayer = true
@@ -38,7 +38,7 @@ class ScrollCaptureHUDView: NSView {
         autoScrollButton.action = #selector(autoScrollClicked)
         addSubview(autoScrollButton)
 
-        stopButton.title = L("Stop")
+        stopButton.title = "Stop"
         stopButton.bezelStyle = .recessed
         stopButton.isBordered = false
         stopButton.wantsLayer = true
@@ -61,9 +61,9 @@ class ScrollCaptureHUDView: NSView {
         let ptH = Int(CGFloat(ph) / backingScale)
 
         if ptW > 0 && ptH > 0 {
-            infoLabel.stringValue = "\(L("Scroll Capture"))  ·  \(ptW)×\(ptH)"
+            infoLabel.stringValue = "Scroll Capture  ·  \(ptW)×\(ptH)"
         } else {
-            infoLabel.stringValue = L("Scroll Capture")
+            infoLabel.stringValue = "Scroll Capture"
         }
 
         updateAutoScrollState(autoScrolling)
@@ -74,10 +74,10 @@ class ScrollCaptureHUDView: NSView {
     private func updateAutoScrollState(_ active: Bool) {
         isAutoScrolling = active
         if active {
-            autoScrollButton.title = L("Scrolling...")
+            autoScrollButton.title = "Scrolling..."
             autoScrollButton.layer?.backgroundColor = NSColor.systemOrange.withAlphaComponent(0.85).cgColor
         } else {
-            autoScrollButton.title = L("Auto Scroll")
+            autoScrollButton.title = "Auto Scroll"
             autoScrollButton.layer?.backgroundColor = NSColor.systemBlue.withAlphaComponent(0.85).cgColor
         }
     }

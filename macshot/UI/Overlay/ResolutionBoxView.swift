@@ -50,12 +50,12 @@ final class ResolutionBoxView: NSView, NSTextFieldDelegate {
         presetsButton.bezelStyle = .regularSquare
         presetsButton.isBordered = false
         presetsButton.imagePosition = .imageOnly
-        presetsButton.image = NSImage(systemSymbolName: "aspectratio", accessibilityDescription: L("Aspect ratio & resolution presets"))
+        presetsButton.image = NSImage(systemSymbolName: "aspectratio", accessibilityDescription: "Aspect ratio & resolution presets")
             ?? NSImage(systemSymbolName: "rectangle.ratio.16.to.9", accessibilityDescription: nil)
         presetsButton.contentTintColor = ToolbarLayout.iconColor
         presetsButton.target = self
         presetsButton.action = #selector(presetsClicked)
-        presetsButton.toolTip = L("Aspect ratio & resolution presets")
+        presetsButton.toolTip = "Aspect ratio & resolution presets"
         addSubview(presetsButton)
 
         layoutPieces()
@@ -155,7 +155,7 @@ final class ResolutionBoxView: NSView, NSTextFieldDelegate {
 
     /// Reflect the active ratio/resolution preset in the presets button.
     func setActivePresetLabel(_ label: String?) {
-        presetsButton.toolTip = label.map { "\(L("Presets")) — \($0)" } ?? L("Aspect ratio & resolution presets")
+        presetsButton.toolTip = label.map { "Presets — \($0)" } ?? "Aspect ratio & resolution presets"
         presetsButton.contentTintColor = label == nil ? ToolbarLayout.iconColor : ToolbarLayout.accentColor
     }
 

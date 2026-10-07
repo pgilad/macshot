@@ -9,10 +9,10 @@ enum ImageContextTransform: Int {
 
     var title: String {
         switch self {
-        case .rotateLeft: return L("Rotate Left")
-        case .rotateRight: return L("Rotate Right")
-        case .flipHorizontal: return L("Flip Horizontal")
-        case .flipVertical: return L("Flip Vertical")
+        case .rotateLeft: return "Rotate Left"
+        case .rotateRight: return "Rotate Right"
+        case .flipHorizontal: return "Flip Horizontal"
+        case .flipVertical: return "Flip Vertical"
         }
     }
 
@@ -106,11 +106,11 @@ enum ImageContextMenu {
     }
 
     static func openWithItem(fileURL: URL, target: AnyObject, action: Selector) -> NSMenuItem {
-        let root = item(title: L("Open With"), symbolName: "arrow.up.right.square", action: nil, target: nil)
+        let root = item(title: "Open With", symbolName: "arrow.up.right.square", action: nil, target: nil)
         let submenu = NSMenu()
         let appURLs = orderedApplicationURLs(for: fileURL)
         if appURLs.isEmpty {
-            let empty = NSMenuItem(title: L("No Apps Available"), action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: "No Apps Available", action: nil, keyEquivalent: "")
             empty.isEnabled = false
             submenu.addItem(empty)
         } else {
@@ -128,11 +128,11 @@ enum ImageContextMenu {
     }
 
     static func shareItem(fileURL: URL, target: AnyObject, action: Selector) -> NSMenuItem {
-        let root = item(title: L("Share"), symbolName: "square.and.arrow.up", action: nil, target: nil)
+        let root = item(title: "Share", symbolName: "square.and.arrow.up", action: nil, target: nil)
         let submenu = NSMenu()
         let services = NSSharingService.sharingServices(forItems: [fileURL])
         if services.isEmpty {
-            let empty = NSMenuItem(title: L("No Share Services"), action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: "No Share Services", action: nil, keyEquivalent: "")
             empty.isEnabled = false
             submenu.addItem(empty)
         } else {
@@ -377,21 +377,21 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
     private func showContextMenu(event: NSEvent, in view: NSView) {
         let menu = NSMenu()
 
-        let copyItem = ImageContextMenu.item(title: L("Copy"), symbolName: "doc.on.doc", action: #selector(contextCopy), target: self, keyEquivalent: "c")
+        let copyItem = ImageContextMenu.item(title: "Copy", symbolName: "doc.on.doc", action: #selector(contextCopy), target: self, keyEquivalent: "c")
         copyItem.keyEquivalentModifierMask = [.command]
         menu.addItem(copyItem)
 
-        menu.addItem(ImageContextMenu.item(title: L("Save"), symbolName: "square.and.arrow.down", action: #selector(contextSave), target: self))
-        menu.addItem(ImageContextMenu.item(title: L("Save As..."), symbolName: "square.and.arrow.down.on.square", action: #selector(contextSaveAs), target: self))
+        menu.addItem(ImageContextMenu.item(title: "Save", symbolName: "square.and.arrow.down", action: #selector(contextSave), target: self))
+        menu.addItem(ImageContextMenu.item(title: "Save As...", symbolName: "square.and.arrow.down.on.square", action: #selector(contextSaveAs), target: self))
 
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(ImageContextMenu.item(title: L("Open in Editor"), symbolName: "pencil", action: #selector(contextOpenEditor), target: self, keyEquivalent: "e"))
-        menu.addItem(ImageContextMenu.item(title: L("Pin to Screen"), symbolName: "pin.fill", action: #selector(contextPin), target: self))
-        let quickLookItem = ImageContextMenu.item(title: L("Quick Look"), symbolName: "eye", action: #selector(contextQuickLook), target: self, keyEquivalent: " ")
+        menu.addItem(ImageContextMenu.item(title: "Open in Editor", symbolName: "pencil", action: #selector(contextOpenEditor), target: self, keyEquivalent: "e"))
+        menu.addItem(ImageContextMenu.item(title: "Pin to Screen", symbolName: "pin.fill", action: #selector(contextPin), target: self))
+        let quickLookItem = ImageContextMenu.item(title: "Quick Look", symbolName: "eye", action: #selector(contextQuickLook), target: self, keyEquivalent: " ")
         quickLookItem.keyEquivalentModifierMask = []
         menu.addItem(quickLookItem)
-        menu.addItem(ImageContextMenu.item(title: L("Run OCR & QR"), symbolName: "text.viewfinder", action: #selector(contextOCR), target: self))
+        menu.addItem(ImageContextMenu.item(title: "Run OCR & QR", symbolName: "text.viewfinder", action: #selector(contextOCR), target: self))
 
         menu.addItem(NSMenuItem.separator())
         ImageContextMenu.addTransformItems(to: menu, target: self, action: #selector(contextTransform(_:)))
@@ -403,13 +403,13 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
         }
 
         menu.addItem(NSMenuItem.separator())
-        let deleteItem = ImageContextMenu.item(title: L("Delete"), symbolName: "trash", action: #selector(contextDelete), target: self, keyEquivalent: "\u{8}")
+        let deleteItem = ImageContextMenu.item(title: "Delete", symbolName: "trash", action: #selector(contextDelete), target: self, keyEquivalent: "\u{8}")
         deleteItem.keyEquivalentModifierMask = []
         menu.addItem(deleteItem)
 
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(ImageContextMenu.item(title: L("Close All"), symbolName: "xmark.circle", action: #selector(contextCloseAll), target: self))
-        menu.addItem(ImageContextMenu.item(title: L("Save All to Folder…"), symbolName: "folder", action: #selector(contextSaveAll), target: self))
+        menu.addItem(ImageContextMenu.item(title: "Close All", symbolName: "xmark.circle", action: #selector(contextCloseAll), target: self))
+        menu.addItem(ImageContextMenu.item(title: "Save All to Folder…", symbolName: "folder", action: #selector(contextSaveAll), target: self))
 
         NSMenu.popUpContextMenu(menu, with: event, for: view)
     }
@@ -901,8 +901,8 @@ private class ThumbnailView: NSView {
         let titleFont = NSFont.systemFont(ofSize: fontSize, weight: .medium)
         let titleAttrs: [NSAttributedString.Key: Any] = [.font: titleFont]
         let maxTitleW = max(
-            (L("Copy") as NSString).size(withAttributes: titleAttrs).width,
-            (L("Save") as NSString).size(withAttributes: titleAttrs).width
+            ("Copy" as NSString).size(withAttributes: titleAttrs).width,
+            ("Save" as NSString).size(withAttributes: titleAttrs).width
         )
         let horizontalTextPadding = scaled(32, minimum: 18)
         let preferredCenterW = max(scaled(110, minimum: 64), ceil(maxTitleW + horizontalTextPadding))
@@ -915,7 +915,7 @@ private class ThumbnailView: NSView {
         copyBtnRect = copyRect
         saveBtnRect = saveRect
 
-        for (rect, title) in [(copyRect, L("Copy")), (saveRect, L("Save"))] {
+        for (rect, title) in [(copyRect, "Copy"), (saveRect, "Save")] {
             let isHit = rect == hoveredRect
             let bg = NSBezierPath(roundedRect: rect, xRadius: centerBtnH/2, yRadius: centerBtnH/2)
             if isHit {

@@ -38,7 +38,7 @@ class OCRResultController: NSObject {
             backing: .buffered,
             defer: false
         )
-        panel.title = qrCodes.isEmpty ? L("Text Recognition") : L("Text & QR Recognition")
+        panel.title = qrCodes.isEmpty ? "Text Recognition" : "Text & QR Recognition"
         panel.level = .floating
         panel.isReleasedWhenClosed = false
         panel.becomesKeyOnlyIfNeeded = false
@@ -109,7 +109,7 @@ class OCRResultController: NSObject {
         // Char/word count label
         let charCount = text.count
         let wordCount = text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).count
-        let countLbl = NSTextField(labelWithString: String(format: L("%d chars · %d words"), charCount, wordCount))
+        let countLbl = NSTextField(labelWithString: String(format: "%d chars · %d words", charCount, wordCount))
         countLbl.font = NSFont.systemFont(ofSize: 11)
         countLbl.textColor = .tertiaryLabelColor
         countLbl.alignment = .right
@@ -136,7 +136,7 @@ class OCRResultController: NSObject {
         cv.addSubview(footer)
 
         // Copy button (primary, right-aligned)
-        let copyBtn = NSButton(title: L("Copy") + "  ⌘↩", target: self, action: #selector(copyAll))
+        let copyBtn = NSButton(title: "Copy" + "  ⌘↩", target: self, action: #selector(copyAll))
         copyBtn.bezelStyle = .rounded
         copyBtn.frame = NSRect(x: rightW - 110, y: (footerH - 28) / 2, width: 100, height: 28)
         copyBtn.autoresizingMask = [.minXMargin]
@@ -147,7 +147,7 @@ class OCRResultController: NSObject {
         self.copyButton = copyBtn
 
         // AI Search button
-        let aiSearchBtn = NSButton(title: L("AI Search"), target: self, action: #selector(openAISearch))
+        let aiSearchBtn = NSButton(title: "AI Search", target: self, action: #selector(openAISearch))
         aiSearchBtn.bezelStyle = .rounded
         aiSearchBtn.frame = NSRect(x: rightW - 220, y: (footerH - 28) / 2, width: 100, height: 28)
         aiSearchBtn.autoresizingMask = [.minXMargin]
@@ -177,7 +177,7 @@ class OCRResultController: NSObject {
         tv.textContainer?.widthTracksTextView = true
         tv.autoresizingMask = [.width, .height]
         tv.drawsBackground = false
-        let noTextMessage = L("(No text detected in the selected area)")
+        let noTextMessage = "(No text detected in the selected area)"
         tv.string = text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? noTextMessage
             : text
@@ -209,7 +209,7 @@ class OCRResultController: NSObject {
         topSep.autoresizingMask = [.width, .minYMargin]
         section.addSubview(topSep)
 
-        let title = NSTextField(labelWithString: qrCodes.count == 1 ? L("QR Code") : L("QR Codes"))
+        let title = NSTextField(labelWithString: qrCodes.count == 1 ? "QR Code" : "QR Codes")
         title.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = .secondaryLabelColor
         title.frame = NSRect(x: 14, y: frame.height - 28, width: 160, height: 18)
@@ -239,7 +239,7 @@ class OCRResultController: NSObject {
             section.addSubview(valueField)
 
             var buttonX = frame.width - rightPad - copyW
-            let copy = NSButton(title: L("Copy"), target: self, action: #selector(copyQRCode(_:)))
+            let copy = NSButton(title: "Copy", target: self, action: #selector(copyQRCode(_:)))
             copy.bezelStyle = .rounded
             copy.tag = idx
             copy.frame = NSRect(x: buttonX, y: rowY + 2, width: copyW, height: 26)
@@ -248,7 +248,7 @@ class OCRResultController: NSObject {
 
             if hasURL {
                 buttonX -= openW + gap
-                let open = NSButton(title: L("Open Link"), target: self, action: #selector(openQRCode(_:)))
+                let open = NSButton(title: "Open Link", target: self, action: #selector(openQRCode(_:)))
                 open.bezelStyle = .rounded
                 open.tag = idx
                 open.frame = NSRect(x: buttonX, y: rowY + 2, width: openW, height: 26)
@@ -296,7 +296,7 @@ class OCRResultController: NSObject {
 
     @objc private func copyAll() {
         let text = textView?.string ?? ""
-        let noTextMessage = L("(No text detected in the selected area)")
+        let noTextMessage = "(No text detected in the selected area)"
         let copyText = text == noTextMessage ? qrCodes.map(\.value).joined(separator: "\n") : text
         guard !copyText.isEmpty else { return }
         NSPasteboard.general.clearContents()

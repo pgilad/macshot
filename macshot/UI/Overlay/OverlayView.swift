@@ -2217,17 +2217,17 @@ class OverlayView: NSView {
         let line3state: String
         switch snapMode {
         case .window:
-            line1 = L("Click a window  ·  Drag for custom area  ·  F for full screen")
-            line3state = L("WINDOW")
+            line1 = "Click a window  ·  Drag for custom area  ·  F for full screen"
+            line3state = "WINDOW"
         case .element:
-            line1 = L("Click an element  ·  Drag for custom area  ·  F for full screen")
-            line3state = L("ELEMENT")
+            line1 = "Click an element  ·  Drag for custom area  ·  F for full screen"
+            line3state = "ELEMENT"
         case .off:
-            line1 = L("Drag to select  ·  Click for full screen")
-            line3state = L("OFF")
+            line1 = "Drag to select  ·  Click for full screen"
+            line3state = "OFF"
         }
-        let line3prefix = L("Snap mode: ")
-        let line3suffix = L("  (Tab to switch)")
+        let line3prefix = "Snap mode: "
+        let line3suffix = "  (Tab to switch)"
 
         let snapColor = snapMode == .off ? NSColor.systemOrange : NSColor.systemGreen
 
@@ -2305,8 +2305,8 @@ class OverlayView: NSView {
         guard selectionRect.width >= 1, selectionRect.height >= 1 else { return }
 
         let text = autoQuickSaveMode
-            ? L("Hold Space to move. Release to finish")
-            : L("Hold Space to move. Release to annotate and edit")
+            ? "Hold Space to move. Release to finish"
+            : "Hold Space to move. Release to annotate and edit"
         let attrs = Self.helperTextAttrs
         let size = (text as NSString).size(withAttributes: attrs)
         let padding: CGFloat = 10
@@ -2620,8 +2620,8 @@ class OverlayView: NSView {
         if let curAspect = currentSelectionAspect {
             let customSelected = customLocked
             let customTitle = customSelected
-                ? String(format: L("Custom · %@"), ratioLabel(for: lockedAspect ?? curAspect))
-                : String(format: L("Custom · %@"), ratioLabel(for: curAspect))
+                ? String(format: "Custom · %@", ratioLabel(for: lockedAspect ?? curAspect))
+                : String(format: "Custom · %@", ratioLabel(for: curAspect))
             let customRow = ResolutionPresetsView.Row(title: customTitle, isSelected: customSelected) { [weak self] in
                 PopoverHelper.dismiss()
                 guard let self else { return }
@@ -2787,7 +2787,7 @@ class OverlayView: NSView {
         preSelectionPresetButtonRect = frame
         button.frame = frame
         let label = preSelectionPresetDisplayLabel
-        let title = L("Aspect ratio & resolution presets")
+        let title = "Aspect ratio & resolution presets"
         button.update(active: label != nil, tooltip: label.map { "\(title): \($0)" } ?? title)
         button.isHidden = false
     }
@@ -2822,8 +2822,8 @@ class OverlayView: NSView {
         preSelectionPresetButton?.update(
             active: preSelectionPresetDisplayLabel != nil,
             tooltip: preSelectionPresetDisplayLabel.map {
-                "\(L("Aspect ratio & resolution presets")): \($0)"
-            } ?? L("Aspect ratio & resolution presets"))
+                "Aspect ratio & resolution presets: \($0)"
+            } ?? "Aspect ratio & resolution presets")
         needsDisplay = true
     }
 
@@ -3404,7 +3404,7 @@ class OverlayView: NSView {
         ]
 
         let hexSize = (hexStr as NSString).size(withAttributes: hexAttrs)
-        let copyText = L("Right-click to copy")
+        let copyText = "Right-click to copy"
         let copySize = (copyText as NSString).size(withAttributes: copyAttrs)
 
         let swatchSize: CGFloat = 16
@@ -4949,7 +4949,7 @@ class OverlayView: NSView {
 
         // Build label
         let count = selectedAnnotations.count
-        let label = L("Delete") + " \(count)"
+        let label = "Delete" + " \(count)"
         let labelAttrs: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 13, weight: .medium),
             .foregroundColor: NSColor.white,
@@ -5553,7 +5553,7 @@ class OverlayView: NSView {
             if let result = sampleCanvasColor(at: viewToCanvas(point)) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(result.hex, forType: .string)
-                showOverlayError(String(format: L("Copied %@"), result.hex))
+                showOverlayError(String(format: "Copied %@", result.hex))
                 needsDisplay = true
             }
             return
@@ -6936,7 +6936,7 @@ class OverlayView: NSView {
             if let result = sampleCanvasColor(at: viewToCanvas(point)) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(result.hex, forType: .string)
-                showOverlayError(String(format: L("Copied %@"), result.hex))
+                showOverlayError(String(format: "Copied %@", result.hex))
                 needsDisplay = true
             }
             return
@@ -7249,14 +7249,14 @@ class OverlayView: NSView {
         guard let index = boundarySnapIndex else {
             guard screenshotImage?.cgImage(
                 forProposedRect: nil, context: nil, hints: nil) != nil else {
-                showOverlayError(L("Could not analyze selection edges"))
+                showOverlayError("Could not analyze selection edges")
                 return
             }
             if !pendingAutoAdjustSelection {
                 pendingAutoAdjustSelection = true
                 scheduleBoundarySnapIndexBuild()
             }
-            showOverlayError(L("Detecting nearby edges…"))
+            showOverlayError("Detecting nearby edges…")
             return
         }
 
@@ -7318,7 +7318,7 @@ class OverlayView: NSView {
             || abs(adjusted.maxY - original.maxY) > 0.25
         guard changed else {
             let foundEdge = left != nil || right != nil || bottom != nil || top != nil
-            showOverlayError(foundEdge ? L("Selection is already aligned") : L("No nearby edges found"))
+            showOverlayError(foundEdge ? "Selection is already aligned" : "No nearby edges found")
             return
         }
 
@@ -7335,7 +7335,7 @@ class OverlayView: NSView {
         overlayDelegate?.overlayViewSelectionDidChange(selectionRect)
         refreshResolutionAndToolbarLayout()
         updateCursorForCurrentTool()
-        showOverlayError(L("Selection adjusted"))
+        showOverlayError("Selection adjusted")
         needsDisplay = true
     }
 
@@ -7357,7 +7357,7 @@ class OverlayView: NSView {
                     if index != nil {
                         self.autoAdjustSelection()
                     } else {
-                        self.showOverlayError(L("Could not analyze selection edges"))
+                        self.showOverlayError("Could not analyze selection edges")
                     }
                 }
             }
@@ -7459,7 +7459,7 @@ class OverlayView: NSView {
     }
 
     private func showMoveDragTooltip(anchor moveButton: ToolbarButtonView?) {
-        hoveredTooltip = L("Release to finish")
+        hoveredTooltip = "Release to finish"
         hoveredTooltipButtonView = moveButton
         needsDisplay = true
     }
@@ -7706,13 +7706,13 @@ class OverlayView: NSView {
             switch SaveActionPreference.current {
             case .saveToFolder:
                 let saveAsItem = NSMenuItem(
-                    title: L("Save As..."), action: #selector(saveAsMenuAction), keyEquivalent: "")
+                    title: "Save As...", action: #selector(saveAsMenuAction), keyEquivalent: "")
                 saveAsItem.target = self
                 menu.addItem(saveAsItem)
             case .askWhereToSave:
                 let folderName = URL(fileURLWithPath: SaveDirectoryAccess.displayPath).lastPathComponent
                 let saveToFolderItem = NSMenuItem(
-                    title: "\(L("Save to")) \(folderName)",
+                    title: "Save to \(folderName)",
                     action: #selector(saveToFolderMenuAction),
                     keyEquivalent: "")
                 saveToFolderItem.target = self
@@ -8160,7 +8160,7 @@ class OverlayView: NSView {
                     let nextSlot = selectedColorSlot + 1
                     if nextSlot < customColors.count { selectedColorSlot = nextSlot }
                 }
-                showOverlayError(String(format: L("Set color %@"), result.hex))
+                showOverlayError(String(format: "Set color %@", result.hex))
                 needsDisplay = true
             }
             return
@@ -8673,7 +8673,7 @@ class OverlayView: NSView {
                 overlayDelegate?.overlayViewDidChangeSnapMode()
                 // Element mode stays selected so it works on the next capture once granted.
                 if snapMode == .element && !AXIsProcessTrusted() {
-                    showOverlayError(L("Accessibility Access Required"))
+                    showOverlayError("Accessibility Access Required")
                     overlayDelegate?.overlayViewDidRequestAccessibilityPermission()
                     return
                 }

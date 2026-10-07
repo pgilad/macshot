@@ -271,13 +271,13 @@ final class ToolShortcutTests: XCTestCase {
             ToolShortcutManager.setKey("", for: .rectangle)
             XCTAssertEqual(ToolShortcutManager.key(for: .rectangle), "")
             XCTAssertNil(ToolShortcutManager.lookupAction(for: ""))
-            XCTAssertEqual(ToolShortcutManager.displayString(for: .rectangle), L("None"))
+            XCTAssertEqual(ToolShortcutManager.displayString(for: .rectangle), "None")
         }
     }
 
     func testDisplayStringsNameTheSpaceKey() {
         withDefaults([toolsKey: nil]) {
-            XCTAssertEqual(ToolShortcutManager.displayString(for: .moveSelection), L("Space"))
+            XCTAssertEqual(ToolShortcutManager.displayString(for: .moveSelection), "Space")
             XCTAssertEqual(ToolShortcutManager.displayString(for: .pencil), "P")
         }
     }
@@ -335,7 +335,7 @@ final class HotkeyManagerTests: XCTestCase {
             let read = HotkeyManager.readHotkey(for: slot)
             XCTAssertEqual(read.keyCode, 0)
             XCTAssertEqual(read.modifiers, 0)
-            XCTAssertEqual(HotkeyManager.displayString(for: slot), L("None"))
+            XCTAssertEqual(HotkeyManager.displayString(for: slot), "None")
         }
     }
 

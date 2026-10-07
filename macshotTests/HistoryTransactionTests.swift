@@ -256,7 +256,7 @@ final class HistoryTransactionTests: XCTestCase {
         XCTAssertEqual(retained, 8_192)
         await history.waitUntilIdle()
         XCTAssertEqual(errors.count, 1)
-        XCTAssertTrue(errors.first?.contains(L("History is busy saving. Please try again shortly.")) == true)
+        XCTAssertTrue(errors.first?.contains("History is busy saving. Please try again shortly.") == true)
         XCTAssertEqual(history.pendingSnapshotBytes, 0)
         XCTAssertEqual(Set(history.entries.map(\.id)), Set([first!, second!]))
         XCTAssertNotNil(history.add(image: image))

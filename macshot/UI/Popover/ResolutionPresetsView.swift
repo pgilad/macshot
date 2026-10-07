@@ -45,8 +45,8 @@ final class ResolutionPresetsView: NSView {
         frame.size = NSSize(width: totalW, height: totalH)
 
         // Column headers + rows (top-to-bottom).
-        addColumn(rows: ratioRows, x: 0, header: L("Aspect ratio"), colsH: colsH, totalH: totalH)
-        addColumn(rows: resolutionRows, x: colW + midGap, header: L("Resolution"), colsH: colsH, totalH: totalH)
+        addColumn(rows: ratioRows, x: 0, header: "Aspect ratio", colsH: colsH, totalH: totalH)
+        addColumn(rows: resolutionRows, x: colW + midGap, header: "Resolution", colsH: colsH, totalH: totalH)
 
         // Vertical divider between columns.
         let divX = colW + midGap / 2
@@ -101,7 +101,7 @@ final class ResolutionPresetsView: NSView {
         // Toggle row.
         if showsKeepRatioToggle {
             let toggleY = height - 30
-            let label = NSTextField(labelWithString: L("Keep ratio for next captures"))
+            let label = NSTextField(labelWithString: "Keep ratio for next captures")
             label.font = NSFont.systemFont(ofSize: 11)
             label.textColor = ToolbarLayout.iconColor
             label.frame = NSRect(x: 14, y: toggleY, width: width - 70, height: 18)
@@ -122,7 +122,7 @@ final class ResolutionPresetsView: NSView {
             let unitY: CGFloat = showsKeepRatioToggle
                 ? 10 + autoAdjustOffset
                 : height - 32
-            let unitLabel = NSTextField(labelWithString: L("Units"))
+            let unitLabel = NSTextField(labelWithString: "Units")
             unitLabel.font = NSFont.systemFont(ofSize: 11)
             unitLabel.textColor = ToolbarLayout.iconColor
             unitLabel.frame = NSRect(x: 14, y: unitY + 2, width: 60, height: 18)
@@ -138,16 +138,16 @@ final class ResolutionPresetsView: NSView {
 
         if showsAutoAdjustButton {
             let button = NSButton(
-                title: L("Auto-adjust selection"),
+                title: "Auto-adjust selection",
                 target: self,
                 action: #selector(autoAdjustClicked(_:)))
             button.bezelStyle = .rounded
             button.image = NSImage(
                 systemSymbolName: "viewfinder",
-                accessibilityDescription: L("Auto-adjust selection"))
+                accessibilityDescription: "Auto-adjust selection")
             button.imagePosition = .imageLeading
             if let shortcut = autoAdjustShortcut, !shortcut.isEmpty {
-                button.toolTip = "\(L("Auto-adjust selection")) (\(shortcut))"
+                button.toolTip = "Auto-adjust selection (\(shortcut))"
             }
             button.frame = NSRect(x: 12, y: 7, width: width - 24, height: 24)
             addSubview(button)

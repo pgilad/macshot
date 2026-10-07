@@ -9,8 +9,8 @@ enum EditorCommandShortcutManager {
 
         var label: String {
             switch self {
-            case .undo: return L("Undo")
-            case .redo: return L("Redo")
+            case .undo: return "Undo"
+            case .redo: return "Redo"
             }
         }
 
@@ -99,7 +99,7 @@ enum EditorCommandShortcutManager {
 
     static func displayString(for action: Action) -> String {
         let values = shortcuts(for: action).map { displayString(for: $0) }
-        return values.isEmpty ? L("None") : values.joined(separator: " / ")
+        return values.isEmpty ? "None" : values.joined(separator: " / ")
     }
 
     static func applyPrimaryMenuShortcut(for action: Action, to item: NSMenuItem) {

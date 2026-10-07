@@ -12,7 +12,7 @@ enum ResolutionPreset {
 
     var label: String {
         switch self {
-        case .freeform: return L("Freeform")
+        case .freeform: return "Freeform"
         case .ratio(let label, _): return label
         case .resolution(let label, _, _): return label
         }

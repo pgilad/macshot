@@ -76,7 +76,7 @@ final class SettingsPortabilityTests: XCTestCase {
         let settings = [
             "imageFormat", "imageQuality", "downscaleRetina",
             "historySize", "enabledTools", "beautifyEnabled", "beautifyStyleIndex",
-            "currentStrokeWidth", "filenameTemplate", "appLanguage", "autoCopyToClipboard",
+            "currentStrokeWidth", "filenameTemplate", "autoCopyToClipboard",
             "overlayToolShortcuts", "hotkeyKeyCode", "hotkeyModifiers",
         ]
         for key in settings {
