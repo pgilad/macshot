@@ -85,6 +85,26 @@ final class ScreenshotHistoryTests {
         #expect(restored[1].arrowStyle == .double)
     }
 
+    @Test func testARedactedCaptureKeepsOnlyTheFlattenedImage() async throws {
+        let image = ImageProbe.quadrantImage(width: 120, height: 90)
+        let history = makeHistory()
+        let censor = Annotation(tool: .pixelate, startPoint: NSPoint(x: 10, y: 10),
+                                endPoint: NSPoint(x: 50, y: 40), color: .black, strokeWidth: 1)
+        var state = CaptureEditState()
+        state.beautifyEnabled = true
+        withDefaults(["historySize": 10, "historyUnlimited": false]) {
+            history.add(image: image, rawImage: image, annotations: annotations() + [censor], editState: state)
+        }
+        await waitForWrites(history, entryCount: 1)
+
+        let reloaded = makeHistory()
+        let entry = try #require(reloaded.entries.first)
+        #expect(reloaded.loadImage(for: entry) != nil, "the flattened capture must stay")
+        #expect(reloaded.loadRawImage(for: entry) == nil, "the raw image would undo the redaction")
+        #expect(!entry.hasAnnotations)
+        #expect(reloaded.loadEditableCapture(for: entry) == nil, "the capture reopens flattened")
+    }
+
     @Test func testEditStateSurvivesTheRoundTrip() async throws {
         var state = CaptureEditState()
         state.beautifyEnabled = true

@@ -96,6 +96,15 @@ struct HistoryImageSnapshot: Sendable {
 
     @MainActor init(image: NSImage, rawImage: NSImage?, annotations: [Annotation]?, editState: CaptureEditState?) throws {
         composited = try Image(image)
+        // A redacted capture is kept flattened only. The raw image and the
+        // editable annotations would let anyone who can read the history folder
+        // undo the redaction.
+        if annotations?.contains(where: \.isRedaction) == true {
+            raw = nil
+            self.annotations = nil
+            self.editState = nil
+            return
+        }
         let needsAnnotations = !(annotations?.isEmpty ?? true)
         let needsEditState = editState?.hasPostProcessing == true
         if needsAnnotations || needsEditState {

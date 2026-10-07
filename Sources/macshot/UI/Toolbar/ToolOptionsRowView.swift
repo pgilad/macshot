@@ -531,7 +531,7 @@ class ToolOptionsRowView: NSView {
         if let ann = editingAnnotation, ann.tool == .pixelate || ann.tool == .blur {
             currentMode = ann.censorMode
         } else {
-            currentMode = CensorMode(rawValue: UserDefaults.standard.integer(forKey: "censorMode")) ?? .pixelate
+            currentMode = CensorMode.current
         }
         seg.selectedSegment = currentMode.rawValue
         seg.sizeToFit()

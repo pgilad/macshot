@@ -120,6 +120,12 @@ enum CensorMode: Int, CaseIterable {
     case solid = 2
     case erase = 3
 
+    /// The mode for new censor annotations, "censorMode" in UserDefaults. Solid
+    /// by default: pixelated or blurred text can sometimes be read back.
+    static var current: CensorMode {
+        (UserDefaults.standard.object(forKey: "censorMode") as? Int).flatMap(CensorMode.init(rawValue:)) ?? .solid
+    }
+
     var label: String {
         switch self {
         case .pixelate: return "Pixelate"
@@ -359,6 +365,12 @@ class Annotation {
             maxX = max(maxX, cp.x); maxY = max(maxY, cp.y)
         }
         return NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    /// Whether this annotation hides what is under it: the censor tool (pixelate,
+    /// blur, solid fill, erase), the legacy blur tool and the opaque filled rectangle.
+    var isRedaction: Bool {
+        tool == .pixelate || tool == .blur || tool == .filledRectangle
     }
 
     /// Whether this annotation type can be moved
