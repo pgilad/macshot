@@ -330,6 +330,33 @@ final class AnnotationPersistenceTests: XCTestCase {
                      "an annotation with a tool this build doesn't know must be skipped, not crash")
     }
 
+    /// Tool raw values are written to history, `enabledTools` and `lastUsedTool`.
+    /// Renumbering a case would reload old annotations as a different tool.
+    func testToolRawValuesNeverChange() {
+        let expected: [AnnotationTool: Int] = [
+            .pencil: 0, .line: 1, .arrow: 2, .rectangle: 3, .filledRectangle: 4,
+            .ellipse: 5, .marker: 6, .text: 7, .number: 8, .pixelate: 9, .blur: 10,
+            .measure: 11, .loupe: 12, .select: 13, .crop: 15, .colorSampler: 16,
+            .stamp: 17, .highlight: 18,
+        ]
+        XCTAssertEqual(expected.count, AnnotationTool.allCases.count, "pin the raw value of every new tool here")
+        for tool in AnnotationTool.allCases {
+            XCTAssertEqual(tool.rawValue, expected[tool], "\(tool) changed its persisted raw value")
+        }
+        XCTAssertNil(AnnotationTool(rawValue: 14), "14 belonged to the removed translate overlay")
+    }
+
+    func testCaptureWithRemovedTranslateOverlayStillLoads() throws {
+        let json = """
+        [{"tool":14,"startX":0,"startY":0,"endX":40,"endY":12,"colorRGBA":[1,1,1,1],"strokeWidth":0,"text":"hola","fontSize":9},
+         {"tool":3,"startX":5,"startY":5,"endX":20,"endY":20,"colorRGBA":[1,0,0,1],"strokeWidth":2}]
+        """
+        let decoded = try XCTUnwrap(AnnotationSerializer.decode(Data(json.utf8)))
+        XCTAssertEqual(decoded.map(\.tool), [.rectangle], "the removed tool is skipped, the rest of the capture loads")
+        XCTAssertNil(AnnotationSerializer.decode(Data(json.utf8), requireAll: true),
+                     "editable reopen must fall back to the flattened capture, which still shows the translation")
+    }
+
     func testDecodeSurvivesMalformedPointArrays() throws {
         let json = """
         [{"tool":0,"startX":0,"startY":0,"endX":1,"endY":1,"colorRGBA":[1,0,0,1],"strokeWidth":2,

@@ -175,15 +175,13 @@ final class AnnotationGeometryTests: XCTestCase {
         XCTAssertFalse(rect.hitTest(point: NSPoint(x: 190, y: 50)), "…and no longer covers its old right edge")
     }
 
-    func testSelectAndTranslateAreNotHitTestable() {
+    func testSelectIsNotHitTestable() {
         XCTAssertFalse(make(.select).hitTest(point: NSPoint(x: 50, y: 50)))
-        XCTAssertFalse(make(.translateOverlay).hitTest(point: NSPoint(x: 50, y: 50)))
     }
 
     func testOnlyRealAnnotationsAreMovable() {
         XCTAssertFalse(make(.select).isMovable)
-        XCTAssertFalse(make(.translateOverlay).isMovable)
-        for tool in AnnotationTool.allCases where tool != .select && tool != .translateOverlay {
+        for tool in AnnotationTool.allCases where tool != .select {
             XCTAssertTrue(make(tool).isMovable, "\(tool) should be draggable")
         }
     }

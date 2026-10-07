@@ -28,7 +28,6 @@ enum ToolbarButtonAction {
     case removeBackground
     case invertColors
     case loupe
-    case translate
     case record  // enters recording mode (shows recording toolbar)
     case startRecord  // actually starts recording
     case stopRecord
@@ -55,6 +54,8 @@ struct ToolbarButton {
     var hasContextMenu: Bool = false  // draw small corner triangle to indicate right-click options
 }
 
+// Raw values are persisted in `enabledActions` and `knownActionTags`. 1001
+// (upload) and 1008 (translate) belonged to removed actions: do not reuse them.
 enum ToolbarCustomAction: Int {
     case pin = 1002
     case ocr = 1003
@@ -62,7 +63,6 @@ enum ToolbarCustomAction: Int {
     case removeBackground = 1005
     case autoRedact = 1006
     case reserved1007 = 1007
-    case translate = 1008
     case record = 1009
     case scrollCapture = 1010
     case invertColors = 1011
@@ -73,7 +73,7 @@ enum ToolbarCustomAction: Int {
         var actions: [ToolbarCustomAction] = []
         actions.append(contentsOf: [
             .pin, .ocr, .beautify, .removeBackground, .autoRedact, .reserved1007,
-            .translate, .record, .scrollCapture, .invertColors, .share, .effects,
+            .record, .scrollCapture, .invertColors, .share, .effects,
         ])
         return actions
     }
@@ -84,7 +84,7 @@ enum ToolbarCustomAction: Int {
 
     static var rightToolbarActions: [ToolbarCustomAction] {
         var actions: [ToolbarCustomAction] = [.share]
-        actions.append(contentsOf: [.pin, .ocr, .translate, .scrollCapture, .record])
+        actions.append(contentsOf: [.pin, .ocr, .scrollCapture, .record])
         return actions
     }
 
@@ -94,7 +94,7 @@ enum ToolbarCustomAction: Int {
 
     static var rightSettingsActions: [ToolbarCustomAction] {
         var actions: [ToolbarCustomAction] = []
-        actions.append(contentsOf: [.pin, .ocr, .autoRedact, .translate, .record, .scrollCapture, .share])
+        actions.append(contentsOf: [.pin, .ocr, .autoRedact, .record, .scrollCapture, .share])
         return actions
     }
 
@@ -106,7 +106,6 @@ enum ToolbarCustomAction: Int {
         case .removeBackground: return L("Remove Background")
         case .autoRedact: return L("Auto-Redact sensitive data")
         case .reserved1007: return ""
-        case .translate: return L("Translate")
         case .record: return L("Record screen")
         case .scrollCapture: return L("Scroll Capture")
         case .invertColors: return L("Invert Colors")
@@ -117,7 +116,6 @@ enum ToolbarCustomAction: Int {
 
     func makeToolbarButton(
         beautifyEnabled: Bool = false,
-        translateEnabled: Bool = false,
         effectsActive: Bool = false,
         isRecording: Bool = false,
         isEditorMode: Bool = false
@@ -146,11 +144,6 @@ enum ToolbarCustomAction: Int {
             return nil
         case .autoRedact, .reserved1007:
             return nil
-        case .translate:
-            var button = ToolbarButton(action: .translate, sfSymbol: "translate", tooltip: L("Translate"))
-            button.isSelected = translateEnabled
-            button.hasContextMenu = true
-            return button
         case .record:
             guard !isEditorMode else { return nil }
             var button = ToolbarButton(action: .record, sfSymbol: "video.fill", tooltip: L("Record"))
@@ -297,7 +290,7 @@ class ToolbarLayout {
         // Get enabled tools from UserDefaults — migrate: only add tools that are brand-new.
         // Track introduced tools in `knownToolRawValues` so user-disabled tools are never re-enabled.
         let allKnownToolRawValues = AnnotationTool.allCases
-            .filter { $0 != .select && $0 != .translateOverlay }
+            .filter { $0 != .select }
             .map { $0.rawValue }
         var enabledRawValues = UserDefaults.standard.array(forKey: "enabledTools") as? [Int]
         let knownToolRawValues = UserDefaults.standard.array(forKey: "knownToolRawValues") as? [Int]
@@ -384,8 +377,7 @@ class ToolbarLayout {
     // Right toolbar items (output actions + cancel + delay)
     static func rightButtons(
         beautifyEnabled: Bool = false, beautifyStyleIndex: Int = 0, hasAnnotations: Bool = false,
-        translateEnabled: Bool = false, isRecording: Bool = false,
-        isEditorMode: Bool = false
+        isRecording: Bool = false, isEditorMode: Bool = false
     ) -> [ToolbarButton] {
         var buttons: [ToolbarButton] = []
 
@@ -491,7 +483,6 @@ class ToolbarLayout {
         for action in ToolbarCustomAction.rightToolbarActions {
             guard ToolbarActionPreferences.isEnabled(action, in: enabledActions) else { continue }
             if let button = action.makeToolbarButton(
-                translateEnabled: translateEnabled,
                 isRecording: isRecording,
                 isEditorMode: isEditorMode
             ) {

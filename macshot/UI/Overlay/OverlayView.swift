@@ -670,9 +670,6 @@ class OverlayView: NSView {
     private var cachedAnnotationLayerExcludingSelected: NSImage? = nil
     private var cachedOpaqueRect: NSRect?  // cached opaque content bounds of screenshotImage
 
-    var isTranslating: Bool = false
-    var translateEnabled: Bool = false
-
     // Crop tool state
     private var isCropDragging: Bool = false
     private var cropDragStart: NSPoint = .zero
@@ -754,8 +751,6 @@ class OverlayView: NSView {
     }
     var autoEnterRecordingMode: Bool = false  // set by "Record Screen" menu — enters recording mode after selection
     var autoOCRMode: Bool = false  // set by "Capture OCR & QR" menu — triggers OCR immediately after selection
-    var autoTranslateOverlayMode: Bool = false  // set by macshot://ocr-translate — OCR + translate + overlay after selection
-    var autoTranslateOverlayLang: String?  // target language for autoTranslateOverlayMode (nil = saved default)
     var autoQuickSaveMode: Bool = false  // set by "Quick Capture" menu — quick-saves immediately after selection
     var autoScrollCaptureMode: Bool = false  // set by "Scroll Capture" menu — triggers scroll capture immediately after selection
     var autoConfirmMode: Bool = false  // set by "Add Capture" — auto-confirms selection (no toolbars, no save)
@@ -1855,21 +1850,12 @@ class OverlayView: NSView {
                     }
                 } else if !annotations.isEmpty {
                     // Editor mode: no annotation layer cache, draw individually.
-                    // Draw translate overlays clipped to selection (they must stay inside).
-                    context.saveGraphicsState()
-                    applyCanvasTransform(to: context)
-                    NSBezierPath(rect: selectionRect).setClip()
-                    for annotation in annotations where annotation.tool == .translateOverlay {
-                        annotation.draw(in: context)
-                    }
-                    context.restoreGraphicsState()
-
                     // Draw user annotations unclipped — strokes can continue past the selection border.
                     // Censor annotations (pixelate/blur) render first so other annotations
                     // always appear on top of blurred regions.
                     context.saveGraphicsState()
                     applyCanvasTransform(to: context)
-                    for annotation in annotations where annotation.tool != .translateOverlay && annotation.tool == .pixelate {
+                    for annotation in annotations where annotation.tool == .pixelate {
                         annotation.draw(in: context)
                     }
                     // Skip the committed-highlight dim while a new highlight is
@@ -1878,7 +1864,7 @@ class OverlayView: NSView {
                     // re-dimmed by the preview pass.
                     if !drawingHighlightPreview {
                         Annotation.drawHighlightDim(for: annotations, in: highlightDimBounds)
-                        for annotation in annotations where annotation.tool != .translateOverlay && annotation.tool != .pixelate {
+                        for annotation in annotations where annotation.tool != .pixelate {
                             annotation.draw(in: context)
                         }
                     }
@@ -1897,7 +1883,6 @@ class OverlayView: NSView {
             if let cur = currentAnnotation, cur.tool == .highlight {
                 Annotation.drawHighlightDim(for: annotations, extra: cur, in: highlightDimBounds)
                 for annotation in annotations where annotation.tool != .pixelate {
-                    if isEditorMode && annotation.tool == .translateOverlay { continue }
                     annotation.draw(in: context)
                 }
             }
@@ -5140,8 +5125,7 @@ class OverlayView: NSView {
         }
         rightButtons = ToolbarLayout.rightButtons(
             beautifyEnabled: beautifyEnabled, beautifyStyleIndex: beautifyStyleIndex,
-            hasAnnotations: movableAnnotations, translateEnabled: translateEnabled,
-            isRecording: isRecording,
+            hasAnnotations: movableAnnotations, isRecording: isRecording,
             isEditorMode: isEditorMode)
 
         // Create strip views if needed — add to chrome parent (window content) when in scroll view
@@ -6790,18 +6774,6 @@ class OverlayView: NSView {
             autoOCRMode = false
             overlayDelegate?.overlayViewDidRequestOCR()
         }
-        // Auto-trigger OCR + translate + in-place overlay (macshot://ocr-translate).
-        // Unlike OCR, this keeps the overlay open so the translated result can be
-        // reviewed/edited before saving. Toolbars stay visible (not suppressed above).
-        if autoTranslateOverlayMode {
-            autoTranslateOverlayMode = false
-            let lang = autoTranslateOverlayLang ?? TranslationService.targetLanguage
-            autoTranslateOverlayLang = nil
-            // Mirror the interactive Translate tool's state so the toolbar button
-            // shows as active and the language picker re-translates on change.
-            translateEnabled = true
-            performTranslate(targetLang: lang)
-        }
         // Auto-trigger quick save if triggered from "Quick Capture"
         if autoQuickSaveMode {
             autoQuickSaveMode = false
@@ -7836,9 +7808,6 @@ class OverlayView: NSView {
             }
             menu.popUp(
                 positioning: nil, at: NSPoint(x: 0, y: anchorView.bounds.height), in: anchorView)
-        case .translate:
-            showTranslatePopover(
-                anchorRect: anchorView.convert(anchorView.bounds, to: self), anchorView: anchorView)
         case .micAudio:
             showMicDeviceMenu(anchorView: anchorView)
         case .showKeystrokes:
@@ -8269,17 +8238,6 @@ class OverlayView: NSView {
             needsDisplay = true
         case .delayCapture:
             break
-        case .translate:
-            if translateEnabled {
-                // Toggle off: remove overlays, restore original
-                translateEnabled = false
-                annotations.removeAll { $0.tool == .translateOverlay }
-                isTranslating = false
-            } else {
-                translateEnabled = true
-                performTranslate(targetLang: TranslationService.targetLanguage)
-            }
-            needsDisplay = true
         case .record:
             // Enter recording mode — shows recording setup toolbar
             overlayDelegate?.overlayViewDidRequestEnterRecordingMode()
@@ -8408,7 +8366,7 @@ class OverlayView: NSView {
     /// Marker uses a fixed alpha in its draw method; loupe/measure/pixelate/blur are color-independent.
     func opacityAppliedColor(for tool: AnnotationTool) -> NSColor {
         switch tool {
-        case .marker, .loupe, .measure, .pixelate, .blur, .translateOverlay:
+        case .marker, .loupe, .measure, .pixelate, .blur:
             return currentColor
         default:
             return annotationColor
@@ -9529,13 +9487,11 @@ class OverlayView: NSView {
                 }
                 for e in batch { annotations.removeAll { $0 === e.annotation } }
                 if ann.tool == .number { numberCounter = max(0, numberCounter - batch.count) }
-                if ann.tool == .translateOverlay { translateEnabled = false; rebuildToolbarLayout() }
                 redoStack.append(contentsOf: batch)
                 clearHoverIfNeeded(batch.map { $0.annotation })
             } else {
                 annotations.removeAll { $0 === ann }
                 if ann.tool == .number { numberCounter = max(0, numberCounter - 1) }
-                if ann.tool == .translateOverlay { translateEnabled = false; rebuildToolbarLayout() }
                 redoStack.append(.added(ann))
                 clearHoverIfNeeded([ann])
             }
@@ -10136,8 +10092,6 @@ class OverlayView: NSView {
         editorTooltipView?.removeFromSuperview()
         editorTooltipView = nil
         captureSourceImage = nil
-        isTranslating = false
-        translateEnabled = false
         autoMeasurePreview = nil
         autoMeasureKeyHeld = false
         autoMeasureBitmapCtx = nil
@@ -10205,8 +10159,6 @@ class OverlayView: NSView {
         // must NOT leak into the next session.
         autoEnterRecordingMode = false
         autoOCRMode = false
-        autoTranslateOverlayMode = false
-        autoTranslateOverlayLang = nil
         autoQuickSaveMode = false
         autoScrollCaptureMode = false
         autoConfirmMode = false

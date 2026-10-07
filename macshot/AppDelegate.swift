@@ -991,8 +991,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingFullScreenRecord: Bool = false
     private var pendingFullScreenRecordAutoStart: Bool = false
     private var pendingOCRMode: Bool = false
-    private var pendingTranslateOverlayMode: Bool = false
-    private var pendingTranslateOverlayLang: String?
     private var pendingQuickCaptureMode: Bool = false
     private var pendingScrollCaptureMode: Bool = false
     private var capturedWindowTitle: String?
@@ -1116,16 +1114,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func beginCaptureOCR(fromMenu: Bool) {
         guard canStartCapture else { return }
         pendingOCRMode = true
-        startCapture(fromMenu: fromMenu)
-    }
-
-    /// Region-capture → OCR → translate → draw the translation in place over the
-    /// original text on the screenshot (macshot://ocr-translate). `target` nil
-    /// uses the saved default language.
-    private func beginCaptureTranslate(target: String?, fromMenu: Bool) {
-        guard canStartCapture else { return }
-        pendingTranslateOverlayMode = true
-        pendingTranslateOverlayLang = target
         startCapture(fromMenu: fromMenu)
     }
 
@@ -1360,8 +1348,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         pendingFullScreenRecord = false
         pendingFullScreenRecordAutoStart = false
         pendingOCRMode = false
-        pendingTranslateOverlayMode = false
-        pendingTranslateOverlayLang = nil
         pendingQuickCaptureMode = false
         pendingScrollCaptureMode = false
         pendingRestoreLastArea = false
@@ -1394,7 +1380,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             controller.capturedAppName = FilenameFormatter.appNameForTemplate(previousApp?.localizedName)
             if pendingRecordMode { controller.setAutoRecordMode() }
             if pendingOCRMode { controller.setAutoOCRMode() }
-            if pendingTranslateOverlayMode { controller.setAutoTranslateOverlayMode(targetLang: pendingTranslateOverlayLang) }
             if pendingQuickCaptureMode { controller.setAutoQuickSaveMode() }
             if pendingScrollCaptureMode { controller.setAutoScrollCaptureMode() }
             controllers.append(controller)
@@ -1407,8 +1392,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let didApplyFullScreen = pendingFullScreen
         pendingFullScreenRecordAutoStart = false
         pendingOCRMode = false
-        pendingTranslateOverlayMode = false
-        pendingTranslateOverlayLang = nil
         pendingQuickCaptureMode = false
         pendingScrollCaptureMode = false
         pendingFullScreen = false
@@ -2278,7 +2261,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Usage: `open macshot://capture`, `open macshot://ocr`, etc.
     private static let screenCaptureURLActions: Set<String> = [
         "capture", "capture-fullscreen", "capture-last", "quick-capture",
-        "ocr", "ocr-translate", "record", "record-fullscreen", "scroll-capture",
+        "ocr", "record", "record-fullscreen", "scroll-capture",
     ]
 
     private func handleURLSchemeAction(_ url: URL) {
@@ -2288,12 +2271,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "capture-fullscreen":  captureFullScreen()
         case "quick-capture":       quickCapture()
         case "ocr":                 captureOCR()
-        case "ocr-translate":
-            // ?target=<lang code, e.g. zh-CN>; omitted → saved default language.
-            let target = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-                .queryItems?.first(where: { $0.name == "target" })?.value?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            beginCaptureTranslate(target: (target?.isEmpty == false) ? target : nil, fromMenu: true)
         case "record":              recordArea()
         case "record-fullscreen":   recordFullScreen()
         case "scroll-capture":      scrollCapture()
@@ -3132,15 +3109,9 @@ extension AppDelegate: OverlayWindowControllerDelegate {
 
     func overlayDidBeginSelection(_ controller: OverlayWindowController) {
         captureTimingTrace?.mark("user began selection")
-        // The user committed to one screen. Also drop the auto-translate flag on
-        // the other overlays: this mode leaves overlays open, so a still-set flag
-        // there would auto-translate again if the user later drew on that screen.
-        pendingTranslateOverlayMode = false
-        pendingTranslateOverlayLang = nil
         for other in overlayControllers where other !== controller {
             other.clearSelection()
             other.setRemoteSelection(.zero)
-            other.clearAutoTranslateOverlayMode()
         }
     }
 

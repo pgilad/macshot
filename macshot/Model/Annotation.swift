@@ -1,25 +1,27 @@
 import Cocoa
 
+/// Raw values are persisted (history annotations, `enabledTools`,
+/// `knownToolRawValues`, `lastUsedTool`), so they are explicit and must never
+/// change. 14 belonged to the removed translate overlay tool: do not reuse it.
 enum AnnotationTool: Int, CaseIterable {
-    case pencil          // freeform draw
-    case line            // straight line
-    case arrow           // arrow
-    case rectangle       // outlined rect
-    case filledRectangle // filled rect (opaque/redact)
-    case ellipse         // outlined ellipse
-    case marker          // highlighter (semi-transparent wide)
-    case text            // text annotation
-    case number          // auto-incrementing numbered circle
-    case pixelate        // pixelate/blur region
-    case blur            // gaussian blur region
-    case measure         // pixel ruler / measurement line
-    case loupe           // magnifying glass
-    case select          // select & move existing annotations
-    case translateOverlay // translated text painted over original
-    case crop            // crop image (detached editor only)
-    case colorSampler    // pick color from screen
-    case stamp           // emoji or image stamp
-    case highlight       // spotlight: dims everything outside the drawn rect
+    case pencil = 0           // freeform draw
+    case line = 1             // straight line
+    case arrow = 2            // arrow
+    case rectangle = 3        // outlined rect
+    case filledRectangle = 4  // filled rect (opaque/redact)
+    case ellipse = 5          // outlined ellipse
+    case marker = 6           // highlighter (semi-transparent wide)
+    case text = 7             // text annotation
+    case number = 8           // auto-incrementing numbered circle
+    case pixelate = 9         // pixelate/blur region
+    case blur = 10            // gaussian blur region
+    case measure = 11         // pixel ruler / measurement line
+    case loupe = 12           // magnifying glass
+    case select = 13          // select & move existing annotations
+    case crop = 15            // crop image (detached editor only)
+    case colorSampler = 16    // pick color from screen
+    case stamp = 17           // emoji or image stamp
+    case highlight = 18       // spotlight: dims everything outside the drawn rect
 }
 
 enum LineStyle: Int, CaseIterable {
@@ -362,7 +364,7 @@ class Annotation {
     /// Whether this annotation type can be moved
     var isMovable: Bool {
         switch tool {
-        case .select, .translateOverlay:
+        case .select:
             return false
         default:
             return true
@@ -646,8 +648,6 @@ class Annotation {
             break  // not a drawable tool
         case .crop:
             break  // handled separately in OverlayView
-        case .translateOverlay:
-            drawTranslateOverlay()
         case .colorSampler:
             break  // preview-only tool, no annotation drawn
         case .stamp:
@@ -2516,58 +2516,5 @@ class Annotation {
         NSColor.black.withAlphaComponent(0.8).setFill()
         innerHole.fill()
         context.restoreGraphicsState()
-    }
-
-    // MARK: - Translate overlay
-
-    private func drawTranslateOverlay() {
-        guard let translatedText = text, !translatedText.isEmpty else { return }
-
-        let rect = boundingRect
-        guard rect.width > 2, rect.height > 2 else { return }
-
-        // Background: use `color` (sampled avg color stored at creation time)
-        // with a slight blur-like fill behind text
-        let bgColor = color
-        let bgPath = NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3)
-        bgColor.setFill()
-        bgPath.fill()
-
-        // Determine contrasting text color
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        bgColor.usingColorSpace(.deviceRGB)?.getRed(&r, green: &g, blue: &b, alpha: &a)
-        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
-        let textColor: NSColor = luminance > 0.55 ? .black : .white
-
-        // Fit text into the rect — start at stored fontSize, shrink if needed
-        let hPad: CGFloat = 3
-        let vPad: CGFloat = 2
-        let availW = rect.width - hPad * 2
-        let availH = rect.height - vPad * 2
-
-        var fs = max(8, fontSize)
-        var attrStr: NSAttributedString
-        repeat {
-            let font = NSFont.systemFont(ofSize: fs, weight: .medium)
-            attrStr = NSAttributedString(string: translatedText, attributes: [
-                .font: font,
-                .foregroundColor: textColor,
-            ])
-            let needed = attrStr.boundingRect(
-                with: NSSize(width: availW, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading]
-            )
-            if needed.height <= availH || fs <= 8 { break }
-            fs -= 1
-        } while fs > 8
-
-        // Draw text top-aligned within the block
-        let textRect = NSRect(
-            x: rect.minX + hPad,
-            y: rect.minY + vPad,
-            width: availW,
-            height: availH
-        )
-        attrStr.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
     }
 }
