@@ -425,6 +425,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             controller.tearDown()
         }
         overlayControllerPool.removeAll()
+        OverlayView.resetBrowserAccessibilityPreparation()
         HotkeyManager.shared.unregister()
         DistributedNotificationCenter.default().removeObserver(self)
     }

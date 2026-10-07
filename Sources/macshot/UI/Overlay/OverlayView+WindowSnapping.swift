@@ -3,9 +3,16 @@ import Cocoa
 extension OverlayView {
 
     static let browserElementSnapEnabledKey = "browserElementSnapEnabled"
+    /// Off by default: it changes accessibility settings inside other apps
+    /// for the length of the capture.
+    nonisolated static var browserElementSnapEnabled: Bool {
+        UserDefaults.standard.object(forKey: browserElementSnapEnabledKey) as? Bool ?? false
+    }
     private static let browserAccessibilityLock = NSLock()
     private static var browserAccessibilitySessionToken = 0
     private static var browserAccessibilityPreviousValues: [Int: BrowserAccessibilityValues] = [:]
+    /// Whether each app bundle (by path) is built on Chromium.
+    private static var chromiumAppBundles: [String: Bool] = [:]
 
     private struct BrowserAccessibilityValues {
         let application: AXUIElement
@@ -279,16 +286,16 @@ extension OverlayView {
     }
 
     /// Chromium/Electron may lazily omit web-content AX nodes until an assistive
-    /// client requests manual or enhanced accessibility. Unsupported native apps
-    /// ignore the attributes. Attempt them once per target PID per capture session.
+    /// client requests manual or enhanced accessibility. Only when the user
+    /// turns on `browserElementSnapEnabled`, and only for apps built on
+    /// Chromium: other apps change behavior under enhanced UI too. Attempt
+    /// them once per target PID per capture session.
     private static func prepareBrowserAccessibilityIfNeeded(
         application: AXUIElement,
         ownerPID: Int,
         sessionToken: Int
     ) -> Bool {
-        let defaults = UserDefaults.standard
-        let enabled = defaults.object(forKey: browserElementSnapEnabledKey) as? Bool ?? true
-        guard enabled else { return false }
+        guard browserElementSnapEnabled else { return false }
 
         browserAccessibilityLock.lock()
         guard sessionToken == browserAccessibilitySessionToken else {
@@ -296,6 +303,17 @@ extension OverlayView {
             return false
         }
         guard browserAccessibilityPreviousValues[ownerPID] == nil else {
+            browserAccessibilityLock.unlock()
+            return false
+        }
+        guard let bundleURL = NSRunningApplication(processIdentifier: pid_t(ownerPID))?.bundleURL
+        else {
+            browserAccessibilityLock.unlock()
+            return false
+        }
+        let isChromium = chromiumAppBundles[bundleURL.path] ?? isChromiumBasedApp(at: bundleURL)
+        chromiumAppBundles[bundleURL.path] = isChromium
+        guard isChromium else {
             browserAccessibilityLock.unlock()
             return false
         }
@@ -329,6 +347,19 @@ extension OverlayView {
         }
         browserAccessibilityLock.unlock()
         return true
+    }
+
+    /// Chromium browsers, Electron and CEF apps all ship
+    /// `chrome_100_percent.pak` in the resources of their framework.
+    nonisolated static func isChromiumBasedApp(at bundleURL: URL) -> Bool {
+        let frameworks = bundleURL.appendingPathComponent("Contents/Frameworks", isDirectory: true)
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: frameworks.path)
+        else { return false }
+        return names.contains { name in
+            name.hasSuffix(".framework") && FileManager.default.fileExists(
+                atPath: frameworks.appendingPathComponent(name)
+                    .appendingPathComponent("Resources/chrome_100_percent.pak").path)
+        }
     }
 
     static func currentBrowserAccessibilitySessionToken() -> Int {

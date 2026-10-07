@@ -13,6 +13,7 @@ macshot runs only on your Mac. It collects nothing and sends nothing.
 
 - **Screen Recording** is required to capture the screen.
 - **Accessibility** is asked for only when you use scroll capture's auto-scroll or element snapping.
+- Element snapping does not change other apps by default. If you turn on **Settings → Capture → Turn on accessibility in Chromium and Electron apps for element snapping**, macshot asks those apps to build their full accessibility tree during a capture and turns it off again when the capture ends or macshot quits.
 - macshot does not use the camera, the microphone, speech recognition or Input Monitoring.
 
 ## Data on your Mac

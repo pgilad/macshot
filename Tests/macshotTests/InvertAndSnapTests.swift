@@ -162,3 +162,52 @@ final class InvertAndSnapTests {
         #expect(overlay.snappedWindowImage === snap, "undoing a flip must not clear the window capture")
     }
 }
+
+/// Element snapping may change accessibility settings only inside Chromium and
+/// Electron apps, and only when the user turned it on.
+final class BrowserElementSnapTests {
+
+    private func makeBundle(frameworks: [String: [String]]) throws -> URL {
+        let bundle = FileManager.default.temporaryDirectory
+            .appendingPathComponent("macshot-tests-\(UUID().uuidString).app", isDirectory: true)
+        for (framework, resources) in frameworks {
+            let folder = bundle.appendingPathComponent("Contents/Frameworks/\(framework)/Resources", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for resource in resources {
+                try Data().write(to: folder.appendingPathComponent(resource))
+            }
+        }
+        return bundle
+    }
+
+    @Test func testChromiumAndElectronBundlesAreRecognized() throws {
+        for framework in ["Electron Framework.framework", "Google Chrome Framework.framework",
+                          "Chromium Embedded Framework.framework"] {
+            let bundle = try makeBundle(frameworks: [
+                "Squirrel.framework": ["Info.plist"],
+                framework: ["chrome_100_percent.pak"],
+            ])
+            defer { try? FileManager.default.removeItem(at: bundle) }
+            #expect(OverlayView.isChromiumBasedApp(at: bundle), "\(framework)")
+        }
+    }
+
+    @Test func testOtherBundlesAreNotChanged() throws {
+        let native = try makeBundle(frameworks: ["Sparkle.framework": ["Info.plist"]])
+        defer { try? FileManager.default.removeItem(at: native) }
+        #expect(!OverlayView.isChromiumBasedApp(at: native))
+
+        let empty = try makeBundle(frameworks: [:])
+        defer { try? FileManager.default.removeItem(at: empty) }
+        #expect(!OverlayView.isChromiumBasedApp(at: empty), "no Frameworks folder")
+    }
+
+    @Test func testItIsOffUntilTheUserTurnsItOn() {
+        withDefaults([OverlayView.browserElementSnapEnabledKey: nil]) {
+            #expect(!OverlayView.browserElementSnapEnabled)
+        }
+        withDefaults([OverlayView.browserElementSnapEnabledKey: true]) {
+            #expect(OverlayView.browserElementSnapEnabled)
+        }
+    }
+}

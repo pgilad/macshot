@@ -698,7 +698,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         snapGuidesCheckbox = NSButton(checkboxWithTitle: "Show snap alignment guides", target: self, action: #selector(snapGuidesChanged(_:)))
         boundarySnapCheckbox = NSButton(checkboxWithTitle: "Snap selection edges to image boundaries", target: self, action: #selector(boundarySnapChanged(_:)))
         browserElementSnapCheckbox = NSButton(
-            checkboxWithTitle: "Enhance browser and Electron element snapping",
+            checkboxWithTitle: "Turn on accessibility in Chromium and Electron apps for element snapping",
             target: self,
             action: #selector(browserElementSnapChanged(_:)))
         captureCursorCheckbox = NSButton(checkboxWithTitle: "Capture mouse cursor in screenshot", target: self, action: #selector(captureCursorChanged(_:)))
@@ -786,7 +786,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         stack.addArrangedSubview(indented(browserElementSnapCheckbox))
         stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
-        let browserElementSnapNote = NSTextField(wrappingLabelWithString: "Builds the target app's accessibility tree in Element mode. Disable this if a browser or Electron app becomes slow or has input issues.")
+        let browserElementSnapNote = NSTextField(wrappingLabelWithString: "In Element mode, asks Chromium browsers and Electron apps to build their full accessibility tree, so elements inside web pages can be snapped. macshot turns it off again when the capture ends. The app can be slower while it is on.")
         browserElementSnapNote.font = NSFont.systemFont(ofSize: 10)
         browserElementSnapNote.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(browserElementSnapNote))
@@ -1956,9 +1956,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         snapGuidesCheckbox.state = snapGuides ? .on : .off
         let boundarySnap = UserDefaults.standard.object(forKey: "boundarySnapEnabled") as? Bool ?? true
         boundarySnapCheckbox.state = boundarySnap ? .on : .off
-        let browserElementSnap = UserDefaults.standard.object(
-            forKey: OverlayView.browserElementSnapEnabledKey) as? Bool ?? true
-        browserElementSnapCheckbox.state = browserElementSnap ? .on : .off
+        browserElementSnapCheckbox.state = OverlayView.browserElementSnapEnabled ? .on : .off
         showToolShortcutsInTooltipsCheckbox.state = UserDefaults.standard.bool(forKey: "showToolShortcutsInTooltips") ? .on : .off
 
         captureCursorCheckbox.state = UserDefaults.standard.bool(forKey: "captureCursor") ? .on : .off
