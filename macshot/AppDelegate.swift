@@ -1390,15 +1390,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         let mouseLocation = NSEvent.mouseLocation
         let mouseScreen = screens.first { $0.frame.contains(mouseLocation) }
 
-        // Kick off the screenshot capture on a background queue. Window
-        // creation runs on main concurrently — both costs are paid in parallel.
-        // CGWindowListCreateImage is used because it preserves transient UI
-        // (menu extras, app menus, Raycast-style panels) that disappears once
-        // anything steals focus. Overlay windows haven't been ordered-front yet
-        // so they won't appear in the capture.
-        let captureContext = measureCaptureTiming("makeImmediateCaptureContext") {
-            ScreenCaptureManager.makeImmediateCaptureContext()
-        }
         let trace = captureTimingTrace
         let sessionID = captureSessionID
 
@@ -1438,84 +1429,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         pendingFullScreen = false
         pendingFullScreenRecord = false
 
-        // Run the screenshot capture now and dispatch back to main when done.
-        // Window creation above already ran in parallel with the prep that the
-        // background work still has to do.
-        //
-        // Prefer SCScreenshotManager: it honors the "Capture mouse cursor"
-        // toggle even for the enlarged shake-to-find / accessibility cursor,
-        // which CGWindowListCreateImage cannot exclude (the cursor is a
-        // WindowServer layer, not a window). On macOS 26+, use the rect-based
-        // screenshot API to avoid SCShareableContent enumeration in the hot
-        // path. Older SCK fallback still fetches fresh shareable content so
-        // transient UI (menus, Spotlight) is preserved. If SCK fails or can't
-        // cover every display, fall back to the synchronous CGWindowListCreateImage
-        // path (which manually composites the cursor from the prebuilt context).
+        // Capture now. Overlay windows haven't been ordered front yet, so they
+        // won't appear in the capture. Install each display's overlay as soon as
+        // its own capture lands, cursor display first, instead of waiting for
+        // all of them. A display that cannot be captured gets no overlay.
         let progressive = ProgressiveOverlayState()
         Task { [weak self] in
             trace?.mark("background screenshot begin")
-            var captures: [ScreenCapture]? = nil
-            if #available(macOS 14.0, *) {
-                // Install each display's overlay as soon as its own capture
-                // lands, cursor display first, instead of waiting for all of them.
-                captures = await ScreenCaptureManager.captureAllScreensImmediatelySCK(
-                    priorityScreen: mouseScreen,
-                    timing: { label in trace?.mark(label) },
-                    onCapture: { capture in
-                        guard let self = self, self.isCapturing,
-                              self.captureSessionID == sessionID else { return }
-                        guard let controller = controllers.first(where: { $0.screen === capture.screen })
-                        else { return }
-                        let isFirst = !progressive.shownAny
-                        progressive.shownAny = true
-                        progressive.installed.insert(ObjectIdentifier(controller))
-                        self.installAndShowOverlays(
-                            captures: [capture],
-                            controllers: [controller],
-                            mouseScreen: mouseScreen,
-                            applyFullScreen: didApplyFullScreen,
-                            applyFullScreenRecord: didApplyFullScreenRecord,
-                            autoStartRecord: didApplyFullScreenRecordAutoStart,
-                            markInteractive: isFirst)
-                        // Showing a later display makes it key; keep the keyboard
-                        // on the display the user is working on.
-                        if !isFirst { self.refocusOverlay(among: controllers, installed: progressive.installed) }
-                    })
-            }
-            if let captures, progressive.shownAny {
-                trace?.mark("background screenshot end count=\(captures.count) (progressive)")
-                return
-            }
-            // No SCK result, or some displays failed after others were already
-            // shown: capture the rest with the fallback and install only those.
-            let remaining = controllers.filter { !progressive.installed.contains(ObjectIdentifier($0)) }
-            let finalCaptures = captures ?? ScreenCaptureManager.captureAllScreensImmediately(
-                context: captureContext,
-                timing: { label in trace?.mark(label) })
-            trace?.mark("background screenshot end count=\(finalCaptures.count)")
-            await MainActor.run {
-                guard let self = self, self.isCapturing,
-                      self.captureSessionID == sessionID else { return }
-                if progressive.shownAny {
+            let captures = await ScreenCaptureManager.captureAllScreensImmediately(
+                priorityScreen: mouseScreen,
+                timing: { label in trace?.mark(label) },
+                onCapture: { capture in
+                    guard let self = self, self.isCapturing,
+                          self.captureSessionID == sessionID else { return }
+                    guard let controller = controllers.first(where: { $0.screen === capture.screen })
+                    else { return }
+                    let isFirst = !progressive.shownAny
+                    progressive.shownAny = true
+                    progressive.installed.insert(ObjectIdentifier(controller))
                     self.installAndShowOverlays(
-                        captures: finalCaptures.filter { capture in remaining.contains { $0.screen == capture.screen } },
-                        controllers: remaining,
+                        captures: [capture],
+                        controllers: [controller],
                         mouseScreen: mouseScreen,
                         applyFullScreen: didApplyFullScreen,
                         applyFullScreenRecord: didApplyFullScreenRecord,
                         autoStartRecord: didApplyFullScreenRecordAutoStart,
-                        markInteractive: false)
-                    self.refocusOverlay(among: controllers, installed: nil)
-                    return
-                }
-                self.installAndShowOverlays(
-                    captures: finalCaptures,
-                    controllers: controllers,
-                    mouseScreen: mouseScreen,
-                    applyFullScreen: didApplyFullScreen,
-                    applyFullScreenRecord: didApplyFullScreenRecord,
-                    autoStartRecord: didApplyFullScreenRecordAutoStart)
-            }
+                        markInteractive: isFirst)
+                    // Showing a later display makes it key; keep the keyboard
+                    // on the display the user is working on.
+                    if !isFirst { self.refocusOverlay(among: controllers, installed: progressive.installed) }
+                })
+            trace?.mark("background screenshot end count=\(captures.count)")
+            guard let self = self, self.isCapturing,
+                  self.captureSessionID == sessionID, !progressive.shownAny else { return }
+            // No display could be captured: end the capture and show the permission guide.
+            self.installAndShowOverlays(
+                captures: [],
+                controllers: controllers,
+                mouseScreen: mouseScreen,
+                applyFullScreen: didApplyFullScreen,
+                applyFullScreenRecord: didApplyFullScreenRecord,
+                autoStartRecord: didApplyFullScreenRecordAutoStart)
         }
     }
 

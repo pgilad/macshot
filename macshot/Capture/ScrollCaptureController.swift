@@ -6,8 +6,9 @@ import Vision
 
 /// Scroll capture engine:
 ///
-/// - **`CGWindowListCreateImage`** for on-demand frame capture — each grab is a
-///   complete, compositor-finished snapshot. No stream management, no stale frames.
+/// - **`SCScreenshotManager`** for on-demand frame capture — each grab is a
+///   complete, compositor-finished snapshot of the region, without macshot's own
+///   windows. No stream management, no stale frames.
 /// - **TIFF byte-by-byte comparison** — two consecutive identical TIFF representations
 ///   = content has truly stopped rendering. Zero tolerance, no false positives.
 /// - **Timer-driven `captureAndCompare`** on a dedicated serial queue — consistent
@@ -109,9 +110,13 @@ final class ScrollCaptureController {
     // Target app for scroll events
     private var targetAppPID: pid_t = 0
 
-    // CGWindowList capture config
+    // Window under the region, found through the CGWindowList
     private var targetWindowID: CGWindowID = kCGNullWindowID
     private var captureRectCG: CGRect = .zero  // CG coordinates (top-left origin)
+
+    // ScreenCaptureKit frame capture, prepared once per session
+    private var frameFilter: SCContentFilter?
+    private var frameConfiguration: SCStreamConfiguration?
 
     // MARK: - Init
 
@@ -132,7 +137,7 @@ final class ScrollCaptureController {
         maxScrollHeight = ud.object(forKey: "scrollMaxHeight") as? Int ?? 30000
         frozenDetectionEnabled = ud.object(forKey: "scrollFrozenDetection") as? Bool ?? true
 
-        // Convert AppKit coords to CG coords (top-left origin) for CGWindowListCreateImage
+        // Convert AppKit coords to CG coords (top-left origin) for the CGWindowList lookups
         let primaryScreenH = NSScreen.screens.first?.frame.height ?? screen.frame.height
         captureRectCG = CGRect(
             x: captureRect.origin.x,
@@ -144,6 +149,11 @@ final class ScrollCaptureController {
         // Find the target window under the capture region
         resolveTargetWindow()
         resolveTargetApp()
+
+        guard await prepareFrameCapture(), !isCancelled else {
+            if !isCancelled { onSessionDone?(nil) }
+            return
+        }
 
         // Capture first settled frame
         guard let firstFrame = await captureSettledFrame() else {
@@ -297,22 +307,43 @@ final class ScrollCaptureController {
         NSRunningApplication(processIdentifier: targetAppPID)?.activate(options: [])
     }
 
-    // MARK: - Frame capture via CGWindowListCreateImage
+    // MARK: - Frame capture via ScreenCaptureKit
 
-    /// Captures the screen region using CGWindowListCreateImage.
-    /// Returns a complete, compositor-finished snapshot — no stream management needed.
-    private func captureFrame() -> CGImage? {
-        let excludeSet = Set(excludedWindowIDs)
-        let listOption: CGWindowListOption = [.optionOnScreenBelowWindow]
-        let windowID = excludeSet.isEmpty ? kCGNullWindowID : (excludeSet.first ?? kCGNullWindowID)
+    /// Builds the content filter and configuration for the session. The filter
+    /// leaves out every macshot window (overlay, HUD, thumbnails), so a frame
+    /// shows only the content below them.
+    private func prepareFrameCapture() async -> Bool {
+        guard
+            let content = try? await SCShareableContent.excludingDesktopWindows(
+                false, onScreenWindowsOnly: true),
+            let display = content.displays.first(where: { $0.displayID == screen.displayID })
+        else { return false }
 
-        let imageOption: CGWindowImageOption = [.boundsIgnoreFraming]
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let ownApplications = content.applications.filter { $0.processID == ownPID }
+        frameFilter = SCContentFilter(
+            display: display, excludingApplications: ownApplications, exceptingWindows: [])
 
-        guard let image = CGWindowListCreateImage(
-            captureRectCG, listOption, windowID, imageOption
-        ) else { return nil }
+        let configuration = SCStreamConfiguration()
+        // The source rect is in display points, with the origin at the display's top-left corner.
+        configuration.sourceRect = CGRect(
+            x: captureRect.minX - screen.frame.minX,
+            y: screen.frame.maxY - captureRect.maxY,
+            width: captureRect.width,
+            height: captureRect.height)
+        configuration.width = Int((captureRect.width * backingScale).rounded())
+        configuration.height = Int((captureRect.height * backingScale).rounded())
+        configuration.showsCursor = false
+        configuration.captureResolution = .best
+        frameConfiguration = configuration
+        return true
+    }
 
-        return image
+    /// Captures the region. Each grab is a complete, compositor-finished snapshot.
+    private func captureFrame() async -> CGImage? {
+        guard let frameFilter, let frameConfiguration else { return nil }
+        return try? await SCScreenshotManager.captureImage(
+            contentFilter: frameFilter, configuration: frameConfiguration)
     }
 
     /// Captures a settled frame: grabs frames until two consecutive TIFF representations
@@ -324,7 +355,7 @@ final class ScrollCaptureController {
 
         for _ in 0..<30 {
             guard !isCancelled else { return nil }
-            guard let cg = captureFrame() else {
+            guard let cg = await captureFrame() else {
                 try? await Task.sleep(nanoseconds: 30_000_000)
                 continue
             }
@@ -454,7 +485,7 @@ final class ScrollCaptureController {
         for _ in 0..<30 {
             guard isActive else { return false }
 
-            guard let cg = captureFrame() else {
+            guard let cg = await captureFrame() else {
                 try? await Task.sleep(nanoseconds: 30_000_000)
                 continue
             }
@@ -642,9 +673,15 @@ final class ScrollCaptureController {
     private func grabAndProcess() {
         guard isActive, !isCapturing else { return }
         isCapturing = true
-        defer { isCapturing = false }
+        Task { [weak self] in
+            guard let self else { return }
+            defer { self.isCapturing = false }
+            guard let currentFrame = await self.captureFrame(), self.isActive else { return }
+            self.process(currentFrame: currentFrame)
+        }
+    }
 
-        guard let currentFrame = captureFrame() else { return }
+    private func process(currentFrame: CGImage) {
         guard let previousFrame = shotA else {
             shotA = currentFrame
             return
