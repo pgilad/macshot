@@ -1,36 +1,22 @@
-# Security Policy
+# Security
 
-I do vulnerability research and bug bounty for a living, so I know what a good
-disclosure experience looks like from the reporter's side, and what a bad one
-feels like. You'll get the good kind here.
+## Report a vulnerability
 
-## Reporting a vulnerability
+Use [GitHub private vulnerability reporting](https://github.com/pgilad/macshot/security/advisories/new). Do not put details of a vulnerability in a public issue.
 
-**Preferred:** [GitHub Private Vulnerability Reporting](https://github.com/sw33tLie/macshot/security/advisories/new).
-It's private and structured, and we can work on the fix together in a private fork.
+## Scope
 
-**Also fine:** DM me on X at [x.com/sw33tLie](https://x.com/sw33tLie). Good for a
-heads-up or if you can't use GitHub. Please don't put PoCs or exploit details in
-public issues, and don't test against infrastructure you don't own.
+In scope: anything that lets data leave the Mac, lets another app or a web page make macshot capture, save or show something without the user, reads files that the user did not choose, or recovers redacted pixels.
 
-I aim to respond within 48 hours, usually much faster. High/Critical issues get a
-fix or a concrete plan within days, not weeks, and fixes reach users quickly via
-Sparkle auto-update.
-
-## Out of scope
-
-Auto-redact regex misses (best-effort, documented as such), issues
-requiring a compromised machine or physical access, vulnerabilities in Sparkle/
-macOS/dependencies themselves (report upstream, but tell me so I can ship the
-bumped version), and DoS of the app's UI.
+Out of scope: auto-redact patterns that miss text (they are a best effort), issues that need a compromised Mac or physical access, and vulnerabilities in macOS itself.
 
 ## Supported versions
 
-Only the latest release of each variant (normal and Offline). Sparkle keeps
-almost everyone current within days.
+Only the latest commit on `main`.
 
-## Credit
+## Design
 
-No paid bounty (this is a free GPLv3 project), but you'll get credited in the
-release notes, CHANGELOG, and the GitHub advisory unless you'd rather stay
-anonymous.
+- App Sandbox on, with no network entitlement.
+- Hardened runtime on every build (`scripts/bundle.sh`).
+- No third-party code.
+- The `macshot://` URL scheme is off by default and can only start an interactive capture or open Settings.

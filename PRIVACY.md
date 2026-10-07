@@ -1,55 +1,33 @@
-# Privacy Policy
+# Privacy
 
-**Last updated:** March 22, 2026
+macshot runs only on your Mac. It collects nothing and sends nothing.
 
-## Overview
+## Network
 
-macshot is a free, open-source screenshot and screen recording tool for macOS. It is designed to run entirely on your device. We do not operate any servers, and we do not collect, store, or have access to any of your data.
-
-## What macshot does NOT do
-
-- **No telemetry or analytics** — macshot does not phone home, track usage, or send any data to us.
-- **No data collection** — we do not collect personal information, usage statistics, crash reports, or any other data.
-- **No server-side storage** — we do not operate any servers. All screenshots, recordings, and settings are stored locally on your Mac.
-- **No access to your uploads** — when you upload to Google Drive, files go directly to your own Google Drive account. We cannot see, access, or download your files. When you upload to imgbb, files go directly to imgbb's servers under their privacy policy.
-
-## Data stored on your device
-
-macshot stores the following data locally on your Mac:
-
-- **Screenshots and recordings** — saved to your chosen folder (default: Pictures).
-- **Screenshot history** — recent captures stored in `~/Library/Application Support/com.sw33tlie.macshot/history/`. You control the history size in Preferences (set to 0 to disable).
-- **Preferences** — settings stored in macOS UserDefaults.
-- **Google Drive OAuth tokens** — if you sign in to Google Drive, authentication tokens are stored in `~/Library/Application Support/com.sw33tlie.macshot/gdrive_tokens.json` with owner-only permissions (0600). Tokens are used solely to upload files to your own Google Drive. You can sign out at any time in Preferences, which deletes the token file.
-
-## Third-party services
-
-macshot integrates with the following optional third-party services. Use of these services is entirely opt-in:
-
-### Google Drive
-- **Purpose:** Upload screenshots and recordings to your own Google Drive.
-- **Scope:** `drive.file` — macshot can only access files it created in your Drive. It cannot read, list, or modify any other files in your Drive.
-- **Data sent:** The image or video file you choose to upload, plus a filename.
-- **Authentication:** OAuth 2.0. You sign in via Google's login page in your browser. macshot stores a refresh token locally (see above) to avoid repeated sign-ins.
-- **Revoking access:** You can sign out in macshot Preferences, or revoke access at any time from [Google Account Permissions](https://myaccount.google.com/permissions).
-
-### imgbb
-- **Purpose:** Upload screenshots to imgbb for shareable image links.
-- **Data sent:** The image file you choose to upload.
-- **imgbb's privacy policy:** [https://imgbb.com/privacy](https://imgbb.com/privacy)
-
-### Sparkle (auto-updates)
-- **Purpose:** Check for and install macshot updates.
-- **Data sent:** A request to `https://raw.githubusercontent.com/sw33tLie/macshot/main/appcast.xml` to check for new versions. No personal data is included in the request.
+- The app has no network entitlement. The App Sandbox blocks every outgoing connection, so a capture cannot leave the Mac through macshot, even through a bug.
+- There is no telemetry, no crash reporting, no auto-updater and no upload service.
+- The app links only Apple frameworks.
+- **AI Search** in the OCR window opens your browser with a Google search for the recognized text. This happens only when you click it.
 
 ## Permissions
 
-macshot requests **Screen Recording** permission from macOS. This permission is required to capture screenshots and record your screen. macOS controls this permission — you can revoke it at any time in System Settings > Privacy & Security > Screen Recording.
+- **Screen Recording** is required to capture the screen.
+- **Accessibility** is asked for only when you use scroll capture's auto-scroll or element snapping.
+- macshot does not use the camera, the microphone, speech recognition or Input Monitoring.
 
-## Open source
+## Data on your Mac
 
-macshot is fully open source. You can inspect the complete source code at [https://github.com/sw33tLie/macshot](https://github.com/sw33tLie/macshot) to verify these claims.
+Everything is in the app's sandbox container, `~/Library/Containers/com.pgilad.macshot/`, except the captures you save to a folder you choose.
 
-## Contact
+- **Saved captures** go to the save folder you choose. macshot keeps access to that folder with a security-scoped bookmark.
+- **History** keeps the 10 most recent captures by default (Settings can change the number, make it unlimited or turn it off) in `Data/Library/Application Support/com.pgilad.macshot/history/`. The folder is readable only by you. To reopen a capture with editable annotations, history also keeps the image without annotations. When a capture has redactions (pixelate, blur, solid fill or erase), history keeps only the flattened image, so the redacted pixels cannot be recovered from it.
+- **Settings** are in `Data/Library/Preferences/com.pgilad.macshot.plist`. Settings export leaves out your save folder and history.
+- **The clipboard** is read only when you choose Pin from Clipboard, Open from Clipboard or paste into the editor. Copied captures contain image data only, never a file path.
 
-If you have questions about this privacy policy, open an issue at [https://github.com/sw33tLie/macshot/issues](https://github.com/sw33tLie/macshot/issues).
+## On-device processing
+
+OCR, QR code reading, auto-redact, people and face detection, and background removal use Apple's Vision framework on this Mac.
+
+## URL scheme
+
+The `macshot://` URL scheme is off by default. When you turn it on in Settings, any app or web page can use it to start an interactive capture or open Settings. Nothing is saved, copied or shown without your action.

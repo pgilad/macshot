@@ -8,16 +8,11 @@ promote it or delete its full capture files.
 ## Before recovering files
 
 Quit macshot normally and let pending saves finish. Make a copy of the entire
-history directory, including `index.json`, before changing anything. The normal
-sandboxed app uses:
+history directory, including `index.json`, before changing anything. The app
+uses:
 
-`~/Library/Containers/com.sw33tlie.macshot.macshot/Data/Library/Application Support/com.sw33tlie.macshot/history`
+`~/Library/Containers/com.pgilad.macshot/Data/Library/Application Support/com.pgilad.macshot/history`
 
-An older, unsandboxed installation may instead have used:
-
-`~/Library/Application Support/com.sw33tlie.macshot/history`
-
-Use the directory containing the captures from the installation being recovered.
 These instructions do not require modifying the index or deleting the source.
 
 ## Recover a capture as an ordinary image
