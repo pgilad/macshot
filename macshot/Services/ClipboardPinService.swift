@@ -43,39 +43,12 @@ enum ClipboardPinService {
         return nil
     }
 
+    /// Plain text only. Rich text and HTML are not read: their importers are
+    /// large parsers, and the HTML one is WebKit.
     private static func textImageFromItem(_ item: NSPasteboardItem) -> NSImage? {
-        // RTF flavors first: they carry the same styling as the HTML one, but
-        // the HTML importer is WebKit and resolves remote subresources while
-        // parsing, so preferring it would turn a local pin into a network
-        // request to whichever site the text was copied from.
-        if let data = item.data(forType: .rtf),
-           let attributed = ClipboardTextPinRenderer.attributedString(rtf: data),
-           let image = ClipboardTextPinRenderer.render(attributed) {
-            return image
-        }
-
-        let rtfdType = NSPasteboard.PasteboardType("com.apple.flat-rtfd")
-        if let data = item.data(forType: rtfdType),
-           let attributed = ClipboardTextPinRenderer.attributedString(rtfd: data),
-           let image = ClipboardTextPinRenderer.render(attributed) {
-            return image
-        }
-
-        if let data = item.data(forType: .html),
-           let attributed = ClipboardTextPinRenderer.attributedString(html: data),
-           !ClipboardTextPinRenderer.containsAttachments(attributed) {
-            if let image = ClipboardTextPinRenderer.render(attributed) {
-                return image
-            }
-        }
-
-        if let string = item.string(forType: .string),
-           !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let attributed = ClipboardTextPinRenderer.plainAttributedString(string)
-            return ClipboardTextPinRenderer.render(attributed, fallbackBackground: .white)
-        }
-
-        return nil
+        guard let string = item.string(forType: .string),
+              !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return ClipboardTextPinRenderer.render(ClipboardTextPinRenderer.plainAttributedString(string))
     }
 
     private static func fileURLFromItem(_ item: NSPasteboardItem) -> URL? {

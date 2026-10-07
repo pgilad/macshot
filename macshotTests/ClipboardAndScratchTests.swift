@@ -2,11 +2,8 @@ import Cocoa
 import XCTest
 
 
-/// Pinned clipboard text is rendered on the main thread, and the HTML flavor is
-/// parsed by WebKit. Both need limits.
+/// Pinned clipboard text is rendered on the main thread, so it needs a limit.
 final class ClipboardPinSafetyTests: XCTestCase {
-
-    // MARK: - Size cap
 
     func testOrdinaryTextIsNotTruncated() {
         let text = "a short note"
@@ -22,12 +19,6 @@ final class ClipboardPinSafetyTests: XCTestCase {
         XCTAssertTrue(capped.hasSuffix("…"), "the pin should show the text was cut, not end mid-sentence")
     }
 
-    func testAttributedTextIsCappedToo() {
-        let attributed = NSAttributedString(string: String(repeating: "y", count: 400_000))
-        let capped = ClipboardTextPinRenderer.truncatedForPinning(attributed)
-        XCTAssertLessThanOrEqual(capped.length, ClipboardTextPinRenderer.maxCharacters + 2)
-    }
-
     func testRenderingAHugePasteFinishesQuickly() {
         let attributed = ClipboardTextPinRenderer.plainAttributedString(String(repeating: "word ", count: 100_000))
         let start = Date()
@@ -36,119 +27,23 @@ final class ClipboardPinSafetyTests: XCTestCase {
                           "a huge paste must not lock the main thread for minutes")
     }
 
-    // MARK: - HTML sanitizing
-
-    private func sanitized(_ html: String) -> String {
-        String(decoding: ClipboardTextPinRenderer.sanitizedHTML(Data(html.utf8)), as: UTF8.self)
-    }
-
-    func testRemoteImagesAreStrippedFromPastedHTML() {
-        // This is the tracking-pixel case: pinning an HTML email or a web
-        // selection must not tell the sender the user opened it.
-        let result = sanitized(#"<p>Hello</p><img src="https://tracker.example.com/pixel.gif">"#)
-        XCTAssertFalse(result.lowercased().contains("<img"), "got: \(result)")
-        XCTAssertFalse(result.contains("tracker.example.com"))
-        XCTAssertTrue(result.contains("Hello"), "the text itself must survive")
-    }
-
-    func testRemoteStylesheetsAndScriptsAreStripped() {
-        let result = sanitized("""
-        <link rel="stylesheet" href="https://cdn.example.com/a.css">
-        <script src="https://cdn.example.com/a.js"></script>
-        <style>@import url(https://cdn.example.com/b.css);</style>
-        <p>Body text</p>
-        """)
-        XCTAssertFalse(result.lowercased().contains("<link"))
-        XCTAssertFalse(result.lowercased().contains("<script"))
-        XCTAssertFalse(result.lowercased().contains("<style"))
-        XCTAssertTrue(result.contains("Body text"))
-    }
-
-    func testRemoteBackgroundsInInlineStylesAreNeutralized() {
-        let result = sanitized(#"<div style="background: url('https://example.com/bg.png')">text</div>"#)
-        XCTAssertFalse(result.contains("https://example.com/bg.png"), "got: \(result)")
-        XCTAssertTrue(result.contains("text"))
-    }
-
-    func testIframesAndMediaElementsAreStripped() {
-        let result = sanitized("""
-        <iframe src="https://example.com/frame"></iframe>
-        <video src="https://example.com/v.mp4"></video>
-        <p>kept</p>
-        """)
-        XCTAssertFalse(result.lowercased().contains("<iframe"))
-        XCTAssertFalse(result.lowercased().contains("<video"))
-        XCTAssertTrue(result.contains("kept"))
-    }
-
-    func testFormattingMarkupIsPreserved() {
-        let result = sanitized("<p><b>bold</b> and <i>italic</i> and <span style=\"color:red\">red</span></p>")
-        XCTAssertTrue(result.contains("<b>bold</b>"))
-        XCTAssertTrue(result.contains("<i>italic</i>"))
-        XCTAssertTrue(result.contains("color:red"), "styling that doesn't load anything stays")
-    }
-
-    func testSanitizedHTMLStillImports() throws {
-        let data = Data("<p>Hello <b>world</b></p>".utf8)
-        let attributed = try XCTUnwrap(ClipboardTextPinRenderer.attributedString(html: data))
-        XCTAssertTrue(attributed.string.contains("Hello world"))
-    }
-
-    func testNonUTF8AndEmptyHTMLAreHandled() {
-        XCTAssertNoThrow(ClipboardTextPinRenderer.sanitizedHTML(Data()))
-        XCTAssertNoThrow(ClipboardTextPinRenderer.sanitizedHTML(Data([0xFF, 0xFE, 0x00, 0x01])))
-    }
-
-    func testGeneratedHTMLPreservesTextAndFormattingWithoutSourceAttributes() throws {
-        let original = """
-        <section class="article"><p title="a title">A &amp; B <a href="https://example.com/guide">guide</a></p>
-        <p><span style="color:rgb(20,30,40);font-weight:bold;font-size:18px;background-image:none">styled</span></p>
-        <ul><li>First</li><li>Second</li></ul><table><tr><td colspan="2">Cell</td></tr></table></section>
-        """
-        let safe = sanitized(original)
-        XCTAssertFalse(safe.contains("href="))
-        XCTAssertFalse(safe.contains("class="))
-        XCTAssertFalse(safe.contains("title="))
-        XCTAssertFalse(safe.contains("background-image"))
-        XCTAssertTrue(safe.contains("<ul>"))
-        XCTAssertTrue(safe.contains("<table>"))
-        XCTAssertTrue(safe.contains("colspan=\"2\""))
-        XCTAssertTrue(safe.contains("font-weight:bold"))
-        let attributed = try XCTUnwrap(ClipboardTextPinRenderer.attributedString(html: Data(original.utf8)))
-        XCTAssertTrue(attributed.string.contains("A & B guide"))
-        XCTAssertTrue(attributed.string.contains("First"))
-        XCTAssertTrue(attributed.string.contains("Cell"))
-        let range = (attributed.string as NSString).range(of: "styled")
-        XCTAssertNotEqual(range.location, NSNotFound)
-        let font = try XCTUnwrap(attributed.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont)
-        XCTAssertTrue(NSFontManager.shared.traits(of: font).contains(.boldFontMask))
-    }
-
-    func testRichInputIsLimitedBeforeImportAndHTMLTextBeforeLayout() throws {
-        let excessive = Data(repeating: 65, count: ClipboardHTML.maximumInputBytes + 1)
-        XCTAssertNil(ClipboardTextPinRenderer.attributedString(html: excessive))
-        XCTAssertNil(ClipboardTextPinRenderer.attributedString(rtf: excessive))
-        XCTAssertNil(ClipboardTextPinRenderer.attributedString(rtfd: excessive))
-        let html = Data(("<p>" + String(repeating: "text ", count: 10_000) + "</p>").utf8)
-        let result = try XCTUnwrap(ClipboardTextPinRenderer.attributedString(html: html))
-        XCTAssertLessThanOrEqual(result.length, ClipboardTextPinRenderer.maxCharacters + 2)
-        XCTAssertTrue(result.string.contains("…"))
-    }
-
-    func testRichTextTruncationDoesNotSplitAnEmojiSequence() {
-        let prefix = String(repeating: "a", count: ClipboardTextPinRenderer.maxCharacters - 1)
-        let result = ClipboardTextPinRenderer.truncatedForPinning(NSAttributedString(string: prefix + "🧑🏽‍💻tail"))
-        XCTAssertEqual(result.string, prefix + "\n…")
-    }
-
-    func testOversizedHTMLFlavorFallsBackToPlainTextInThePasteboardItem() {
+    func testRichTextFlavorsAreIgnoredForThePlainText() {
         let item = NSPasteboardItem()
-        item.setData(Data(repeating: 65, count: ClipboardHTML.maximumInputBytes + 1), forType: .html)
+        item.setData(Data("<b>bold</b>".utf8), forType: .html)
+        item.setData(Data("{\\rtf1 bold}".utf8), forType: .rtf)
         item.setString("A normal plain-text fallback", forType: .string)
         if case .image(let image) = ClipboardPinService.image(from: item) {
             XCTAssertGreaterThan(image.size.width, 0)
             XCTAssertGreaterThan(image.size.height, 0)
         } else { XCTFail("Plain clipboard text must remain pinnable") }
+    }
+
+    func testRichTextWithoutPlainTextIsNotPinnable() {
+        let item = NSPasteboardItem()
+        item.setData(Data("<b>bold</b>".utf8), forType: .html)
+        guard case .unsupported = ClipboardPinService.image(from: item) else {
+            return XCTFail("HTML alone must not be parsed")
+        }
     }
 }
 

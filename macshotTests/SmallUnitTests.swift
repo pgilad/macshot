@@ -207,19 +207,6 @@ final class ClipboardTextPinRendererTests: XCTestCase {
         XCTAssertEqual(ClipboardTextPinRenderer.plainAttributedString("").string, "")
     }
 
-    func testAttachmentsAreDetected() {
-        let withImage = NSMutableAttributedString(string: "before ")
-        let attachment = NSTextAttachment()
-        attachment.image = ImageProbe.solidImage(width: 4, height: 4)
-        withImage.append(NSAttributedString(attachment: attachment))
-        XCTAssertTrue(ClipboardTextPinRenderer.containsAttachments(withImage))
-    }
-
-    func testPlainTextHasNoAttachments() {
-        XCTAssertFalse(ClipboardTextPinRenderer.containsAttachments(NSAttributedString(string: "just text")))
-        XCTAssertFalse(ClipboardTextPinRenderer.containsAttachments(NSAttributedString(string: "")))
-    }
-
     func testRenderingProducesAnImageForOrdinaryText() {
         let image = ClipboardTextPinRenderer.render(ClipboardTextPinRenderer.plainAttributedString("Pinned note"))
         XCTAssertNotNil(image)
