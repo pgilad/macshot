@@ -55,49 +55,25 @@ enum VisionOCR {
         recognitionLevel: VNRequestTextRecognitionLevel,
         completion: @escaping (Result<[OCRTextObservation], Error>) -> Void
     ) -> () -> Void {
-        if #available(macOS 15.0, *) {
-            let task = Task.detached(priority: .userInitiated) {
-                do {
-                    var request = RecognizeTextRequest()
-                    request.recognitionLevel = recognitionLevel == .accurate ? .accurate : .fast
-                    request.usesLanguageCorrection = true
-                    request.automaticallyDetectsLanguage = true
-                    let observations = try await request.perform(on: cgImage)
-                    let lines = observations.compactMap { observation -> OCRTextObservation? in
-                        guard let candidate = observation.topCandidates(1).first else { return nil }
-                        return OCRTextObservation(text: candidate.string,
-                            boundingBox: observation.boundingBox.cgRect,
-                            substringBounds: { candidate.boundingBox(for: $0)?.boundingBox.cgRect })
-                    }
-                    completion(.success(lines))
-                } catch {
-                    completion(.failure(error))
-                }
-            }
-            return { task.cancel() }
-        }
-
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = recognitionLevel
-        request.usesLanguageCorrection = true
-        if #available(macOS 13.0, *) {
-            request.automaticallyDetectsLanguage = true
-        }
-        DispatchQueue.global(qos: .userInitiated).async {
+        let task = Task.detached(priority: .userInitiated) {
             do {
-                try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
-                let lines = (request.results ?? []).compactMap { observation -> OCRTextObservation? in
+                var request = RecognizeTextRequest()
+                request.recognitionLevel = recognitionLevel == .accurate ? .accurate : .fast
+                request.usesLanguageCorrection = true
+                request.automaticallyDetectsLanguage = true
+                let observations = try await request.perform(on: cgImage)
+                let lines = observations.compactMap { observation -> OCRTextObservation? in
                     guard let candidate = observation.topCandidates(1).first else { return nil }
                     return OCRTextObservation(text: candidate.string,
-                        boundingBox: observation.boundingBox,
-                        substringBounds: { (try? candidate.boundingBox(for: $0))?.boundingBox })
+                        boundingBox: observation.boundingBox.cgRect,
+                        substringBounds: { candidate.boundingBox(for: $0)?.boundingBox.cgRect })
                 }
                 completion(.success(lines))
             } catch {
                 completion(.failure(error))
             }
         }
-        return { request.cancel() }
+        return { task.cancel() }
     }
 
     nonisolated static func detectQRCodes(cgImage: CGImage) -> [QRCodePayload] {

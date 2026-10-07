@@ -123,14 +123,11 @@ enum ToolbarCustomAction: Int {
             }
             return button
         case .removeBackground:
-            if #available(macOS 14.0, *) {
-                return ToolbarButton(
-                    action: .removeBackground,
-                    sfSymbol: "person.crop.circle.dashed",
-                    tooltip: "Remove Background"
-                )
-            }
-            return nil
+            return ToolbarButton(
+                action: .removeBackground,
+                sfSymbol: "person.crop.circle.dashed",
+                tooltip: "Remove Background"
+            )
         case .autoRedact, .reserved1007:
             return nil
         case .scrollCapture:
@@ -297,10 +294,7 @@ class ToolbarLayout {
             (.arrow, "arrow.up.right", "Arrow"),
             (.rectangle, "rectangle", "Rectangle"),
             (.ellipse, "oval", "Ellipse"),
-            (.marker, {
-                if #available(macOS 14.0, *) { return "highlighter" }
-                return "paintbrush.pointed.fill"
-            }(), "Marker"),
+            (.marker, "highlighter", "Marker"),
             (.text, "textformat", "Text"),
             (.number, "1.circle.fill", "Number"),
             (.pixelate, "_custom.checkerboard", "Censor (Pixelate / Blur / Solid)"),

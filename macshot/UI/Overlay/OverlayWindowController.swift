@@ -809,7 +809,6 @@ extension OverlayWindowController: OverlayViewDelegate {
             editState: editState.hasPostProcessing ? editState : nil)
     }
 
-    @available(macOS 14.0, *)
     func overlayViewDidRequestRemoveBackground() {
         let appName = resolvedAppName()
         guard var image = captureRegion() else { return }

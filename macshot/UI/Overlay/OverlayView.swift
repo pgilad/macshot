@@ -14,7 +14,6 @@ protocol OverlayViewDelegate: AnyObject {
     func overlayViewDidRequestQuickSave()
     func overlayViewDidRequestFileSave()
     func overlayViewDidRequestShare(anchorView: NSView?)
-    @available(macOS 14.0, *)
     func overlayViewDidRequestRemoveBackground()
     func overlayViewDidRequestDetach()
     func overlayViewDidRequestScrollCapture(rect: NSRect)
@@ -2411,8 +2410,7 @@ class OverlayView: NSView {
     /// floating chrome out of that rect while still allowing it in the safe side
     /// areas on MacBooks with a notch.
     private func screenTopObstructionRects() -> [NSRect] {
-        guard #available(macOS 12.0, *),
-              let screen = window?.screen,
+        guard let screen = window?.screen,
               screen.safeAreaInsets.top > 0 else { return [] }
 
         let topBandScreen = NSRect(
@@ -7848,9 +7846,7 @@ class OverlayView: NSView {
         case .autoRedact:
             performAutoRedact()
         case .removeBackground:
-            if #available(macOS 14.0, *) {
-                overlayDelegate?.overlayViewDidRequestRemoveBackground()
-            }
+            overlayDelegate?.overlayViewDidRequestRemoveBackground()
         case .invertColors:
             invertImageColors()
         case .effects:
@@ -9699,12 +9695,10 @@ private final class PreSelectionPresetButton: NSButton {
         imageScaling = .scaleProportionallyDown
         focusRingType = .none
         setButtonType(.momentaryChange)
-        if #available(macOS 11.0, *) {
-            let symbol = NSImage(systemSymbolName: "aspectratio", accessibilityDescription: nil)
-                ?? NSImage(systemSymbolName: "rectangle.dashed", accessibilityDescription: nil)
-            symbol?.isTemplate = true
-            image = symbol
-        }
+        let symbol = NSImage(systemSymbolName: "aspectratio", accessibilityDescription: nil)
+            ?? NSImage(systemSymbolName: "rectangle.dashed", accessibilityDescription: nil)
+        symbol?.isTemplate = true
+        image = symbol
     }
 
     required init?(coder: NSCoder) { fatalError() }

@@ -556,7 +556,6 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
         autoSaveToHistoryIfNeeded(save)
     }
 
-    @available(macOS 14.0, *)
     func overlayViewDidRequestRemoveBackground() {
         guard let image = overlayView?.captureSelectedRegion(),
               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }

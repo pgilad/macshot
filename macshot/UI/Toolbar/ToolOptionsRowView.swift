@@ -768,8 +768,8 @@ class ToolOptionsRowView: NSView {
             return NSImage(size: NSSize(width: size, height: size))
         }
         let style = styles[styleIndex]
-        // Use mesh rendering on macOS 15+ for mesh styles
-        if #available(macOS 15.0, *), let mesh = style.meshDef,
+        // Use mesh rendering for mesh styles
+        if let mesh = style.meshDef,
            let meshImg = BeautifyRenderer.renderMeshSwatch(mesh, size: size) {
             return NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
                 let r = NSRect(x: 0, y: 0, width: size, height: size)

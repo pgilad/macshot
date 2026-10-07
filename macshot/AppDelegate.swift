@@ -731,16 +731,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         registerHotkey()
 
         // Launch-at-login: sync the login item to the imported value.
-        if #available(macOS 13.0, *) {
-            let enabled = UserDefaults.standard.bool(forKey: "launchAtLogin")
-            do {
-                if enabled { try SMAppService.mainApp.register() }
-                else { try SMAppService.mainApp.unregister() }
-            } catch {
-                #if DEBUG
-                print("reapplySettingsAfterImport: login item update failed: \(error)")
-                #endif
-            }
+        let enabled = UserDefaults.standard.bool(forKey: "launchAtLogin")
+        do {
+            if enabled { try SMAppService.mainApp.register() }
+            else { try SMAppService.mainApp.unregister() }
+        } catch {
+            #if DEBUG
+            print("reapplySettingsAfterImport: login item update failed: \(error)")
+            #endif
         }
 
         // Menu bar icon visibility + appearance.
@@ -975,12 +973,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Activate another app using the modern cooperative activation API.
     static func activateApp(_ app: NSRunningApplication) {
-        if #available(macOS 14.0, *) {
-            NSApp.yieldActivation(to: app)
-            app.activate()
-        } else {
-            app.activate(options: .activateIgnoringOtherApps)
-        }
+        NSApp.yieldActivation(to: app)
+        app.activate()
     }
 
     // MARK: - Capture

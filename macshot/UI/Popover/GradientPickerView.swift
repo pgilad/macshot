@@ -47,7 +47,7 @@ class GradientPickerView: NSView {
         for (i, style) in styles.enumerated() {
             let sr = rectForIndex(idx)
             let path = NSBezierPath(roundedRect: sr, xRadius: 6, yRadius: 6)
-            if #available(macOS 15.0, *), let mesh = style.meshDef,
+            if let mesh = style.meshDef,
                let img = BeautifyRenderer.renderMeshSwatch(mesh, size: swSize) {
                 NSGraphicsContext.saveGraphicsState()
                 path.addClip()

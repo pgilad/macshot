@@ -22,15 +22,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let id: String
         let label: String
         let symbolName: String
-        let legacyImageName: String  // fallback for older macOS if needed
     }
     private static var tabDefs: [TabDef] {
         [
-            TabDef(id: "general",   label: "General",   symbolName: "gearshape",                 legacyImageName: NSImage.preferencesGeneralName),
-            TabDef(id: "capture",   label: "Capture",   symbolName: "camera.viewfinder",         legacyImageName: NSImage.preferencesGeneralName),
-            TabDef(id: "shortcuts", label: "Shortcuts", symbolName: "keyboard",                  legacyImageName: NSImage.preferencesGeneralName),
-            TabDef(id: "tools",     label: "Tools",     symbolName: "paintbrush",                legacyImageName: NSImage.preferencesGeneralName),
-            TabDef(id: "about",     label: "About",     symbolName: "info.circle",               legacyImageName: NSImage.preferencesGeneralName),
+            TabDef(id: "general",   label: "General",   symbolName: "gearshape"),
+            TabDef(id: "capture",   label: "Capture",   symbolName: "camera.viewfinder"),
+            TabDef(id: "shortcuts", label: "Shortcuts", symbolName: "keyboard"),
+            TabDef(id: "tools",     label: "Tools",     symbolName: "paintbrush"),
+            TabDef(id: "about",     label: "About",     symbolName: "info.circle"),
         ]
     }
 
@@ -147,9 +146,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         toolbar.displayMode = .iconAndLabel
         toolbar.allowsUserCustomization = false
         toolbar.autosavesConfiguration = false
-        if #available(macOS 11.0, *) {
-            window.toolbarStyle = .preference
-        }
+        window.toolbarStyle = .preference
         window.toolbar = toolbar
         toolbar.selectedItemIdentifier = NSToolbarItem.Identifier("general")
         // Re-apply content size after toolbar install, since NSToolbar can
@@ -269,11 +266,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
         item.label = def.label
         item.paletteLabel = def.label
-        if #available(macOS 11.0, *) {
-            item.image = NSImage(systemSymbolName: def.symbolName, accessibilityDescription: def.label)
-        } else {
-            item.image = NSImage(named: def.legacyImageName)
-        }
+        item.image = NSImage(systemSymbolName: def.symbolName, accessibilityDescription: def.label)
         item.target = self
         item.action = #selector(toolbarTabSelected(_:))
         return item
@@ -1708,63 +1701,61 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
 
     @objc private func copyScreenInfo() {
-        if #available(macOS 14.0, *) {
-            Task { @MainActor in
-                var lines: [String] = []
-                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-                let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
-                lines.append("macshot \(version) (\(build))")
-                lines.append("macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
+        Task { @MainActor in
+            var lines: [String] = []
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+            lines.append("macshot \(version) (\(build))")
+            lines.append("macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
+            lines.append("")
+            lines.append("=== NSScreen Info ===")
+            for (i, screen) in NSScreen.screens.enumerated() {
+                let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32 ?? 0
+                let cs = screen.colorSpace?.cgColorSpace
+                // CGDisplayCopyColorSpace reads the display ICC profile directly,
+                // bypassing NSScreen — helps diagnose DisplayLink/driver issues.
+                let cgCS = CGDisplayCopyColorSpace(id)
+                lines.append("Screen \(i): \(screen.localizedName) (ID: \(id))")
+                lines.append("  frame: \(screen.frame)")
+                lines.append("  backingScale: \(screen.backingScaleFactor)")
+                lines.append("  NSScreen.colorSpace: \(cs?.name as String? ?? "nil")")
+                lines.append("  CGDisplayCopyColorSpace: \(cgCS.name as String? ?? "nil")")
+                lines.append("  cs model: \(cs?.model.rawValue ?? -1)")
                 lines.append("")
-                lines.append("=== NSScreen Info ===")
-                for (i, screen) in NSScreen.screens.enumerated() {
-                    let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? UInt32 ?? 0
-                    let cs = screen.colorSpace?.cgColorSpace
-                    // CGDisplayCopyColorSpace reads the display ICC profile directly,
-                    // bypassing NSScreen — helps diagnose DisplayLink/driver issues.
-                    let cgCS = CGDisplayCopyColorSpace(id)
-                    lines.append("Screen \(i): \(screen.localizedName) (ID: \(id))")
-                    lines.append("  frame: \(screen.frame)")
-                    lines.append("  backingScale: \(screen.backingScaleFactor)")
-                    lines.append("  NSScreen.colorSpace: \(cs?.name as String? ?? "nil")")
-                    lines.append("  CGDisplayCopyColorSpace: \(cgCS.name as String? ?? "nil")")
-                    lines.append("  cs model: \(cs?.model.rawValue ?? -1)")
-                    lines.append("")
-                }
-                do {
-                    let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-                    lines.append("=== ScreenCaptureKit Capture Info ===")
-                    for display in content.displays {
-                        let filter = SCContentFilter(display: display, excludingWindows: [])
-                        let config = SCStreamConfiguration()
-                        config.width = display.width
-                        config.height = display.height
-                        config.captureResolution = .best
-                        config.colorSpaceName = CGColorSpace.sRGB as CFString
-                        if let img = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) {
-                            lines.append("Display \(display.displayID) (\(display.width)x\(display.height)):")
-                            lines.append("  CGImage size: \(img.width)x\(img.height)")
-                            lines.append("  bitsPerComponent: \(img.bitsPerComponent)")
-                            lines.append("  bitsPerPixel: \(img.bitsPerPixel)")
-                            lines.append("  bytesPerRow: \(img.bytesPerRow)")
-                            lines.append("  bitmapInfo: \(img.bitmapInfo.rawValue)")
-                            lines.append("  alphaInfo: \(img.alphaInfo.rawValue)")
-                            lines.append("  colorSpace: \(img.colorSpace?.name as String? ?? "nil")")
-                            lines.append("  cs model: \(img.colorSpace?.model.rawValue ?? -1)")
-                            lines.append("")
-                        }
+            }
+            do {
+                let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+                lines.append("=== ScreenCaptureKit Capture Info ===")
+                for display in content.displays {
+                    let filter = SCContentFilter(display: display, excludingWindows: [])
+                    let config = SCStreamConfiguration()
+                    config.width = display.width
+                    config.height = display.height
+                    config.captureResolution = .best
+                    config.colorSpaceName = CGColorSpace.sRGB as CFString
+                    if let img = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) {
+                        lines.append("Display \(display.displayID) (\(display.width)x\(display.height)):")
+                        lines.append("  CGImage size: \(img.width)x\(img.height)")
+                        lines.append("  bitsPerComponent: \(img.bitsPerComponent)")
+                        lines.append("  bitsPerPixel: \(img.bitsPerPixel)")
+                        lines.append("  bytesPerRow: \(img.bytesPerRow)")
+                        lines.append("  bitmapInfo: \(img.bitmapInfo.rawValue)")
+                        lines.append("  alphaInfo: \(img.alphaInfo.rawValue)")
+                        lines.append("  colorSpace: \(img.colorSpace?.name as String? ?? "nil")")
+                        lines.append("  cs model: \(img.colorSpace?.model.rawValue ?? -1)")
+                        lines.append("")
                     }
-                } catch {
-                    lines.append("Capture error: \(error.localizedDescription)")
                 }
-                let result = lines.joined(separator: "\n")
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(result, forType: .string)
-                // Flash the button title to confirm
-                if let btn = self.window?.contentView?.viewWithTag(9999) as? NSButton {
-                    btn.title = "Copied!"
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { btn.title = "Copy Screen Info" }
-                }
+            } catch {
+                lines.append("Capture error: \(error.localizedDescription)")
+            }
+            let result = lines.joined(separator: "\n")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(result, forType: .string)
+            // Flash the button title to confirm
+            if let btn = self.window?.contentView?.viewWithTag(9999) as? NSButton {
+                btn.title = "Copied!"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { btn.title = "Copy Screen Info" }
             }
         }
     }
@@ -2375,15 +2366,13 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func launchAtLoginChanged(_ sender: NSButton) {
         let enabled = sender.state == .on
         UserDefaults.standard.set(enabled, forKey: "launchAtLogin")
-        if #available(macOS 13.0, *) {
-            do {
-                if enabled { try SMAppService.mainApp.register() }
-                else { try SMAppService.mainApp.unregister() }
-            } catch {
-                #if DEBUG
-                print("Failed to update login item: \(error)")
-                #endif
-            }
+        do {
+            if enabled { try SMAppService.mainApp.register() }
+            else { try SMAppService.mainApp.unregister() }
+        } catch {
+            #if DEBUG
+            print("Failed to update login item: \(error)")
+            #endif
         }
     }
 
