@@ -318,6 +318,12 @@ final class HotkeyManagerTests {
         }
     }
 
+    @Test func testOnlyCaptureAreaTakesAGlobalChordByDefault() {
+        for slot in HotkeyManager.HotkeySlot.allCases {
+            #expect((slot.defaultModifiers != 0) == (slot == .captureArea), "\(slot) default")
+        }
+    }
+
     @Test func testDisablingAHotkeyReportsNoBinding() {
         let slot = HotkeyManager.HotkeySlot.captureOCR
         withDefaults([slot.keyCodeKey: nil, slot.modifiersKey: nil, slot.disabledKey: nil]) {

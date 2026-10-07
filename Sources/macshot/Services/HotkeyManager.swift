@@ -69,26 +69,15 @@ class HotkeyManager {
             }
         }
 
+        /// Only Capture Area has a default. Global hotkeys take the chord from
+        /// every app, and ⇧⌘F, ⇧⌘H, ⇧⌘T and ⇧⌘S are common app shortcuts.
         var defaultKeyCode: UInt32 {
-            switch self {
-            case .captureArea: return UInt32(kVK_ANSI_X)
-            case .captureFullScreen: return UInt32(kVK_ANSI_F)
-            case .historyOverlay: return UInt32(kVK_ANSI_H)
-            case .captureOCR: return UInt32(kVK_ANSI_T)
-            case .quickCapture: return UInt32(kVK_ANSI_S)
-            case .scrollCapture: return 0
-            case .openFromClipboard: return 0  // no default hotkey
-            case .captureLastArea: return 0    // no default hotkey
-            case .pinFromClipboard: return 0    // no default hotkey
-            case .clearHistory: return 0        // no default hotkey
-            }
+            self == .captureArea ? UInt32(kVK_ANSI_X) : 0
         }
 
+        /// No modifiers means no hotkey (see `register(slot:callback:)`).
         var defaultModifiers: UInt32 {
-            switch self {
-            case .scrollCapture, .openFromClipboard, .captureLastArea, .pinFromClipboard, .clearHistory: return 0
-            default: return UInt32(cmdKey | shiftKey)
-            }
+            self == .captureArea ? UInt32(cmdKey | shiftKey) : 0
         }
     }
 
