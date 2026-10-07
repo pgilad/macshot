@@ -411,7 +411,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         let urlSchemeCheckbox = NSButton(checkboxWithTitle: "Enable macshot:// URL scheme", target: self, action: #selector(urlSchemeChanged(_:)))
-        urlSchemeCheckbox.state = (UserDefaults.standard.object(forKey: "urlSchemeEnabled") as? Bool ?? true) ? .on : .off
+        urlSchemeCheckbox.state = UserDefaults.standard.bool(forKey: "urlSchemeEnabled") ? .on : .off
 
         let urlSchemeInfoIcon = HoverPopoverIconView(
             image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: "URL scheme info"),
@@ -2393,10 +2393,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             ("macshot://quick-capture",       "Quick capture (uses your Enter action)"),
             ("macshot://ocr",                 "Capture area and read text/QR codes"),
             ("macshot://scroll-capture",      "Start scroll capture"),
-            ("macshot://history",             "Open the recent captures overlay"),
             ("macshot://settings",            "Open this settings window"),
-            ("macshot://open?file=/path.png", "Open an image file in the editor"),
-            ("macshot://edit?id=<id>",        "Open a history entry in the editor (keeps annotations editable)"),
         ]
 
         let title = NSTextField(labelWithString: "Supported URL Scheme Commands")

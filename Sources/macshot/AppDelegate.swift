@@ -2008,29 +2008,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DetachedEditorWindowController.open(image: image)
     }
 
-    /// Open a history entry in the editor by its id, restoring editable annotations when
-    /// available (falls back to the flattened image, like the history overlay does). Lets
-    /// external tools re-open a specific capture for editing — `macshot://edit?id=<id>` —
-    /// without flattening it, which `open?file=` cannot do.
-    private func openHistoryEntryInEditor(id: String) {
-        guard let entry = ScreenshotHistory.shared.entries.first(where: { $0.id == id }) else { return }
-
-        if entry.hasAnnotations,
-           let editable = ScreenshotHistory.shared.loadEditableCapture(for: entry) {
-            DetachedEditorWindowController.open(
-                image: editable.rawImage,
-                annotations: editable.annotations,
-                historyEntryID: id,
-                editState: editable.editState
-            )
-            return
-        }
-
-        // Fall back to the flattened image — beautify already baked in.
-        guard let image = ScreenshotHistory.shared.loadImage(for: entry) else { return }
-        DetachedEditorWindowController.open(image: image, historyEntryID: id, disableBeautify: true)
-    }
-
     /// Handle files opened via Finder "Open With", drag-to-dock, or command line.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard isReadyForOpenRequests else {
@@ -2044,8 +2021,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "tiff", "tif", "bmp", "gif", "heic", "heif", "webp", "icns"]
         for url in urls {
             if url.scheme == "macshot" {
-                let urlSchemeEnabled = UserDefaults.standard.object(forKey: "urlSchemeEnabled") as? Bool ?? true
-                guard urlSchemeEnabled else { continue }
+                // Any app or web page can open a macshot:// URL, so the scheme is opt-in.
+                guard UserDefaults.standard.bool(forKey: "urlSchemeEnabled") else { continue }
                 if Self.screenCaptureURLActions.contains(url.host ?? "") {
                     if !isReadyForScreenCaptureURLs,
                        PermissionOnboardingController.hasScreenRecordingPermission() {
@@ -2067,7 +2044,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Handle macshot:// URL scheme actions from external tools (Raycast, Alfred, etc.).
-    /// Usage: `open macshot://capture`, `open macshot://ocr`, etc.
+    /// Usage: `open macshot://capture`, `open macshot://ocr`, etc. The actions only
+    /// start an interactive capture or open Settings: nothing is saved, shown or
+    /// opened without the user.
     private static let screenCaptureURLActions: Set<String> = [
         "capture", "capture-fullscreen", "capture-last", "quick-capture",
         "ocr", "scroll-capture",
@@ -2081,19 +2060,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "quick-capture":       quickCapture()
         case "ocr":                 captureOCR()
         case "scroll-capture":      scrollCapture()
-        case "history":             showHistoryOverlay()
         case "settings":            openSettings()
         case "capture-last":        captureLastArea()
-        case "open":
-            if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let path = components.queryItems?.first(where: { $0.name == "file" })?.value {
-                openImageFile(url: URL(fileURLWithPath: path))
-            }
-        case "edit":
-            if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let id = components.queryItems?.first(where: { $0.name == "id" })?.value {
-                openHistoryEntryInEditor(id: id)
-            }
         default: break
         }
     }
