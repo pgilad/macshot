@@ -889,7 +889,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.addArrangedSubview(indented(clipboardFormatNote))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        // Quality (applies to lossy formats: JPEG, HEIC, WebP, AVIF)
+        // Quality (applies to lossy formats: JPEG, HEIC, AVIF)
         qualitySlider = NSSlider()
         qualitySlider.minValue = 10
         qualitySlider.maxValue = 100

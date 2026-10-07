@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2F98BCF32F6D83A1006ADDC3 /* WebP in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000052F61B60100B71643 /* WebP */; };
-		2FAA000E2F00000100AA0001 /* WebP in Frameworks */ = {isa = PBXBuildFile; productRef = 2FAA000C2F00000100AA0001 /* WebP */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,7 +54,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2F98BCF32F6D83A1006ADDC3 /* WebP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,7 +61,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FAA000E2F00000100AA0001 /* WebP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,7 +105,6 @@
 			);
 			name = macshot;
 			packageProductDependencies = (
-				AA0000052F61B60100B71643 /* WebP */,
 			);
 			productName = macshot;
 			productReference = 2F4EB1222F61B60100B71643 /* macshot.app */;
@@ -133,7 +128,6 @@
 			);
 			name = macshotTests;
 			packageProductDependencies = (
-				2FAA000C2F00000100AA0001 /* WebP */,
 			);
 			productName = macshotTests;
 			productReference = 2FAA00012F00000100AA0001 /* macshotTests.xctest */;
@@ -167,7 +161,6 @@
 			mainGroup = 2F4EB1192F61B60100B71643;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2F4EB1232F61B60100B71643 /* Products */;
@@ -490,27 +483,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ainame/Swift-WebP.git";
-			requirement = {
-				kind = exactVersion;
-				version = 0.5.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		2FAA000C2F00000100AA0001 /* WebP */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */;
-			productName = WebP;
-		};
-		AA0000052F61B60100B71643 /* WebP */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AA0000042F61B60100B71643 /* XCRemoteSwiftPackageReference "Swift-WebP" */;
-			productName = WebP;
-		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2F4EB11A2F61B60100B71643 /* Project object */;

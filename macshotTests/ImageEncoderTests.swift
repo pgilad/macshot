@@ -54,7 +54,6 @@ final class ImageEncoderTests: XCTestCase {
             .png: ("png", .png),
             .jpeg: ("jpg", .jpeg),
             .heic: ("heic", .heic),
-            .webp: ("webp", .webP),
         ]
         for (format, (ext, type)) in expected {
             withDefaults(["imageFormat": format.rawValue]) {
@@ -197,31 +196,6 @@ final class ImageEncoderTests: XCTestCase {
         for representation in representations {
             XCTAssertEqual(pasteboard.data(forType: representation.type), representation.data)
         }
-    }
-
-    func testWebPKeepsSemiTransparentColorsInsteadOfDarkeningThem() throws {
-        let translucent = ImageProbe.solidImage(width: 16, height: 16,
-                                                color: CGColor(srgbRed: 1, green: 0.5, blue: 0, alpha: 0.5))
-        let png = try XCTUnwrap(NSImage(data: try encode(format: .png, image: translucent)))
-        let webp = try XCTUnwrap(NSImage(data: try encode(format: .webp, quality: 1.0, image: translucent)))
-        let expected = try XCTUnwrap(ImageProbe.pixelColor(png, x: 8, y: 8)?.usingColorSpace(.sRGB))
-        let actual = try XCTUnwrap(ImageProbe.pixelColor(webp, x: 8, y: 8)?.usingColorSpace(.sRGB))
-        XCTAssertEqual(actual.alphaComponent, expected.alphaComponent, accuracy: 0.02)
-        XCTAssertEqual(actual.redComponent, expected.redComponent, accuracy: 0.05, "premultiplied bytes darken WebP edges")
-        XCTAssertEqual(actual.greenComponent, expected.greenComponent, accuracy: 0.05)
-    }
-
-    func testWebPRefusesImagesBeyondItsSizeLimitInsteadOfAllocating() {
-        let tall = ImageProbe.solidImage(width: 2, height: ImageEncoder.webPMaximumDimension + 1)
-        withDefaults(["imageFormat": "webp"]) { XCTAssertNil(ImageEncoder.encode(tall)) }
-        let edge = ImageProbe.solidImage(width: 2, height: ImageEncoder.webPMaximumDimension)
-        withDefaults(["imageFormat": "webp"]) { XCTAssertNotNil(ImageEncoder.encode(edge)) }
-    }
-
-    func testUnpremultiplyRestoresStraightAlpha() {
-        var pixels: [UInt8] = [128, 64, 0, 128,  10, 20, 30, 255,  0, 0, 0, 0,  255, 255, 255, 255]
-        pixels.withUnsafeMutableBufferPointer { ImageEncoder.unpremultiplyRGBA($0) }
-        XCTAssertEqual(pixels, [255, 128, 0, 128,  10, 20, 30, 255,  0, 0, 0, 0,  255, 255, 255, 255])
     }
 
     // MARK: - Retina downscaling

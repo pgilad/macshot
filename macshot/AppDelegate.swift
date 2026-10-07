@@ -3,7 +3,6 @@ import Carbon
 import ServiceManagement
 import UniformTypeIdentifiers
 import Vision
-import WebP
 
 enum CaptureMenuItemID: String, CaseIterable {
     case captureArea = "captureArea"
@@ -2010,16 +2009,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openImageFile(url: URL) {
-        let image: NSImage
-        if url.pathExtension.lowercased() == "webp",
-           let data = try? Data(contentsOf: url),
-           let decoded = try? WebPDecoder().decode(toNSImage: data, options: WebPDecoderOptions()) {
-            image = decoded
-        } else if let loaded = NSImage(contentsOf: url) {
-            image = loaded
-        } else {
-            return
-        }
+        // ImageIO decodes every supported type, WebP included.
+        guard let image = NSImage(contentsOf: url) else { return }
         DetachedEditorWindowController.open(image: image)
     }
 

@@ -1,7 +1,6 @@
 import Cocoa
 import UniformTypeIdentifiers
 import ImageIO
-import WebP
 
 /// Shared image encoding with user-configurable format, quality, and resolution.
 enum ImageEncoder {
@@ -10,7 +9,6 @@ enum ImageEncoder {
         case png = "png"
         case jpeg = "jpeg"
         case heic = "heic"
-        case webp = "webp"
         case avif = "avif"
 
         nonisolated var fileExtension: String {
@@ -18,7 +16,6 @@ enum ImageEncoder {
             case .png: return "png"
             case .jpeg: return "jpg"
             case .heic: return "heic"
-            case .webp: return "webp"
             case .avif: return "avif"
             }
         }
@@ -28,7 +25,6 @@ enum ImageEncoder {
             case .png: return .png
             case .jpeg: return .jpeg
             case .heic: return .heic
-            case .webp: return .webP
             case .avif: return UTType("public.avif") ?? .image
             }
         }
@@ -36,7 +32,7 @@ enum ImageEncoder {
         nonisolated var hasQuality: Bool {
             switch self {
             case .png: return false
-            case .jpeg, .heic, .webp, .avif: return true
+            case .jpeg, .heic, .avif: return true
             }
         }
 
@@ -45,7 +41,6 @@ enum ImageEncoder {
             case .png: return "PNG"
             case .jpeg: return "JPEG"
             case .heic: return "HEIC"
-            case .webp: return "WebP"
             case .avif: return "AVIF"
             }
         }
@@ -60,7 +55,7 @@ enum ImageEncoder {
         return .png
     }
 
-    /// Lossy quality 0.0–1.0 (used for JPEG, HEIC, WebP, and AVIF)
+    /// Lossy quality 0.0–1.0 (used for JPEG, HEIC and AVIF)
     static var quality: CGFloat {
         if let q = UserDefaults.standard.object(forKey: "imageQuality") as? Double {
             return q.isFinite ? CGFloat(max(0.1, min(1.0, q))) : 0.85
@@ -82,13 +77,10 @@ enum ImageEncoder {
 
     nonisolated static func isFormatAvailable(_ format: Format) -> Bool {
         switch format {
-        case .png, .jpeg, .heic, .webp:
+        case .png, .jpeg, .heic:
             return true
         case .avif:
-            // Native ImageIO AVIF encode support is OS-provided. Keep the UI and
-            // saved default gated so older supported macOS versions never expose
-            // a format that cannot be written.
-            guard #available(macOS 13.0, *) else { return false }
+            // AVIF encoding is provided by ImageIO. Only offer it when ImageIO can write it.
             let identifiers = CGImageDestinationCopyTypeIdentifiers() as NSArray
             return identifiers.contains("public.avif")
         }
@@ -131,59 +123,12 @@ enum ImageEncoder {
             case .jpeg: return ImageEncoder.encodeWithCGImageDestination(cgImage: pixels, type: "public.jpeg", lossyQuality: quality)
             case .heic: return ImageEncoder.encodeWithCGImageDestination(cgImage: pixels, type: "public.heic", lossyQuality: quality)
             case .avif: return ImageEncoder.encodeWithCGImageDestination(cgImage: pixels, type: "public.avif", lossyQuality: quality)
-            case .webp: return ImageEncoder.encodeWebP(cgImage: pixels, quality: quality)
             }
         }
     }
 
     static func encode(_ image: NSImage) -> Data? {
         (try? PreparedImage(image))?.encode()
-    }
-
-    /// Encode WebP via Swift-WebP (libwebp).
-    /// Uses a raw RGBA buffer: the library's NSImage path has a bug
-    /// (assumes RGB stride and logical size instead of pixel size).
-    nonisolated private static func encodeWebP(cgImage srcImage: CGImage, quality: CGFloat) -> Data? {
-        let w = srcImage.width
-        let h = srcImage.height
-        // WebP cannot exceed 16383 px per side; refuse before allocating.
-        guard w > 0, h > 0, w <= webPMaximumDimension, h <= webPMaximumDimension else { return nil }
-        let stride = w * 4
-        let (byteCount, overflow) = stride.multipliedReportingOverflow(by: h)
-        // Fallible allocation: a huge capture must fail the save, not the app.
-        guard !overflow, let memory = calloc(byteCount, 1) else { return nil }
-        defer { free(memory) }
-        // CGContext only draws premultiplied RGBA, but libwebp expects straight
-        // alpha: without undoing it, semi-transparent edges encode darker.
-        let cs = srcImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
-        guard let ctx = CGContext(
-            data: memory, width: w, height: h,
-            bitsPerComponent: 8, bytesPerRow: stride,
-            space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-        ctx.draw(srcImage, in: CGRect(x: 0, y: 0, width: w, height: h))
-        let pixels = memory.bindMemory(to: UInt8.self, capacity: byteCount)
-        unpremultiplyRGBA(UnsafeMutableBufferPointer(start: pixels, count: byteCount))
-
-        let config = WebPEncoderConfig.preset(.picture, quality: Float(quality * 100))
-        return try? WebPEncoder().encode(RGBA: pixels, config: config, originWidth: w, originHeight: h, stride: stride)
-    }
-
-    nonisolated static let webPMaximumDimension = 16_383
-
-    /// Converts premultiplied RGBA8 to straight alpha in place, rounding to nearest.
-    nonisolated static func unpremultiplyRGBA(_ pixels: UnsafeMutableBufferPointer<UInt8>) {
-        var index = 0
-        while index + 3 < pixels.count {
-            let alpha = Int(pixels[index + 3])
-            if alpha > 0 && alpha < 255 {
-                for channel in 0..<3 {
-                    let value = (Int(pixels[index + channel]) * 255 + alpha / 2) / alpha
-                    pixels[index + channel] = UInt8(min(255, value))
-                }
-            }
-            index += 4
-        }
     }
 
     /// Generic CGImageDestination encoder — embeds the source color profile.
