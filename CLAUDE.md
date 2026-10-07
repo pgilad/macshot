@@ -51,7 +51,7 @@ Sources/macshot/
 │   └── SavedCaptureValidation.swift    # Bounds checks for saved captures and sidecars
 ├── Services/                           # Encoding, saving, history, OCR, redaction, shortcuts, settings
 └── UI/
-    ├── Overlay/                        # OverlayView (canvas), OverlayWindowController, window snapping, scroll capture HUD
+    ├── Overlay/                        # OverlayView (canvas) and its OverlayView+Feature.swift extensions, OverlayWindowController, scroll capture HUD
     ├── Editor/                         # EditorView, DetachedEditorWindowController, top bar, centering clip view
     ├── Toolbar/                        # Toolbar definitions, button/strip views, tool options row
     ├── Tools/                          # AnnotationToolHandler implementations, TextEditingController
@@ -77,6 +77,8 @@ Sources/macshot/
 ### OverlayView — the main interaction surface
 
 The core canvas view. Handles the selection state machine, annotation rendering, input routing and toolbar positioning. Tool-specific creation/update/finish logic is delegated to `AnnotationToolHandler` implementations in `UI/Tools/`.
+
+**Files:** `OverlayView.swift` has the stored state, setup, the subclass override points and `reset()`. Each feature is an extension file: `+Drawing`, `+Mouse`, `+Keyboard`, `+Cursor` (cursors and hit testing), `+Selection` (finish, resize and boundary snap), `+ResolutionBox` (size box, presets, locked aspect ratio), `+Toolbar` (layout, actions and the tool options API), `+Annotations` (creation, text, copy and paste, undo and redo, layer cache), `+AnnotationControls`, `+Canvas` (editor transforms, zoom, coordinate transforms, output), `+Guides` (snap guides, auto measure), `+Beautify`, `+Popovers` and `+WindowSnapping`. Stored properties stay in `OverlayView.swift`. A method that `EditorView` or a test overrides must be in the class body: Swift cannot override a method declared in an extension.
 
 **State machine:** `idle` → `selecting` → `selected`
 
