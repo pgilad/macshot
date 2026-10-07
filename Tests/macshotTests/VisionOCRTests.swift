@@ -7,7 +7,7 @@ import Testing
 /// The macOS 27 CI VM cannot compile Vision's accurate text recognition model
 /// (E5RT error), so CI sets MACSHOT_SKIP_ACCURATE_OCR there. The macOS 26 job
 /// and a Mac run these tests.
-private let accurateOCRAvailable = ProcessInfo.processInfo.environment["MACSHOT_SKIP_ACCURATE_OCR"] == nil
+nonisolated private let accurateOCRAvailable = ProcessInfo.processInfo.environment["MACSHOT_SKIP_ACCURATE_OCR"] == nil
 
 final class VisionOCRTests {
     private nonisolated func line(_ text: String) -> OCRTextObservation {

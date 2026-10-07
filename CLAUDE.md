@@ -4,7 +4,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 
 ## Project setup
 
-- **Language:** Swift 6.2 toolchain in the Swift 5 language mode, `defaultIsolation(MainActor.self)` and the upcoming features listed in `Package.swift`.
+- **Language:** Swift 6.2 toolchain in the Swift 6 language mode, `defaultIsolation(MainActor.self)` and the upcoming features listed in `Package.swift`.
 - **UI:** AppKit. Every window is created in code. SwiftUI is used only by `BeautifyRenderer` for `MeshGradient` + `ImageRenderer`.
 - **Target:** macOS 26 and later, tested on 27. Do not add `#available` checks for older releases.
 - **Bundle ID:** `com.pgilad.macshot`.
@@ -141,6 +141,8 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 
 - **Use proper AppKit components:** NSPopover, NSView subclasses for toolbar buttons and strips, NSSlider/NSSegmentedControl/NSButton, NSScrollView for editor zoom, NSTextView for text. Avoid reimplementing standard controls with `draw()` and manual hit testing.
 - **Concurrency:** everything is on the main actor unless it says otherwise. Work that runs on another thread must be `nonisolated` and take only `Sendable` values. SwiftUI rendering stays `@MainActor`.
+  - In the Swift 6 mode every main-actor closure checks at run time that it runs on the main thread, and stops the app if not. A closure that a framework can call on another thread must not be main-actor: make it `@Sendable` or `nonisolated`. NSImage drawing handlers run on the thread that draws the image, so draw such images on the main thread only.
+  - `Timer` blocks and `NSAnimationContext` completion handlers are `@Sendable` but run on the main thread: enter the main actor with `MainActor.assumeIsolated`, and use the stored timer, not the block parameter, inside it.
 - `[weak self]` in escaping closures. Minimal allocations during mouse tracking. Tear down overlay windows and images promptly after capture (`autoreleasepool` for overlay teardown).
 - UserDefaults for all preferences.
 - Extension files (`OverlayView+Feature.swift`) for self-contained features that need OverlayView state.
