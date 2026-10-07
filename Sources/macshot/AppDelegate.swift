@@ -79,112 +79,11 @@ enum CaptureMenuItemID: String, CaseIterable {
     }
 }
 
-import os.log
-
-private let timingLog = OSLog(subsystem: "com.pgilad.macshot", category: "capture-timing")
-
-// MARK: - Signal-safe diagnostic logging
-
-/// Async-signal-safe write(2)-only log fd for Jetsam/SIGTERM diagnostics.
-/// Opened at launch in `AppDelegate.setupSignalHandlers()` and written to
-/// by `sigtermHandler` when the system sends SIGTERM before SIGKILL.
-private var macshotSignalLogFd: Int32 = -1
-
-/// Async-signal-safe SIGTERM handler. Writes a one-line diagnostic to the
-/// pre-opened `macshotSignalLogFd`, then resets the handler to default and
-/// re-raises so `applicationWillTerminate` runs the normal cleanup path.
-private let sigtermHandler: @convention(c) (Int32) -> Void = { _ in
-    guard macshotSignalLogFd >= 0 else {
-        signal(SIGTERM, SIG_DFL)
-        return
-    }
-    // Only async-signal-safe operations below.
-    let msg: StaticString = "SIGTERM received — likely Jetsam memory-pressure kill\n"
-    _ = write(macshotSignalLogFd, msg.utf8Start, msg.utf8CodeUnitCount)
-    _ = close(macshotSignalLogFd)
-    macshotSignalLogFd = -1
-    // Re-raise with default handler so applicationWillTerminate runs.
-    signal(SIGTERM, SIG_DFL)
-    kill(getpid(), SIGTERM)
-}
-
-/// Tracks whether the first (cursor-display) overlay has already been shown,
-/// so only that one marks the capture INTERACTIVE.
+/// Tracks which overlays a progressive capture has already shown.
 private final class ProgressiveOverlayState {
     var shownAny = false
     /// Controllers already showing their display's capture.
     var installed = Set<ObjectIdentifier>()
-}
-
-private final class CaptureTimingTrace: @unchecked Sendable {
-    private struct Entry {
-        let label: String
-        let elapsed: TimeInterval
-        let delta: TimeInterval
-        let thread: String
-    }
-
-    private let lock = NSLock()
-    private let startTime: CFAbsoluteTime
-    private var lastTime: CFAbsoluteTime
-    private var entries: [Entry] = []
-
-    init(startAbsoluteTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()) {
-        self.startTime = startAbsoluteTime
-        self.lastTime = startAbsoluteTime
-        os_log("=== TRACE START ===", log: timingLog, type: .info)
-    }
-
-    func mark(_ label: String) {
-        let now = CFAbsoluteTimeGetCurrent()
-        lock.lock()
-        let entry = Entry(
-            label: label,
-            elapsed: now - startTime,
-            delta: now - lastTime,
-            thread: Thread.isMainThread ? "main" : "bg")
-        entries.append(entry)
-        lastTime = now
-        lock.unlock()
-        os_log("%{public}.1fms (+%{public}.1f) [%{public}@] %{public}@",
-               log: timingLog, type: .info,
-               entry.elapsed * 1000, entry.delta * 1000, entry.thread, label)
-    }
-
-    func measure<T>(_ label: String, _ work: () -> T) -> T {
-        mark("\(label) begin")
-        let result = work()
-        mark("\(label) end")
-        return result
-    }
-
-    func report(finalLabel: String) -> String {
-        mark(finalLabel)
-
-        lock.lock()
-        let snapshot = entries
-        lock.unlock()
-
-        let total = snapshot.last?.elapsed ?? 0
-        var lines: [String] = []
-        lines.append("macshot capture timing — total: \(Self.format(total))")
-        lines.append("")
-        lines.append(" elapsed    delta  thread  event")
-        lines.append("-----------------------------------------------")
-        for entry in snapshot {
-            lines.append(String(
-                format: "%8.1f  %7.1f  %-6@  %@",
-                entry.elapsed * 1000,
-                entry.delta * 1000,
-                entry.thread as NSString,
-                entry.label as NSString))
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    private static func format(_ interval: TimeInterval) -> String {
-        String(format: "%.1f ms", interval * 1000)
-    }
 }
 
 @MainActor
@@ -213,7 +112,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var scrollCapturePreviewPanel: ScrollCapturePreviewPanel?
     private var statusBarMenu: NSMenu?
     private var captureSessionID: UInt = 0
-    private var captureTimingTrace: CaptureTimingTrace?
     /// Launch Services can deliver file/URL open requests before
     /// `applicationDidFinishLaunching`. Defer them until launch setup and the
     /// initial overlay-pool prewarm have completed; otherwise a cold-launch
@@ -270,13 +168,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appNapAssertion = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiatedAllowingIdleSystemSleep],
             reason: "Global hotkey responsiveness")
-
-        // Open a signal-safe log fd and register the SIGTERM handler.
-        // When macOS Jetsam kills the process, any SIGTERM sent before
-        // SIGKILL is captured here, and the re-raise ensures
-        // applicationWillTerminate also fires — giving us two diagnostic
-        // traces to distinguish Jetsam kills from normal termination.
-        setupSignalHandlers()
 
         // Offer to move to /Applications if running from a DMG or translocated path
         promptToMoveToApplicationsIfNeeded()
@@ -453,25 +344,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         prewarmCapturePath()
     }
 
-    /// Captured at the very start of every hotkey callback (before main thread
-    /// dispatch hop). Lets the trace include runloop wake-up delay that
-    /// happens BEFORE startCapture runs.
-    var pendingCaptureEntryTime: CFAbsoluteTime?
-
-    private func makeCaptureTimingTrace() -> CaptureTimingTrace? {
-        let start = pendingCaptureEntryTime ?? CFAbsoluteTimeGetCurrent()
-        pendingCaptureEntryTime = nil
-        // Always-on while we hunt the cold-hotkey latency bug.
-        return CaptureTimingTrace(startAbsoluteTime: start)
-    }
-
-    private func measureCaptureTiming<T>(_ label: String, _ work: () -> T) -> T {
-        if let trace = captureTimingTrace {
-            return trace.measure(label, work)
-        }
-        return work()
-    }
-
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         // Re-launching macshot while it's running: show the menu bar icon
         if UserDefaults.standard.bool(forKey: "hideMenuBarIcon") {
@@ -602,31 +474,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
-        os_log(.fault, log: timingLog, "macshot terminating — thermalState=%d", ProcessInfo.processInfo.thermalState.rawValue)
         for (_, controller) in overlayControllerPool {
             controller.tearDown()
         }
         overlayControllerPool.removeAll()
         HotkeyManager.shared.unregister()
         DistributedNotificationCenter.default().removeObserver(self)
-        if macshotSignalLogFd >= 0 {
-            close(macshotSignalLogFd)
-            macshotSignalLogFd = -1
-        }
-    }
-
-    // MARK: - Signal Handlers
-
-    /// Opens a write-only log fd and registers the SIGTERM handler.
-    /// The fd is used by the signal handler (which can only call
-    /// async-signal-safe functions; os_log is NOT safe in that context).
-    private func setupSignalHandlers() {
-        let logDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Logs/macshot", isDirectory: true)
-        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
-        let logPath = logDir.appendingPathComponent("termination.log")
-        macshotSignalLogFd = open(logPath.path, O_WRONLY | O_CREAT | O_APPEND, 0o644)
-        signal(SIGTERM, sigtermHandler)
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -865,43 +718,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Hotkey
 
     private func registerHotkey() {
-        // Stamp entry time at the very FIRST instruction of each callback so
-        // any runloop wake-up cost before startCapture is attributed.
-        let stamp: () -> Void = { [weak self] in
-            let now = CFAbsoluteTimeGetCurrent()
-            self?.pendingCaptureEntryTime = now
-            os_log("HOTKEY CALLBACK FIRED at abs=%{public}.6f", log: timingLog, type: .info, now)
-        }
         HotkeyManager.shared.registerAll(
             captureArea: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.captureScreenFromHotkey))
+                self?.perform(#selector(AppDelegate.captureScreen))
             },
             captureFullScreen: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.captureFullScreenFromHotkey))
+                self?.perform(#selector(AppDelegate.captureFullScreen))
             },
             historyOverlay: { [weak self] in
                 DispatchQueue.main.async { self?.showHistoryOverlay() }
             },
             captureOCR: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.captureOCRFromHotkey))
+                self?.perform(#selector(AppDelegate.captureOCR))
             },
             quickCapture: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.quickCaptureFromHotkey))
+                self?.perform(#selector(AppDelegate.quickCapture))
             },
             scrollCapture: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.scrollCaptureFromHotkey))
+                self?.perform(#selector(AppDelegate.scrollCapture))
             },
             openFromClipboard: { [weak self] in
                 DispatchQueue.main.async { self?.openImageFromClipboard() }
             },
             captureLastArea: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.captureLastAreaFromHotkey))
+                self?.perform(#selector(AppDelegate.captureLastArea))
             },
             pinFromClipboard: { [weak self] in
                 DispatchQueue.main.async { self?.pinFromClipboard() }
@@ -940,7 +780,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// switches to accessory activation policy and returns focus to
     /// the previous app (or the next regular app in line).
     func returnFocusIfNeeded() {
-        captureTimingTrace?.mark("returnFocusIfNeeded entered")
         let appToActivate = previousApp
         previousApp = nil
         DispatchQueue.main.async { [weak self] in
@@ -955,13 +794,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             if let prev = appToActivate, !prev.isTerminated,
                prev.bundleIdentifier != Bundle.main.bundleIdentifier {
-                self?.captureTimingTrace?.mark("activate previous app")
                 Self.activateApp(prev)
             } else {
                 // No known previous app — yield focus to whatever is frontmost.
                 // Avoid NSApp.hide(nil) which can suspend the Carbon event loop
                 // and break global hotkeys until the app is reactivated.
-                self?.captureTimingTrace?.mark("activate fallback app")
                 Self.activateApp(
                     NSWorkspace.shared.runningApplications.first {
                         $0.isActive && $0.bundleIdentifier != Bundle.main.bundleIdentifier
@@ -980,29 +817,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Capture
 
     @objc private func captureScreen() {
-        beginCaptureArea(fromMenu: true)
-    }
-
-    @objc private func captureScreenFromHotkey() {
-        beginCaptureArea(fromMenu: false)
-    }
-
-    private func beginCaptureArea(fromMenu: Bool) {
-        startCapture(fromMenu: fromMenu)
+        startCapture()
     }
 
     @objc private func captureFullScreen() {
-        beginCaptureFullScreen(fromMenu: true)
-    }
-
-    @objc private func captureFullScreenFromHotkey() {
-        beginCaptureFullScreen(fromMenu: false)
-    }
-
-    private func beginCaptureFullScreen(fromMenu: Bool) {
         guard canStartCapture else { return }
         pendingFullScreen = true
-        startCapture(fromMenu: fromMenu)
+        startCapture()
     }
 
     @objc private func showHistoryOverlay() {
@@ -1020,61 +841,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func captureOCR() {
-        beginCaptureOCR(fromMenu: true)
-    }
-
-    @objc private func captureOCRFromHotkey() {
-        beginCaptureOCR(fromMenu: false)
-    }
-
-    private func beginCaptureOCR(fromMenu: Bool) {
         guard canStartCapture else { return }
         pendingOCRMode = true
-        startCapture(fromMenu: fromMenu)
+        startCapture()
     }
 
     @objc private func quickCapture() {
-        beginQuickCapture(fromMenu: true)
-    }
-
-    @objc private func quickCaptureFromHotkey() {
-        beginQuickCapture(fromMenu: false)
-    }
-
-    private func beginQuickCapture(fromMenu: Bool) {
         guard canStartCapture else { return }
         pendingQuickCaptureMode = true
-        startCapture(fromMenu: fromMenu)
+        startCapture()
     }
 
     @objc private func scrollCapture() {
-        beginScrollCapture(fromMenu: true)
-    }
-
-    @objc private func scrollCaptureFromHotkey() {
-        beginScrollCapture(fromMenu: false)
-    }
-
-    private func beginScrollCapture(fromMenu: Bool) {
         guard canStartCapture else { return }
         pendingScrollCaptureMode = true
-        startCapture(fromMenu: fromMenu)
+        startCapture()
     }
 
     /// Open the capture overlay with the last selection area pre-applied.
     /// If no previous selection exists, falls back to a normal capture.
     @objc private func captureLastArea() {
-        beginCaptureLastArea(fromMenu: true)
-    }
-
-    @objc private func captureLastAreaFromHotkey() {
-        beginCaptureLastArea(fromMenu: false)
-    }
-
-    private func beginCaptureLastArea(fromMenu: Bool) {
         guard canStartCapture else { return }
         pendingRestoreLastArea = true
-        startCapture(fromMenu: fromMenu)
+        startCapture()
     }
     private var pendingRestoreLastArea: Bool = false
 
@@ -1088,12 +877,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Whether a new capture can start right now. The `begin*` entry points set
+    /// Whether a new capture can start right now. The capture entry points set
     /// their pending mode flag (pendingOCRMode, pendingQuickCaptureMode, …) BEFORE
     /// calling `startCapture`. If `startCapture` were to bail at its guards after
     /// the flag was set, the flag would strand and get applied to the *next*
     /// capture — e.g. a stranded `pendingOCRMode` makes a later screenshot spawn
-    /// an unexpected OCR window (issue #276). So each `begin*` checks this FIRST
+    /// an unexpected OCR window (issue #276). So each entry point checks this FIRST
     /// and only sets its flag when a capture will actually run. We must not clear
     /// the flags inside `startCapture`'s `!isCapturing` guard, because during a
     /// delay-capture countdown `isCapturing` is already true and the pending mode
@@ -1102,17 +891,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         !isCapturing
     }
 
-    private func startCapture(fromMenu: Bool = false) {
+    private func startCapture() {
         guard !isCapturing else { return }
-        let trace = makeCaptureTimingTrace()
-        captureTimingTrace = trace
-        trace?.mark("startCapture entered fromMenu=\(fromMenu)")
         isCapturing = true
         captureSessionID &+= 1
         let sessionID = captureSessionID
-        trace?.mark("capture session created id=\(sessionID)")
         previousApp = NSWorkspace.shared.frontmostApplication
-        trace?.mark("frontmost application captured")
         capturedWindowTitle = nil
         let focusedWindowPID = previousApp?.processIdentifier
         resolveFocusedWindowTitleAsync(for: focusedWindowPID, sessionID: sessionID)
@@ -1131,32 +915,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Clean up stale overlays without consuming previousApp — we just set it.
-        measureCaptureTiming("dismiss stale overlays") {
-            dismissOverlays(refocusPreviousApp: false)
-        }
+        dismissOverlays(refocusPreviousApp: false)
         isCapturing = true
 
         // Hide non-overlay titled windows so they don't end up in the screenshot.
         // Restored in dismissOverlays once capture is over.
-        measureCaptureTiming("stash background windows") {
-            stashBackgroundWindows()
-        }
+        stashBackgroundWindows()
 
         // Hide floating thumbnails so they don't appear in the captured image.
-        measureCaptureTiming("hide thumbnails before capture") {
-            for tc in thumbnailControllers { tc.hideWindow() }
-        }
+        for tc in thumbnailControllers { tc.hideWindow() }
 
         let delay = UserDefaults.standard.integer(forKey: "captureDelaySeconds")
-        trace?.mark("capture delay read delay=\(delay)")
 
         if delay > 0 {
-            captureTimingTrace?.mark("showPreCaptureCountdown requested")
             showPreCaptureCountdown(seconds: delay)
             return
         }
 
-        performCapture(fromMenu: fromMenu)
+        performCapture()
     }
 
     private func showPreCaptureCountdown(seconds: Int) {
@@ -1207,7 +983,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.delayCountdownWindow?.orderOut(nil)
                 self?.delayCountdownWindow = nil
                 self?.removeDelayEscMonitors()
-                self?.performCapture(fromMenu: false)
+                self?.performCapture()
             } else {
                 countdownView.remaining = remaining
                 countdownView.needsDisplay = true
@@ -1233,15 +1009,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         pendingRestoreLastArea = false
     }
 
-    private func performCapture(fromMenu: Bool) {
-        captureTimingTrace?.mark("performCapture entered fromMenu=\(fromMenu)")
-        let screens = measureCaptureTiming("NSScreen.screens") {
-            NSScreen.screens
-        }
+    private func performCapture() {
+        let screens = NSScreen.screens
         let mouseLocation = NSEvent.mouseLocation
         let mouseScreen = screens.first { $0.frame.contains(mouseLocation) }
 
-        let trace = captureTimingTrace
         let sessionID = captureSessionID
 
         // Pull (don't construct) overlay controllers from the persistent pool.
@@ -1249,13 +1021,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // rebuild, so WindowServer's per-window cache is already hot.
         var controllers: [OverlayWindowController] = []
         for screen in screens {
-            let controller = measureCaptureTiming("acquire pooled overlay") {
-                pooledController(for: screen)
-            }
+            let controller = pooledController(for: screen)
             controller.overlayDelegate = self
-            if let trace = captureTimingTrace {
-                controller.timingMark = { label in trace.mark(label) }
-            }
             controller.capturedWindowTitle = capturedWindowTitle
             controller.capturedAppName = FilenameFormatter.appNameForTemplate(previousApp?.localizedName)
             if pendingOCRMode { controller.setAutoOCRMode() }
@@ -1277,10 +1044,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // all of them. A display that cannot be captured gets no overlay.
         let progressive = ProgressiveOverlayState()
         Task { [weak self] in
-            trace?.mark("background screenshot begin")
             let captures = await ScreenCaptureManager.captureAllScreensImmediately(
                 priorityScreen: mouseScreen,
-                timing: { label in trace?.mark(label) },
                 onCapture: { capture in
                     guard let self = self, self.isCapturing,
                           self.captureSessionID == sessionID else { return }
@@ -1293,13 +1058,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         captures: [capture],
                         controllers: [controller],
                         mouseScreen: mouseScreen,
-                        applyFullScreen: didApplyFullScreen,
-                        markInteractive: isFirst)
+                        applyFullScreen: didApplyFullScreen)
                     // Showing a later display makes it key; keep the keyboard
                     // on the display the user is working on.
                     if !isFirst { self.refocusOverlay(among: controllers, installed: progressive.installed) }
                 })
-            trace?.mark("background screenshot end count=\(captures.count)")
             guard let self = self, self.isCapturing,
                   self.captureSessionID == sessionID, !progressive.shownAny else { return }
             // No display could be captured: end the capture and show the permission guide.
@@ -1329,11 +1092,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         captures: [ScreenCapture],
         controllers: [OverlayWindowController],
         mouseScreen: NSScreen?,
-        applyFullScreen: Bool,
-        markInteractive: Bool = true
+        applyFullScreen: Bool
     ) {
         if captures.isEmpty {
-            captureTimingTrace?.mark("no captures returned — bailing out")
             // This accepted capture is ending without a selection, so nothing
             // consumes the remaining pending flags. Clear them here so they don't
             // strand into the next capture (e.g. pendingRestoreLastArea, which
@@ -1348,54 +1109,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         for controller in controllers {
             if let image = capturesByScreen[controller.screen] {
-                measureCaptureTiming("set screenshot") {
-                    controller.setScreenshot(image)
-                }
+                controller.setScreenshot(image)
             }
-            measureCaptureTiming("show overlay") {
-                controller.showOverlay()
-            }
+            controller.showOverlay()
             let isMouseScreen = (controller.screen == mouseScreen)
                 || (mouseScreen == nil && controller.screen == NSScreen.main)
             if applyFullScreen && isMouseScreen {
-                measureCaptureTiming("apply full screen selection") {
-                    controller.applyFullScreenSelection()
-                }
+                controller.applyFullScreenSelection()
             }
         }
 
-        guard markInteractive else { return }
-        captureTimingTrace?.mark("overlays installed and shown — INTERACTIVE")
-        // Beacon: schedule periodic main-runloop marks so we can see if the
-        // runloop is alive between INTERACTIVE and the first user event.
-        // Fires every 50ms for 3 seconds, then auto-cancels.
-        if let trace = captureTimingTrace {
-            let report = trace.report(finalLabel: "INTERACTIVE-checkpoint")
-            os_log("=== TRACE @ INTERACTIVE ===\n%{public}@", log: timingLog, type: .info, report)
-            startRunloopBeacon()
-        }
         applyPendingRestoredSelectionIfNeeded()
-    }
-
-    private var runloopBeaconTimer: Timer?
-    private func startRunloopBeacon() {
-        stopRunloopBeacon()
-        var ticks = 0
-        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] t in
-            ticks += 1
-            self?.captureTimingTrace?.mark("BEACON tick=\(ticks)")
-            if ticks >= 60 {  // 3 seconds
-                t.invalidate()
-                self?.runloopBeaconTimer = nil
-            }
-        }
-        timer.tolerance = 0.005
-        RunLoop.main.add(timer, forMode: .common)
-        runloopBeaconTimer = timer
-    }
-    private func stopRunloopBeacon() {
-        runloopBeaconTimer?.invalidate()
-        runloopBeaconTimer = nil
     }
 
     private func applyPendingRestoredSelectionIfNeeded() {
@@ -1471,71 +1195,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func dismissOverlays(refocusPreviousApp: Bool = true) {
-        captureTimingTrace?.mark("dismissOverlays entered refocus=\(refocusPreviousApp)")
         autoreleasepool {
             for controller in overlayControllers {
                 controller.dismiss()
             }
             overlayControllers.removeAll()
         }
-        captureTimingTrace?.mark("overlay controllers dismissed")
         isCapturing = false
         // Restore hidden thumbnails
-        measureCaptureTiming("restore thumbnails") {
-            for tc in thumbnailControllers { tc.showWindow() }
-        }
+        for tc in thumbnailControllers { tc.showWindow() }
         if refocusPreviousApp {
             // Restore AFTER another app takes focus so the stashed windows
             // come back behind it instead of on top. See
-            // `scheduleBackgroundWindowRestore` for the timing logic.
-            captureTimingTrace?.mark("schedule focus restore")
+            // `scheduleBackgroundWindowRestore` for when they return.
             scheduleBackgroundWindowRestore()
             returnFocusIfNeeded()
         } else {
             // No focus switch coming — just bring them back immediately.
-            captureTimingTrace?.mark("restore background windows immediately")
             restoreBackgroundWindowsNow()
-        }
-        captureTimingTrace?.mark("dismissOverlays completed")
-        if refocusPreviousApp, let trace = captureTimingTrace {
-            let report = trace.report(finalLabel: "OVERLAY DISMISSED")
-            os_log("=== FINAL TRACE ===\n%{public}@", log: timingLog, type: .info, report)
-            Self.appendTimingReport(report)
-            captureTimingTrace = nil
-        }
-    }
-
-    /// Path to the rolling timing log inside the sandbox container.
-    /// Real path on disk:
-    ///   ~/Library/Containers/com.pgilad.macshot/Data/Library/Application Support/macshot/timing.log
-    static let timingLogURL: URL = {
-        let fm = FileManager.default
-        let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = support.appendingPathComponent("macshot", isDirectory: true)
-        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("timing.log")
-    }()
-
-    /// Append a timing report to the rolling log file. Each entry is prefixed
-    /// with a wall-clock timestamp so cold vs warm runs are easy to compare.
-    /// Runs synchronously on whatever queue calls it — file writes are fast.
-    static func appendTimingReport(_ report: String) {
-        let ts = ISO8601DateFormatter().string(from: Date())
-        let entry = "\n========== \(ts) ==========\n\(report)\n"
-        let url = timingLogURL
-        do {
-            if FileManager.default.fileExists(atPath: url.path) {
-                let handle = try FileHandle(forWritingTo: url)
-                handle.seekToEndOfFile()
-                if let data = entry.data(using: .utf8) {
-                    handle.write(data)
-                }
-                try? handle.close()
-            } else {
-                try entry.write(to: url, atomically: true, encoding: .utf8)
-            }
-        } catch {
-            os_log("appendTimingReport failed: %{public}@", log: timingLog, type: .error, "\(error)")
         }
     }
 
@@ -1608,51 +1285,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         backgroundWindowRestoreObserver = nil
         if let observer = stashedWindowCloseObserver { NotificationCenter.default.removeObserver(observer) }
         stashedWindowCloseObserver = nil
-    }
-
-    private func finishCaptureTimingReport(_ finalLabel: String) -> String? {
-        #if DEBUG
-        guard let trace = captureTimingTrace else { return nil }
-        let report = trace.report(finalLabel: finalLabel)
-        captureTimingTrace = nil
-        return report
-        #else
-        captureTimingTrace = nil
-        return nil
-        #endif
-    }
-
-    private func showCaptureTimingDialog(_ report: String) {
-        NSApp.activate(ignoringOtherApps: true)
-
-        let alert = NSAlert()
-        alert.messageText = "Capture Timing"
-        alert.informativeText = "Timing for the last screenshot capture."
-        alert.addButton(withTitle: "OK")
-
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 620, height: 360))
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = false
-
-        let textView = NSTextView(frame: scrollView.bounds)
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = true
-        textView.backgroundColor = .textBackgroundColor
-        textView.textColor = .textColor
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        textView.string = report
-        textView.minSize = NSSize(width: 0, height: scrollView.contentSize.height)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = true
-        textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = false
-
-        scrollView.documentView = textView
-        alert.accessoryView = scrollView
-        alert.runModal()
     }
 
     func showFloatingThumbnail(image: NSImage, annotationData: CaptureAnnotationData? = nil, historyEntryID: String? = nil) {
@@ -2102,16 +1734,13 @@ extension AppDelegate: OverlayWindowControllerDelegate {
     }
 
     func overlayDidConfirm(_ controller: OverlayWindowController, capturedImage: NSImage?, annotationData: CaptureAnnotationData?) {
-        captureTimingTrace?.mark("overlayDidConfirm entered image=\(capturedImage != nil)")
         dismissOverlays()
-        captureTimingTrace?.mark("overlayDidConfirm after dismissOverlays")
         if let image = capturedImage {
             let entryID = ScreenshotHistory.shared.add(
                 image: image,
                 rawImage: annotationData?.rawImage,
                 annotations: annotationData?.annotations,
                 editState: annotationData?.editState)
-            captureTimingTrace?.mark("screenshot added to history")
             // Defer thumbnail to next runloop cycle so overlay teardown completes first
             // and the main thread is free for the next capture trigger
             let annData = annotationData
@@ -2130,12 +1759,6 @@ extension AppDelegate: OverlayWindowControllerDelegate {
                     )
                 } else {
                     DetachedEditorWindowController.open(image: image, historyEntryID: entryID, disableBeautify: true)
-                }
-            }
-
-            if let report = finishCaptureTimingReport("timing report generated") {
-                DispatchQueue.main.async { [weak self] in
-                    self?.showCaptureTimingDialog(report)
                 }
             }
         }
@@ -2387,7 +2010,6 @@ extension AppDelegate: OverlayWindowControllerDelegate {
     }
 
     func overlayDidBeginSelection(_ controller: OverlayWindowController) {
-        captureTimingTrace?.mark("user began selection")
         for other in overlayControllers where other !== controller {
             other.clearSelection()
             other.setRemoteSelection(.zero)

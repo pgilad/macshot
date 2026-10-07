@@ -52,34 +52,25 @@ class ScreenCaptureManager {
     /// Returns the captures that succeeded, which can be fewer than the displays.
     static func captureAllScreensImmediately(
         priorityScreen: NSScreen? = nil,
-        timing: (@Sendable (String) -> Void)? = nil,
         onCapture: ((ScreenCapture) -> Void)? = nil
     ) async -> [ScreenCapture] {
         let showsCursor = UserDefaults.standard.bool(forKey: "captureCursor")
         var captures = await captureScreensWithRect(
             showsCursor: showsCursor,
             priorityScreen: priorityScreen,
-            timing: timing,
             onCapture: onCapture)
 
         let missing = NSScreen.screens.filter { screen in !captures.contains { $0.screen === screen } }
         guard !missing.isEmpty else { return captures }
 
-        timing?("SCK filter fallback: shareable content begin missing=\(missing.count)")
         guard
             let content = try? await SCShareableContent.excludingDesktopWindows(
                 false, onScreenWindowsOnly: true)
-        else {
-            timing?("SCK filter fallback: shareable content failed")
-            return captures
-        }
+        else { return captures }
 
         // Capture sequentially: replayd serialises concurrent screenshot requests anyway.
         for screen in missing {
-            guard let display = content.displays.first(where: { $0.displayID == screen.displayID }) else {
-                timing?("SCK filter fallback: no display for screen")
-                continue
-            }
+            guard let display = content.displays.first(where: { $0.displayID == screen.displayID }) else { continue }
             // Capture the whole display, excluding nothing: transient UI must be
             // preserved. The cursor is controlled by showsCursor, not by the window list.
             let filter = SCContentFilter(display: display, excludingWindows: [])
@@ -90,11 +81,7 @@ class ScreenCaptureManager {
             config.showsCursor = showsCursor
             config.captureResolution = .best
             guard let image = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-            else {
-                timing?("SCK filter fallback: capture failed display=\(display.displayID)")
-                continue
-            }
-            timing?("SCK filter fallback: capture end display=\(display.displayID) pixels=\(image.width)x\(image.height)")
+            else { continue }
             let capture = ScreenCapture(screen: screen, image: image)
             captures.append(capture)
             onCapture?(capture)
@@ -105,12 +92,10 @@ class ScreenCaptureManager {
     private static func captureScreensWithRect(
         showsCursor: Bool,
         priorityScreen: NSScreen?,
-        timing: (@Sendable (String) -> Void)?,
         onCapture: ((ScreenCapture) -> Void)?
     ) async -> [ScreenCapture] {
         let screens = NSScreen.screens
 
-        timing?("SCK rect immediate: begin screens=\(screens.count)")
         // SCScreenshotManager.captureScreenshot(rect:) takes CoreGraphics display
         // space: origin at the TOP-left of the primary display, y down. NSScreen
         // frames are AppKit space: origin at the BOTTOM-left of the primary, y up.
@@ -126,15 +111,14 @@ class ScreenCaptureManager {
         // Capture the cursor's display first and hand each capture back through
         // onCapture the moment it lands, so the overlay on the display the user
         // is looking at goes interactive after ONE capture, not after all of them.
-        var order = Array(screens.enumerated())
+        var order = screens
         if let priority = priorityScreen,
-           let hit = order.firstIndex(where: { $0.element === priority }), hit != 0 {
+           let hit = order.firstIndex(where: { $0 === priority }), hit != 0 {
             let entry = order.remove(at: hit)
             order.insert(entry, at: 0)
-            timing?("SCK rect: prioritised cursor display index=\(entry.offset)")
         }
         var captures: [ScreenCapture] = []
-        for (index, screen) in order {
+        for screen in order {
             let appKitFrame = screen.frame
             let rect = CGRect(
                 x: appKitFrame.origin.x,
@@ -150,24 +134,16 @@ class ScreenCaptureManager {
             config.ignoreShadows = false
             config.displayIntent = .local
             config.dynamicRange = .sdr
-            timing?("SCK rect capture begin screen=\(index) rect=\(Int(rect.origin.x)),\(Int(rect.origin.y)) \(Int(rect.width))x\(Int(rect.height))")
             let result = await captureScreenshotOutput(rect: rect, configuration: config)
             guard
                 result.error == nil,
                 let output = result.output,
                 let image = output.sdrImage ?? output.hdrImage
-            else {
-                let reason = result.error?.localizedDescription ?? "no image returned"
-                timing?("SCK rect capture failed screen=\(index) error=\(reason)")
-                continue
-            }
-            timing?("SCK rect capture end screen=\(index) pixels=\(image.width)x\(image.height)")
+            else { continue }
             let capture = ScreenCapture(screen: screen, image: image)
             captures.append(capture)
             onCapture?(capture)
         }
-
-        timing?("SCK rect immediate: end captures=\(captures.count)/\(screens.count)")
         return captures
     }
 
@@ -213,58 +189,43 @@ class ScreenCaptureManager {
 
     static func captureAllScreens(
         excludingWindowNumbers: [CGWindowID] = [],
-        timing: (@Sendable (String) -> Void)? = nil,
         completion: @escaping ([ScreenCapture]) -> Void
     ) {
         Task {
             do {
-                timing?("captureAllScreens Task entered")
                 // When excluding windows, fetch fresh content so newly-created
                 // windows (e.g. thumbnails spawned after the cache was built) are
                 // present in the window list and can actually be excluded.
                 let content: SCShareableContent
                 if !excludingWindowNumbers.isEmpty {
-                    timing?("SCShareableContent fresh begin")
                     content = try await SCShareableContent.excludingDesktopWindows(
                         true, onScreenWindowsOnly: true)
-                    timing?("SCShareableContent fresh end displays=\(content.displays.count) windows=\(content.windows.count)")
                 } else {
-                    timing?("SCShareableContent cached begin")
                     content = try await shareableContent()
-                    timing?("SCShareableContent cached end displays=\(content.displays.count) windows=\(content.windows.count)")
                 }
                 let displays = content.displays
-                timing?("captureAllScreens NSScreen.screens begin")
                 let screens = NSScreen.screens
-                timing?("captureAllScreens NSScreen.screens end count=\(screens.count)")
 
                 // Resolve window numbers to SCWindow objects for exclusion
-                timing?("resolve excluded windows begin count=\(excludingWindowNumbers.count)")
                 let excludedSCWindows: [SCWindow] = excludingWindowNumbers.compactMap { wid in
                     content.windows.first(where: { CGWindowID($0.windowID) == wid })
                 }
-                timing?("resolve excluded windows end matched=\(excludedSCWindows.count)")
 
                 // Build display-screen pairs
-                timing?("build display-screen pairs begin displays=\(displays.count)")
                 var pairs: [(SCDisplay, NSScreen)] = []
                 for display in displays {
                     if let screen = screens.first(where: { $0.displayID == display.displayID }) {
                         pairs.append((display, screen))
                     }
                 }
-                timing?("build display-screen pairs end pairs=\(pairs.count)")
 
                 // Capture all displays concurrently
-                timing?("SCScreenshot capture group begin pairs=\(pairs.count)")
                 let captures = await withTaskGroup(
                     of: ScreenCapture?.self, returning: [ScreenCapture].self
                 ) { group in
-                    for (index, pair) in pairs.enumerated() {
-                        let (display, screen) = pair
+                    for (display, screen) in pairs {
                         group.addTask {
                             // SCScreenshotManager: single-shot API, no stream overhead
-                            timing?("SCScreenshotManager capture begin display=\(index)")
                             let filter = SCContentFilter(
                                 display: display, excludingWindows: excludedSCWindows)
                             let config = SCStreamConfiguration()
@@ -279,11 +240,7 @@ class ScreenCaptureManager {
                                 let image = try? await SCScreenshotManager.captureImage(
                                     contentFilter: filter, configuration: config
                                 )
-                            else {
-                                timing?("SCScreenshotManager capture failed display=\(index)")
-                                return nil
-                            }
-                            timing?("SCScreenshotManager capture end display=\(index) pixels=\(image.width)x\(image.height)")
+                            else { return nil }
                             return ScreenCapture(screen: screen, image: image)
                         }
                     }
@@ -295,11 +252,9 @@ class ScreenCaptureManager {
                     }
                     return results
                 }
-                timing?("SCScreenshot capture group end captures=\(captures.count)")
 
                 await MainActor.run { completion(captures) }
             } catch {
-                timing?("captureAllScreens error \(error.localizedDescription)")
                 #if DEBUG
                     NSLog("macshot: screen capture error: \(error.localizedDescription)")
                 #endif
