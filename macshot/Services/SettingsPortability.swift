@@ -61,9 +61,6 @@ enum SettingsPortability {
         // or wrongly re-enables ones the user disabled. (enabledTools/enabledActions DO transfer.)
         "knownToolRawValues", "knownActionTags",
         "suppressMoveToApplications", "useWindowTitleInFilename",
-        // Account PII / history that isn't credential-named but shouldn't leave the machine.
-        "gdriveUserEmail",
-        "imgbbUploads",   // uploaded image links + delete URLs
     ]
 
     /// Prefixes of OS/framework key families macOS injects into every app's domain. Stable —
@@ -85,9 +82,6 @@ enum SettingsPortability {
     static let secretSubstrings: [String] = [
         "apikey", "secret", "token", "password", "credential",
         "bookmark",
-        // All S3 config (keys, bucket, endpoint, region, prefix, public URL) reveals the
-        // user's private storage infrastructure — treat the whole family as sensitive.
-        "s3",
     ]
 
     static func looksSecret(_ key: String) -> Bool {

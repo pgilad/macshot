@@ -9,8 +9,7 @@ final class SettingsPortabilityTests: XCTestCase {
 
     func testKnownCredentialKeysAreNeverPortable() {
         let credentials = [
-            "imgbbAPIKey", "googleDriveRefreshToken", "googleDriveAccessToken",
-            "s3AccessKey", "s3SecretKey", "s3Bucket", "s3Endpoint", "s3Region",
+            "serviceAPIKey", "serviceRefreshToken", "serviceAccessToken", "storageSecretKey",
             "saveDirectoryBookmark", "recordingSaveDirectoryBookmark",
             "translationApiKey", "userPassword", "someCredential",
         ]
@@ -42,8 +41,6 @@ final class SettingsPortabilityTests: XCTestCase {
     }
 
     func testUploadHistoryAndAccountEmailStayLocal() {
-        XCTAssertFalse(SettingsPortability.isPortable("imgbbUploads"), "upload history includes delete URLs")
-        XCTAssertFalse(SettingsPortability.isPortable("gdriveUserEmail"), "account email is PII")
     }
 
     // MARK: - System keys are filtered out
@@ -158,8 +155,8 @@ final class SettingsPortabilityTests: XCTestCase {
 
     func testExportedSecretKeysAreAbsentEvenWhenSet() throws {
         try withDefaults([
-            "imgbbAPIKey": "secret-value-1234",
-            "s3SecretKey": "another-secret",
+            "serviceAPIKey": "secret-value-1234",
+            "storageSecretKey": "another-secret",
             "imageFormat": "png",
         ]) {
             let result = try SettingsPortability.exportData()

@@ -241,49 +241,6 @@ extension VideoEditorWindowController {
 
     // MARK: Upload
 
-    #if !OFFLINE
-    @objc func uploadAction() {
-        PopoverHelper.dismiss()
-        guard !isExporting else { return }
-        let provider = UserDefaults.standard.string(forKey: "uploadProvider") ?? "imgbb"
-        if provider == "gdrive" && !GoogleDriveUploader.shared.isSignedIn {
-            showStatus(L("Sign in to Google Drive in Settings"), isError: true); return
-        }
-        if provider == "s3" && !S3Uploader.shared.isConfigured {
-            showStatus(L("Configure S3 in Settings"), isError: true); return
-        }
-        if provider != "gdrive" && provider != "s3" {
-            showStatus(L("Video upload requires Google Drive or S3"), isError: true); return
-        }
-        let label = provider == "s3" ? "S3" : "Drive"
-        let progress: @MainActor @Sendable (Double) -> Void = { [weak self] fraction in
-            self?.showStatus(String(format: L("Uploading to %@... %d%%"), label, Int(fraction * 100)), persist: true)
-        }
-        let finish: (Result<String, Error>) -> Void = { [weak self] result in
-            switch result {
-            case .success(let link):
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(link, forType: .string)
-                self?.showStatus(L("Uploaded! Link copied."))
-            case .failure(let error):
-                self?.showStatus(String(format: L("Upload failed: %@"), error.localizedDescription), isError: true)
-            }
-        }
-        let upload: (URL) -> Void = { url in
-            if provider == "s3" {
-                S3Uploader.shared.uploadVideo(url: url, progress: progress, completion: finish)
-            } else {
-                GoogleDriveUploader.shared.uploadVideo(url: url, progress: progress, completion: finish)
-            }
-        }
-        if let savedURL, savedRevision == editorDocument.revision {
-            upload(savedURL)
-            return
-        }
-        showStatus(String(format: L("Uploading to %@... %d%%"), label, 0), persist: true)
-        renderTemporary(exportSettings) { url in upload(url) }
-    }
-    #endif
 
     // MARK: Job lifecycle
 
@@ -413,10 +370,6 @@ final class VideoExportPanel: NSView {
         stack.addArrangedSubview(primary)
         primary.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -32).isActive = true
         var secondary: [NSView] = []
-        #if !OFFLINE
-        secondary.append(VideoPillButton(title: L("Upload"), symbol: "icloud.and.arrow.up", target: controller,
-                                         action: #selector(VideoEditorWindowController.uploadAction)))
-        #endif
         if controller.savedURL != nil {
             secondary.append(VideoPillButton(title: L("Show in Finder"), symbol: "folder", target: controller,
                                              action: #selector(VideoEditorWindowController.revealAction)))

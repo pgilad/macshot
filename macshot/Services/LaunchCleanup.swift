@@ -195,7 +195,6 @@ private struct TmpFileCleaner: LaunchCleaner {
     /// mid-editor-session before `deleteOnClose` fired.
     private let stalePrefixes: [String] = [
         "macshot-clipboard-",
-        "macshot_upload_",
         "macshot_mic_",
         "macshot_cursor_debug",
         "macshot_",
