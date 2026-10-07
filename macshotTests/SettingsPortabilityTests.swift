@@ -10,7 +10,7 @@ final class SettingsPortabilityTests: XCTestCase {
     func testKnownCredentialKeysAreNeverPortable() {
         let credentials = [
             "serviceAPIKey", "serviceRefreshToken", "serviceAccessToken", "storageSecretKey",
-            "saveDirectoryBookmark", "recordingSaveDirectoryBookmark",
+            "saveDirectoryBookmark",
             "translationApiKey", "userPassword", "someCredential",
         ]
         for key in credentials {
@@ -74,7 +74,7 @@ final class SettingsPortabilityTests: XCTestCase {
 
     func testEverydaySettingsArePortable() {
         let settings = [
-            "imageFormat", "imageQuality", "downscaleRetina", "recordingFormat", "recordingFPS",
+            "imageFormat", "imageQuality", "downscaleRetina",
             "historySize", "enabledTools", "beautifyEnabled", "beautifyStyleIndex",
             "currentStrokeWidth", "filenameTemplate", "appLanguage", "autoCopyToClipboard",
             "overlayToolShortcuts", "hotkeyKeyCode", "hotkeyModifiers",

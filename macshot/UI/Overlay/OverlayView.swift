@@ -1,4 +1,3 @@
-import AVFoundation
 import Cocoa
 import UniformTypeIdentifiers
 
@@ -17,16 +16,12 @@ protocol OverlayViewDelegate: AnyObject {
     func overlayViewDidRequestShare(anchorView: NSView?)
     @available(macOS 14.0, *)
     func overlayViewDidRequestRemoveBackground()
-    func overlayViewDidRequestEnterRecordingMode()
-    func overlayViewDidRequestStartRecording(rect: NSRect)
-    func overlayViewDidRequestStopRecording()
     func overlayViewDidRequestDetach()
     func overlayViewDidRequestScrollCapture(rect: NSRect)
     func overlayViewDidRequestStopScrollCapture()
     func overlayViewDidRequestCancelScrollCapture()
     func overlayViewDidRequestToggleAutoScroll()
     func overlayViewDidRequestAccessibilityPermission()
-    func overlayViewDidRequestInputMonitoringPermission()
     func overlayViewDidBeginSelection()
     func overlayViewRemoteSelectionDidChange(_ rect: NSRect)
     func overlayViewDidChangeSnapMode()
@@ -93,10 +88,10 @@ class OverlayView: NSView {
     var timingMark: ((String) -> Void)?
 
     override var isOpaque: Bool {
-        !usesExternalScreenshotPreview && screenshotImage != nil && !isScrollCapturing && !isRecording && !isEditorMode
+        !usesExternalScreenshotPreview && screenshotImage != nil && !isScrollCapturing && !isEditorMode
     }
 
-    /// When true, hides overlay-only toolbar buttons (record, delay, cancel, move, scroll capture).
+    /// When true, hides overlay-only toolbar buttons (delay, cancel, move, scroll capture).
     /// Override point for subclasses. EditorView returns true.
     var isEditorMode: Bool { false }
     /// When true, NSScrollView handles zoom/pan/centering. Coordinate transforms become identity.
@@ -713,53 +708,10 @@ class OverlayView: NSView {
     private var editorTooltipView: NSView?
     private var overlayErrorTimer: Timer? = nil
 
-    // Recording state
-    var hasRecordingInputMonitoringPermission: Bool {
-        KeystrokeOverlay.hasInputMonitoringPermission
-    }
-
-    var isRecording: Bool = false {  // true when recording toolbar is shown (pre-recording setup)
-        didSet {
-            if isRecording {
-                // Clear drawing previews so they don't linger from screenshot mode
-                commitTextFieldIfNeeded()
-                stampPreviewPoint = nil
-                loupeCursorPoint = .zero
-                drawingCursorPoint = .zero
-                autoMeasurePreview = nil
-                hoveredAnnotation = nil
-                selectedAnnotation = nil
-                needsDisplay = true
-                // Unavailable optional overlays stay off. Ask for Input
-                // Monitoring only when the user explicitly enables one, not
-                // merely on entering recording setup with saved preferences.
-                let enabledInputOverlays = ["recordMouseHighlight", "recordKeystroke"].filter {
-                    UserDefaults.standard.bool(forKey: $0)
-                }
-                if !enabledInputOverlays.isEmpty && !hasRecordingInputMonitoringPermission {
-                    for key in enabledInputOverlays { UserDefaults.standard.set(false, forKey: key) }
-                    rebuildToolbarLayout()
-                }
-
-                // Pre-check mic + camera permissions sequentially so dialogs don't overlap
-                preCheckRecordingPermissions()
-            } else {
-                stopMicLevelMonitor()
-                dismissWebcamSetupPreview()
-            }
-        }
-    }
-    var autoEnterRecordingMode: Bool = false  // set by "Record Screen" menu — enters recording mode after selection
     var autoOCRMode: Bool = false  // set by "Capture OCR & QR" menu — triggers OCR immediately after selection
     var autoQuickSaveMode: Bool = false  // set by "Quick Capture" menu — quick-saves immediately after selection
     var autoScrollCaptureMode: Bool = false  // set by "Scroll Capture" menu — triggers scroll capture immediately after selection
     var autoConfirmMode: Bool = false  // set by "Add Capture" — auto-confirms selection (no toolbars, no save)
-
-    // Recording session overrides (popover settings — nil means use UserDefaults default)
-    var sessionRecordingFPS: Int?
-    var sessionRecordingOnStop: String?
-    var sessionRecordingDelay: Int?
-    var sessionHideRecordingHUD: Bool?
 
     // Scroll capture state
     var isScrollCapturing: Bool = false
@@ -1070,10 +1022,6 @@ class OverlayView: NSView {
         }
     }
 
-    // Mic level monitor (volume meter shown when mic is enabled before recording)
-    private var micLevelEngine: AVAudioEngine?
-    private var micLevelTimer: Timer?
-
     private var customColors: [NSColor?] = Array(repeating: nil, count: 7)
     private var selectedColorSlot: Int = 0  // which custom slot is selected for saving colors
     private static var lastUsedOpacity: CGFloat = {
@@ -1084,9 +1032,6 @@ class OverlayView: NSView {
 
     // Radial color wheel (right-click in drawing mode)
     private let colorWheel = ColorWheelRenderer()
-
-    // Webcam setup preview (shown during recording setup when webcam is enabled)
-    private var webcamSetupPreview: WebcamOverlay?
 
     // Handle
     private let handleSize: CGFloat = 10
@@ -1183,7 +1128,7 @@ class OverlayView: NSView {
         }
 
         // Stamp cursor preview — track in view coords (same as annotations)
-        if currentTool == .stamp && currentStampImage != nil && state == .selected && !isRecording
+        if currentTool == .stamp && currentStampImage != nil && state == .selected
             && !showBeautifyInOptionsRow
         {
             let canvasStampPt = viewToCanvas(point)
@@ -1240,7 +1185,7 @@ class OverlayView: NSView {
         }
 
         // Track cursor for loupe live preview (use canvas space for zoom correctness)
-        if state == .selected && currentTool == .loupe && !isRecording && !showBeautifyInOptionsRow {
+        if state == .selected && currentTool == .loupe && !showBeautifyInOptionsRow {
             let canvasPoint = viewToCanvas(point)
             let hoveringLoupe = annotations.reversed().contains {
                 $0.tool == .loupe && $0.hitTest(point: canvasPoint)
@@ -1255,7 +1200,7 @@ class OverlayView: NSView {
         }
 
         // Track cursor for pencil/marker dot preview (canvas space so it scales with zoom)
-        let showDrawingCursor = state == .selected && !isRecording
+        let showDrawingCursor = state == .selected
             && (currentTool == .pencil || currentTool == .marker)
         if showDrawingCursor {
             let canvasPoint = viewToCanvas(point)
@@ -1284,7 +1229,7 @@ class OverlayView: NSView {
         }
 
         // Track cursor for color sampler tool (canvas space)
-        if state == .selected && currentTool == .colorSampler && !isRecording {
+        if state == .selected && currentTool == .colorSampler {
             let canvasPoint = viewToCanvas(point)
             if canvasPoint != colorSamplerPoint {
                 let oldPt = colorSamplerPoint
@@ -1339,7 +1284,7 @@ class OverlayView: NSView {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        if !isEditorMode && !isScrollCapturing && !isRecording && (state == .idle || state == .selecting) {
+        if !isEditorMode && !isScrollCapturing && (state == .idle || state == .selecting) {
             addCursorRect(bounds, cursor: .crosshair)
             if preSelectionPresetButton?.isHidden == false && preSelectionPresetButtonRect.width > 1 {
                 addCursorRect(preSelectionPresetButtonRect, cursor: .arrow)
@@ -1372,11 +1317,6 @@ class OverlayView: NSView {
             return
         }
         if state == .idle || state == .selecting {
-            // Recording mode: arrow cursor (no selection interaction)
-            if isRecording {
-                NSCursor.arrow.set()
-                return
-            }
             // Show resize cursor for remote selection handles
             if state == .idle && remoteSelectionRect.width >= 1 && remoteSelectionRect.height >= 1 {
                 let remoteHandle = hitTestRemoteHandle(at: point)
@@ -1666,10 +1606,7 @@ class OverlayView: NSView {
     /// Override to control selection border drawing. Base returns true when not in editor mode.
     func shouldDrawSelectionBorder() -> Bool { !isEditorMode }
 
-    /// Override to control size label drawing. Base returns true when not recording/scrolling/editing.
-    /// The resolution box shows whenever there's an adjustable selection — including
-    /// recording SETUP (isRecording true). When recording actually starts the
-    /// overlay is dismissed, so no separate gate is needed for that.
+    /// Override to control size label drawing. Base returns true when not scrolling/editing.
     func shouldShowResolutionBox() -> Bool {
         state == .selected && !isScrollCapturing && !isEditorMode
             && selectionRect.width > 1 && selectionRect.height > 1
@@ -1684,8 +1621,8 @@ class OverlayView: NSView {
     /// Override to control whether selection resize handles are active. Base returns true when not in editor mode or scroll capturing.
     func shouldAllowSelectionResize() -> Bool { !isEditorMode && !isScrollCapturing }
 
-    /// Override to control whether a new selection can be started. Base returns true when not recording and not in editor mode.
-    func shouldAllowNewSelection() -> Bool { !isRecording && !isEditorMode }
+    /// Override to control whether a new selection can be started. Base returns true when not in editor mode.
+    func shouldAllowNewSelection() -> Bool { !isEditorMode }
 
     /// Override to change the rect used when drawing the screenshot in `captureSelectedRegion`. Base returns bounds.
     var captureDrawRect: NSRect { isEditorMode ? selectionRect : bounds }
@@ -1721,21 +1658,19 @@ class OverlayView: NSView {
             // During scroll capture: make the entire window transparent so the user sees
             // live screen content everywhere (not just inside the selection).
             context.cgContext.clear(bounds)
-        } else if !isRecording {
-            if let image = screenshotImage {
-                // Screenshot ready — draw it with dark overlay
-                if !usesExternalScreenshotPreview {
-                    image.draw(in: bounds, from: .zero, operation: .copy, fraction: 1.0)
-                }
-                if !selectionOutsideShadowDisabled {
-                    NSColor.black.withAlphaComponent(0.45).setFill()
-                    NSBezierPath(rect: bounds).fill()
-                }
-            } else {
-                // No screenshot yet — fully transparent. User sees live desktop
-                // through the overlay and can start selecting immediately.
-                context.cgContext.clear(bounds)
+        } else if let image = screenshotImage {
+            // Screenshot ready — draw it with dark overlay
+            if !usesExternalScreenshotPreview {
+                image.draw(in: bounds, from: .zero, operation: .copy, fraction: 1.0)
             }
+            if !selectionOutsideShadowDisabled {
+                NSColor.black.withAlphaComponent(0.45).setFill()
+                NSBezierPath(rect: bounds).fill()
+            }
+        } else {
+            // No screenshot yet — fully transparent. User sees live desktop
+            // through the overlay and can start selecting immediately.
+            context.cgContext.clear(bounds)
         }
 
         // Snap-target highlight (drawn before helper text so text appears on top)
@@ -1798,10 +1733,10 @@ class OverlayView: NSView {
             if shouldClipSelectionImage() {
                 context.saveGraphicsState()
                 NSBezierPath(rect: selectionRect).setClip()
-                if !isScrollCapturing, !isRecording, usesExternalScreenshotPreview, zoomLevel == 1 {
+                if !isScrollCapturing, usesExternalScreenshotPreview, zoomLevel == 1 {
                     context.cgContext.setBlendMode(.clear)
                     NSBezierPath(rect: selectionRect).fill()
-                } else if !isScrollCapturing, !isRecording, let image = screenshotImage {
+                } else if !isScrollCapturing, let image = screenshotImage {
                     applyZoomTransform(to: context)
                     image.draw(in: bounds, from: .zero, operation: .copy, fraction: 1.0)
                 }
@@ -1936,15 +1871,12 @@ class OverlayView: NSView {
             }
 
             // Draw selection highlight for selected annotations
-            // Suppressed during recording so annotations are purely visual overlays.
-            if !isRecording {
-                for selected in selectedAnnotations {
-                    // Only draw full controls (handles, buttons) for single selection
-                    drawAnnotationControls(for: selected, fullControls: selectedAnnotations.count == 1)
-                }
-                // Consolidated delete button for multi-selection
-                drawMultiSelectDeleteButton()
+            for selected in selectedAnnotations {
+                // Only draw full controls (handles, buttons) for single selection
+                drawAnnotationControls(for: selected, fullControls: selectedAnnotations.count == 1)
             }
+            // Consolidated delete button for multi-selection
+            drawMultiSelectDeleteButton()
 
             // Pencil/marker cursor dot preview inside zoom transform so it scales with zoom
             if (currentTool == .pencil || currentTool == .marker) && drawingCursorPoint != .zero && currentAnnotation == nil && !isDraggingAnnotation && !isResizingAnnotation && !isRotatingAnnotation {
@@ -1971,8 +1903,8 @@ class OverlayView: NSView {
             // (Text move handle removed — standard annotation chrome handles movement)
 
             // Live beautify preview — draw gradient background, shadow, and rounded image around selection
-            let showBeautifyPreview = beautifyEnabled && state == .selected && !isScrollCapturing && !isRecording
-            let showEffectsPreview = effectsActive && state == .selected && !isScrollCapturing && !isRecording && !beautifyEnabled
+            let showBeautifyPreview = beautifyEnabled && state == .selected && !isScrollCapturing
+            let showEffectsPreview = effectsActive && state == .selected && !isScrollCapturing && !beautifyEnabled
 
             if showBeautifyPreview {
                 context.saveGraphicsState()
@@ -1990,7 +1922,7 @@ class OverlayView: NSView {
                 }
 
                 // Re-draw annotation controls on top of the beautify preview so they stay visible.
-                if !isRecording && !selectedAnnotations.isEmpty {
+                if !selectedAnnotations.isEmpty {
                     context.saveGraphicsState()
                     applyCanvasTransform(to: context)
                     for selected in selectedAnnotations {
@@ -2112,7 +2044,7 @@ class OverlayView: NSView {
             // Resolution box (real NSView) is managed in updateResolutionBox(),
             // called from layout/selection changes — not drawn here.
 
-            // Resize handles (drawn even in recording setup mode, but not during scroll capture)
+            // Resize handles (not during scroll capture)
             if state == .selected && !isEditorMode && !isScrollCapturing {
                 drawResizeHandles()
             }
@@ -2207,7 +2139,7 @@ class OverlayView: NSView {
 
             // Stamp cursor preview
             if let previewPt = stampPreviewPoint, let img = currentStampImage,
-                currentTool == .stamp, !isRecording
+                currentTool == .stamp
             {
                 let stampSize: CGFloat = currentStampSize
                 let aspect = img.size.width / max(img.size.height, 1)
@@ -2231,9 +2163,6 @@ class OverlayView: NSView {
                 if !isEditorMode { repositionToolbars() }
                 // Toolbars are real NSView subviews (ToolbarStripView) — no custom drawing needed.
                 // Tool options row handled by ToolOptionsRowView (real NSView subview)
-                if !toolHasOptionsRow || isRecording {
-                    // options row rect managed by ToolOptionsRowView
-                }
 
                 // Color picker popover
 
@@ -2834,7 +2763,6 @@ class OverlayView: NSView {
         state == .idle
             && screenshotImage != nil
             && !isEditorMode
-            && !isRecording
             && !autoOCRMode
             && remoteSelectionRect.width < 1
             && remoteSelectionRect.height < 1
@@ -5111,7 +5039,7 @@ class OverlayView: NSView {
         bottomButtons = ToolbarLayout.bottomButtons(
             selectedTool: currentTool, selectedColor: currentColor,
             beautifyEnabled: beautifyEnabled, beautifyStyleIndex: beautifyStyleIndex,
-            hasAnnotations: movableAnnotations, isRecording: isRecording,
+            hasAnnotations: movableAnnotations,
             effectsActive: effectsActive
         )
         if showBeautifyInOptionsRow {
@@ -5125,7 +5053,7 @@ class OverlayView: NSView {
         }
         rightButtons = ToolbarLayout.rightButtons(
             beautifyEnabled: beautifyEnabled, beautifyStyleIndex: beautifyStyleIndex,
-            hasAnnotations: movableAnnotations, isRecording: isRecording,
+            hasAnnotations: movableAnnotations,
             isEditorMode: isEditorMode)
 
         // Create strip views if needed — add to chrome parent (window content) when in scroll view
@@ -5236,7 +5164,7 @@ class OverlayView: NSView {
                 width: fromRect.width + (toRect.width - fromRect.width) * eased,
                 height: fromRect.height + (toRect.height - fromRect.height) * eased
             )
-        } else if beautifyEnabled && !isScrollCapturing && !isRecording {
+        } else if beautifyEnabled && !isScrollCapturing {
             anchorRect = expandedAnchor
         } else {
             anchorRect = selectionRect
@@ -6764,11 +6692,6 @@ class OverlayView: NSView {
             let point = convert(win.mouseLocationOutsideOfEventStream, from: nil)
             updateCursorForPoint(point)
         }
-        // Auto-enter recording mode if triggered from "Record Screen"
-        if autoEnterRecordingMode {
-            autoEnterRecordingMode = false
-            overlayDelegate?.overlayViewDidRequestEnterRecordingMode()
-        }
         // Auto-trigger OCR if triggered from "Capture OCR & QR"
         if autoOCRMode {
             autoOCRMode = false
@@ -6965,7 +6888,7 @@ class OverlayView: NSView {
         // Anchored selection toggle: right-click in idle starts no-hold
         // tracking from that point; a second right-click while tracking
         // commits. Left-click during tracking also commits (handled in
-        // mouseDown). ESC cancels. Locked during recording and editor mode.
+        // mouseDown). ESC cancels. Locked in editor mode.
         if isAnchoredSelecting {
             updateSelectionRect(to: point, shiftHeld: event.modifierFlags.contains(.shift), modifiers: event.modifierFlags)
             commitAnchoredSelection()
@@ -7410,7 +7333,6 @@ class OverlayView: NSView {
             rebuildToolbarLayout()
         }
         overlayDelegate?.overlayViewSelectionDidChange(selectionRect)
-        if webcamSetupPreview != nil { repositionWebcamSetupPreview() }
         refreshResolutionAndToolbarLayout()
         updateCursorForCurrentTool()
         showOverlayError(L("Selection adjusted"))
@@ -7549,15 +7471,6 @@ class OverlayView: NSView {
         }
     }
 
-    private func eventMatchesToolShortcut(_ event: NSEvent, action: ToolShortcutManager.Action) -> Bool {
-        let modifiers = KeyboardShortcutMatcher.modifiers(in: event)
-        guard !modifiers.contains(.command),
-              !modifiers.contains(.option),
-              !modifiers.contains(.control) else { return false }
-        let shortcut = ToolShortcutManager.key(for: action).lowercased()
-        return !shortcut.isEmpty && KeyboardShortcutMatcher.toolCharacters(for: event).contains(shortcut)
-    }
-
     private func eventEndsKeyboardMoveSelection(_ event: NSEvent) -> Bool {
         if keyboardMoveSelectionShortcut == " " {
             return event.keyCode == 49
@@ -7623,7 +7536,6 @@ class OverlayView: NSView {
             x: point.x - keyboardMoveSelectionOffset.x,
             y: point.y - keyboardMoveSelectionOffset.y)
         selectionRect = boundarySnappedMovedRect(moved, modifiers: modifiers)
-        if webcamSetupPreview != nil { repositionWebcamSetupPreview() }
         updateResolutionBox()
         repositionToolbars()
         showMoveDragTooltip(anchor: moveSelectionButtonView())
@@ -7808,286 +7720,9 @@ class OverlayView: NSView {
             }
             menu.popUp(
                 positioning: nil, at: NSPoint(x: 0, y: anchorView.bounds.height), in: anchorView)
-        case .micAudio:
-            showMicDeviceMenu(anchorView: anchorView)
-        case .showKeystrokes:
-            showKeystrokeModeMenu(anchorView: anchorView)
-        case .webcam:
-            showWebcamDeviceMenu(anchorView: anchorView)
         default:
             break
         }
-    }
-
-    private func showKeystrokeModeMenu(anchorView: NSView) {
-        let menu = NSMenu()
-        let allKeys = UserDefaults.standard.bool(forKey: "keystrokeShowAll")
-
-        let shortcutsItem = NSMenuItem(title: L("Shortcuts Only"), action: #selector(keystrokeModeShortcuts), keyEquivalent: "")
-        shortcutsItem.target = self
-        if !allKeys { shortcutsItem.state = .on }
-        menu.addItem(shortcutsItem)
-
-        let allItem = NSMenuItem(title: L("All Keystrokes"), action: #selector(keystrokeModeAll), keyEquivalent: "")
-        allItem.target = self
-        if allKeys { allItem.state = .on }
-        menu.addItem(allItem)
-
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: anchorView.bounds.height), in: anchorView)
-    }
-
-    @objc private func keystrokeModeShortcuts() {
-        UserDefaults.standard.set(false, forKey: "keystrokeShowAll")
-    }
-
-    @objc private func keystrokeModeAll() {
-        UserDefaults.standard.set(true, forKey: "keystrokeShowAll")
-    }
-
-    private func showMicDeviceMenu(anchorView: NSView) {
-        let menu = NSMenu()
-        let savedUID = MicrophoneDeviceSelection.persistentDeviceID(UserDefaults.standard.string(forKey: "selectedMicDeviceUID"))
-        let micOn = UserDefaults.standard.bool(forKey: "recordMicAudio")
-
-        // "None" option — turns off mic recording
-        let noneItem = NSMenuItem(title: L("None"), action: #selector(micMenuNone), keyEquivalent: "")
-        noneItem.target = self
-        if !micOn { noneItem.state = .on }
-        menu.addItem(noneItem)
-        menu.addItem(NSMenuItem.separator())
-
-        // List available audio input devices (filter out virtual aggregate devices)
-        let devices = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInMicrophone, .externalUnknown],
-            mediaType: .audio, position: .unspecified).devices
-            .filter { !MicrophoneDeviceSelection.isTemporaryDefaultDevice($0.uniqueID) }
-        for device in devices {
-            let item = NSMenuItem(title: device.localizedName, action: #selector(micMenuSelectDevice(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = device.uniqueID
-            if micOn && (savedUID == device.uniqueID || (savedUID == nil && device == AVCaptureDevice.default(for: .audio))) {
-                item.state = .on
-            }
-            menu.addItem(item)
-        }
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: anchorView.bounds.height), in: anchorView)
-    }
-
-    @objc private func micMenuNone() {
-        UserDefaults.standard.set(false, forKey: "recordMicAudio")
-        stopMicLevelMonitor()
-        rebuildToolbarLayout()
-    }
-
-    @objc private func micMenuSelectDevice(_ sender: NSMenuItem) {
-        guard let uid = sender.representedObject as? String else { return }
-        UserDefaults.standard.set(uid, forKey: "selectedMicDeviceUID")
-        UserDefaults.standard.set(true, forKey: "recordMicAudio")
-        rebuildToolbarLayout()
-        startMicLevelMonitor()
-    }
-
-    // MARK: - Recording Permission Pre-checks
-
-    /// Sequentially request mic and camera permissions so system dialogs don't overlap behind the overlay.
-    private func preCheckRecordingPermissions() {
-        checkMicPermission { [weak self] in
-            self?.checkCameraPermission()
-        }
-    }
-
-    private func checkMicPermission(then next: @escaping () -> Void) {
-        guard UserDefaults.standard.bool(forKey: "recordMicAudio") else { next(); return }
-        let status = AVCaptureDevice.authorizationStatus(for: .audio)
-        if status == .authorized {
-            startMicLevelMonitor()
-            next()
-        } else if status == .notDetermined {
-            let savedLevel = window?.level
-            window?.level = .normal
-            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-                DispatchQueue.main.async {
-                    if let saved = savedLevel { self?.window?.level = saved }
-                    if granted {
-                        self?.startMicLevelMonitor()
-                    } else {
-                        UserDefaults.standard.set(false, forKey: "recordMicAudio")
-                        self?.rebuildToolbarLayout()
-                    }
-                    next()
-                }
-            }
-        } else {
-            UserDefaults.standard.set(false, forKey: "recordMicAudio")
-            rebuildToolbarLayout()
-            showMicPermissionAlert()
-            next()
-        }
-    }
-
-    private func checkCameraPermission() {
-        guard UserDefaults.standard.bool(forKey: "recordWebcam") else { return }
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        if status == .authorized {
-            showWebcamSetupPreview()
-        } else if status == .notDetermined {
-            let savedLevel = window?.level
-            window?.level = .normal
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                DispatchQueue.main.async {
-                    if let saved = savedLevel { self?.window?.level = saved }
-                    if granted {
-                        self?.showWebcamSetupPreview()
-                    } else {
-                        UserDefaults.standard.set(false, forKey: "recordWebcam")
-                        self?.rebuildToolbarLayout()
-                    }
-                }
-            }
-        } else {
-            UserDefaults.standard.set(false, forKey: "recordWebcam")
-            rebuildToolbarLayout()
-        }
-    }
-
-    // MARK: - Webcam Toggle & Device Menu
-
-    private func toggleWebcamOverlay() {
-        let current = UserDefaults.standard.bool(forKey: "recordWebcam")
-        if current {
-            UserDefaults.standard.set(false, forKey: "recordWebcam")
-            dismissWebcamSetupPreview()
-            rebuildToolbarLayout()
-            return
-        }
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            UserDefaults.standard.set(true, forKey: "recordWebcam")
-            rebuildToolbarLayout()
-            showWebcamSetupPreview()
-        case .notDetermined:
-            let savedLevel = window?.level
-            window?.level = .normal
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                DispatchQueue.main.async {
-                    if let saved = savedLevel { self?.window?.level = saved }
-                    if granted {
-                        UserDefaults.standard.set(true, forKey: "recordWebcam")
-                        self?.showWebcamSetupPreview()
-                    }
-                    self?.rebuildToolbarLayout()
-                }
-            }
-        case .denied, .restricted:
-            showCameraPermissionAlert()
-        @unknown default:
-            break
-        }
-    }
-
-    private func showWebcamSetupPreview() {
-        guard webcamSetupPreview == nil else { return }
-        guard let screen = window?.screen ?? NSScreen.main else { return }
-
-        let overlay = WebcamOverlay(screen: screen)
-        configureWebcamSetupPreview(overlay, on: screen)
-        overlay.startPreview(deviceUID: UserDefaults.standard.string(forKey: "selectedCameraDeviceUID"))
-        overlay.setDraggable(true)
-        overlay.orderFront(nil)
-        webcamSetupPreview = overlay
-    }
-
-    private func dismissWebcamSetupPreview() {
-        webcamSetupPreview?.stopPreview()
-        webcamSetupPreview?.close()
-        webcamSetupPreview = nil
-    }
-
-    /// Detach the setup preview so it can be reused during recording (avoids camera restart).
-    func detachWebcamSetupPreview() -> WebcamOverlay? {
-        let overlay = webcamSetupPreview
-        webcamSetupPreview = nil
-        return overlay
-    }
-
-    func updateWebcamSetupPreview() {
-        guard let overlay = webcamSetupPreview,
-              let screen = window?.screen ?? NSScreen.main else { return }
-        configureWebcamSetupPreview(overlay, on: screen)
-    }
-
-    /// Reposition the webcam preview to follow the current selection without restarting the camera.
-    private func repositionWebcamSetupPreview() {
-        guard let overlay = webcamSetupPreview,
-              let screen = window?.screen ?? NSScreen.main else { return }
-        configureWebcamSetupPreview(overlay, on: screen)
-    }
-
-    private func configureWebcamSetupPreview(_ overlay: WebcamOverlay, on screen: NSScreen) {
-        let position = WebcamPosition(rawValue: UserDefaults.standard.string(forKey: "webcamPosition") ?? "bottomRight") ?? .bottomRight
-        let shape = WebcamShape(rawValue: UserDefaults.standard.string(forKey: "webcamShape") ?? "circle") ?? .circle
-        let screenOrigin = screen.frame.origin
-        let screenRect = NSRect(
-            x: selectionRect.origin.x + screenOrigin.x,
-            y: selectionRect.origin.y + screenOrigin.y,
-            width: selectionRect.width,
-            height: selectionRect.height)
-        overlay.configure(
-            position: position, size: WebcamSize.savedPoints,
-            shape: shape, recordingRect: screenRect)
-    }
-
-    private func showCameraPermissionAlert() {
-        let alert = NSAlert()
-        alert.messageText = L("Camera Access Required")
-        alert.informativeText = L("macshot needs camera permission for the webcam overlay. Open System Settings to grant access.")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: L("Open Settings"))
-        alert.addButton(withTitle: L("Cancel"))
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-    }
-
-    private func showWebcamDeviceMenu(anchorView: NSView) {
-        let menu = NSMenu()
-        let savedUID = UserDefaults.standard.string(forKey: "selectedCameraDeviceUID")
-        let webcamOn = UserDefaults.standard.bool(forKey: "recordWebcam")
-
-        let noneItem = NSMenuItem(title: L("None"), action: #selector(webcamMenuNone), keyEquivalent: "")
-        noneItem.target = self
-        if !webcamOn { noneItem.state = .on }
-        menu.addItem(noneItem)
-        menu.addItem(NSMenuItem.separator())
-
-        let devices = WebcamOverlay.availableCameras
-        for device in devices {
-            let item = NSMenuItem(title: device.localizedName, action: #selector(webcamMenuSelectDevice(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = device.uniqueID
-            if webcamOn && (savedUID == device.uniqueID || (savedUID == nil && device == AVCaptureDevice.default(for: .video))) {
-                item.state = .on
-            }
-            menu.addItem(item)
-        }
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: anchorView.bounds.height), in: anchorView)
-    }
-
-    @objc private func webcamMenuNone() {
-        UserDefaults.standard.set(false, forKey: "recordWebcam")
-        dismissWebcamSetupPreview()
-        rebuildToolbarLayout()
-    }
-
-    @objc private func webcamMenuSelectDevice(_ sender: NSMenuItem) {
-        guard let uid = sender.representedObject as? String else { return }
-        UserDefaults.standard.set(uid, forKey: "selectedCameraDeviceUID")
-        UserDefaults.standard.set(true, forKey: "recordWebcam")
-        rebuildToolbarLayout()
-        updateWebcamSetupPreview()
     }
 
     /// Update the color swatch on the main toolbar's color button without a full rebuild.
@@ -8165,7 +7800,6 @@ class OverlayView: NSView {
             }
             let startPoint = overlayPoint(fromScreen: NSEvent.mouseLocation)
             let offset = NSPoint(x: startPoint.x - selectionRect.origin.x, y: startPoint.y - selectionRect.origin.y)
-            let hasWebcam = webcamSetupPreview != nil
             while true {
                 guard let event = NSApp.nextEvent(matching: [.leftMouseDragged, .leftMouseUp],
                                                   until: .distantFuture, inMode: .eventTracking, dequeue: true) else { break }
@@ -8174,7 +7808,6 @@ class OverlayView: NSView {
                 moved.origin = NSPoint(x: point.x - offset.x, y: point.y - offset.y)
                 // Snap the moved selection to nearby image edges (Option bypasses).
                 selectionRect = boundarySnappedMovedRect(moved, modifiers: event.modifierFlags)
-                if hasWebcam { repositionWebcamSetupPreview() }
                 updateResolutionBox()  // track the box live during the move drag
                 repositionToolbars()
                 showMoveDragTooltip(anchor: moveButton)
@@ -8238,28 +7871,6 @@ class OverlayView: NSView {
             needsDisplay = true
         case .delayCapture:
             break
-        case .record:
-            // Enter recording mode — shows recording setup toolbar
-            overlayDelegate?.overlayViewDidRequestEnterRecordingMode()
-        case .startRecord:
-            // Start recording — overlay will be dismissed by AppDelegate
-            overlayDelegate?.overlayViewDidRequestStartRecording(rect: selectionRect)
-        case .stopRecord:
-            // Exit recording mode — dismiss overlay entirely (user changed mind)
-            isRecording = false
-            overlayDelegate?.overlayViewDidCancel()
-        case .mouseHighlight:
-            toggleInputMonitoredRecordingOverlay(forKey: "recordMouseHighlight")
-        case .showKeystrokes:
-            toggleInputMonitoredRecordingOverlay(forKey: "recordKeystroke")
-        case .systemAudio:
-            let current = UserDefaults.standard.bool(forKey: "recordSystemAudio")
-            UserDefaults.standard.set(!current, forKey: "recordSystemAudio")
-            rebuildToolbarLayout()
-        case .micAudio:
-            toggleMicAudio()
-        case .webcam:
-            toggleWebcamOverlay()
         case .cancel:
             overlayDelegate?.overlayViewDidCancel()
         case .detach:
@@ -8268,9 +7879,6 @@ class OverlayView: NSView {
             overlayDelegate?.overlayViewDidRequestScrollCapture(rect: selectionRect)
         case .addCapture:
             overlayDelegate?.overlayViewDidRequestAddCapture()
-        case .recordSettings:
-            let gearBtn = rightStripView?.buttonViews.first { if case .recordSettings = $0.action { return true }; return false }
-            showRecordingSettingsPopover(anchorView: gearBtn)
         }
 
         // Rebuild toolbars to reflect new state (selected tool, color, etc.)
@@ -8376,9 +7984,6 @@ class OverlayView: NSView {
     // MARK: - Annotation Creation
 
     private func startAnnotation(at point: NSPoint) {
-        // No drawing in recording setup mode
-        guard !isRecording else { return }
-
         // Click-to-select: if clicking on an existing annotation, select it instead of
         // starting a new annotation. Pencil and marker use long-press instead (so taps
         // and drags always draw, even single dots).
@@ -8780,17 +8385,6 @@ class OverlayView: NSView {
         needsDisplay = true
     }
 
-    private func toggleInputMonitoredRecordingOverlay(forKey key: String) {
-        let current = UserDefaults.standard.bool(forKey: key)
-        // Turning an option off must still work after access is revoked.
-        guard current || hasRecordingInputMonitoringPermission else {
-            overlayDelegate?.overlayViewDidRequestInputMonitoringPermission()
-            return
-        }
-        UserDefaults.standard.set(!current, forKey: key)
-        rebuildToolbarLayout()
-    }
-
     func commitTextFieldIfNeeded() {
         guard textEditor.isEditing else { return }
         textToolDoubleClickCopyDeadline = 0
@@ -8798,133 +8392,6 @@ class OverlayView: NSView {
         window?.makeFirstResponder(self)
         rebuildToolbarLayout()
         needsDisplay = true
-    }
-
-    // MARK: - Mic Permission & Toggle
-
-    private func toggleMicAudio() {
-        let current = UserDefaults.standard.bool(forKey: "recordMicAudio")
-        if current {
-            // Turning off — no permission needed
-            UserDefaults.standard.set(false, forKey: "recordMicAudio")
-            stopMicLevelMonitor()
-            rebuildToolbarLayout()
-            return
-        }
-        // Turning on — check mic permission first
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            UserDefaults.standard.set(true, forKey: "recordMicAudio")
-            rebuildToolbarLayout()
-            startMicLevelMonitor()
-        case .notDetermined:
-            // Lower overlay so the system permission dialog is clickable
-            let savedLevel = window?.level
-            window?.level = .normal
-            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-                DispatchQueue.main.async {
-                    if let saved = savedLevel { self?.window?.level = saved }
-                    if granted {
-                        UserDefaults.standard.set(true, forKey: "recordMicAudio")
-                        self?.startMicLevelMonitor()
-                    }
-                    self?.rebuildToolbarLayout()
-                }
-            }
-        case .denied, .restricted:
-            showMicPermissionAlert()
-        @unknown default:
-            break
-        }
-    }
-
-    private func showMicPermissionAlert() {
-        let alert = NSAlert()
-        alert.messageText = L("Microphone Access Required")
-        alert.informativeText =
-            L("macshot needs microphone permission to record voice audio. Open System Settings to grant access.")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: L("Open Settings"))
-        alert.addButton(withTitle: L("Cancel"))
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(
-                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
-            ) {
-                NSWorkspace.shared.open(url)
-            }
-        }
-    }
-
-    // MARK: - Mic Level Monitor
-
-    func startMicLevelMonitor() {
-        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
-        stopMicLevelMonitor()
-
-        let engine = AVAudioEngine()
-        let inputNode = engine.inputNode
-        guard MicrophoneDeviceSelection.configureLevelMeter(inputNode,
-            savedID: UserDefaults.standard.string(forKey: "selectedMicDeviceUID")) else { return }
-
-        let format = inputNode.outputFormat(forBus: 0)
-        guard format.sampleRate > 0 && format.channelCount > 0 else { return }
-
-        var peakLevel: Float = 0
-        let lock = NSLock()
-
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
-            guard let channelData = buffer.floatChannelData else { return }
-            let frames = Int(buffer.frameLength)
-            var peak: Float = 0
-            for i in 0..<frames {
-                let val = abs(channelData[0][i])
-                if val > peak { peak = val }
-            }
-            lock.lock()
-            peakLevel = peak
-            lock.unlock()
-        }
-
-        do {
-            try engine.start()
-        } catch {
-            return
-        }
-        micLevelEngine = engine
-
-        // Poll level at ~20fps and drive the mic button's built-in level meter
-        var displayLevel: Float = 0
-        micLevelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            lock.lock()
-            let level = peakLevel
-            peakLevel = 0
-            lock.unlock()
-            // Smooth: fast attack, slow release
-            displayLevel = level > displayLevel ? level : displayLevel * 0.8 + level * 0.2
-            self?.setMicButtonLevel(displayLevel)
-        }
-    }
-
-    func stopMicLevelMonitor() {
-        micLevelTimer?.invalidate()
-        micLevelTimer = nil
-        micLevelEngine?.inputNode.removeTap(onBus: 0)
-        micLevelEngine?.stop()
-        micLevelEngine = nil
-        setMicButtonLevel(0)
-    }
-
-    private func setMicButtonLevel(_ level: Float) {
-        // Find mic button in both toolbar strips
-        let strips: [ToolbarStripView?] = [bottomStripView, rightStripView]
-        for strip in strips {
-            if let btn = strip?.buttonViews.first(where: {
-                if case .micAudio = $0.action { return true }; return false
-            }) {
-                btn.micLevel = level
-            }
-        }
     }
 
     // MARK: - Context Menu Actions
@@ -9086,18 +8553,6 @@ class OverlayView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
-        // Recording setup allows Move and Escape, without activating screenshot
-        // tools or output shortcuts. The actual recording uses a separate HUD.
-        if isRecording {
-            if event.keyCode == 53 { // Escape
-                handleToolbarAction(.stopRecord)
-            } else if !event.isARepeat, !isKeyboardMoveSelectionActive,
-                      eventMatchesToolShortcut(event, action: .moveSelection) {
-                _ = startKeyboardMoveSelection()
-            }
-            return
-        }
-
         // Character-based so the shortcut follows QWERTZ/AZERTY/Dvorak.
         if state == .idle && snapMode != .off
             && KeyboardShortcutMatcher.matches(event, character: "f", modifiers: [])
@@ -10149,15 +9604,8 @@ class OverlayView: NSView {
         }
         browserAccessibilityRetryWorkItems.removeAll()
         Self.resetBrowserAccessibilityPreparation()
-        isRecording = false
-        // Webcam setup preview (if any) — clear so a reused overlay doesn't
-        // show a stale camera feed on the next session.
-        webcamSetupPreview?.stopPreview()
-        webcamSetupPreview?.close()
-        webcamSetupPreview = nil
         // Auto-mode flags — these are set per-session by the controller and
         // must NOT leak into the next session.
-        autoEnterRecordingMode = false
         autoOCRMode = false
         autoQuickSaveMode = false
         autoScrollCaptureMode = false

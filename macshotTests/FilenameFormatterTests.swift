@@ -176,17 +176,6 @@ final class FilenameFormatterTests: XCTestCase {
         XCTAssertTrue(name.hasPrefix("Screenshot"), "expected the default template, got \(name)")
     }
 
-    func testAFallbackThatAlsoRendersEmptyEndsAtUntitled() {
-        let name = FilenameFormatter.format(template: "\u{1}", date: fixedDate, fallback: "\u{2}")
-        XCTAssertEqual(name, "Untitled", "there must always be some name to save under")
-    }
-
-    func testRecordingTemplateDefaultIsDistinct() {
-        XCTAssertNotEqual(FilenameFormatter.defaultRecordingTemplate, FilenameFormatter.defaultTemplate)
-        XCTAssertTrue(FilenameFormatter.format(
-            template: FilenameFormatter.defaultRecordingTemplate, date: fixedDate).hasPrefix("Recording"))
-    }
-
     // MARK: - Defaults-driven convenience
 
     func testDefaultImageFilenameUsesTheSavedTemplateAndExtension() {

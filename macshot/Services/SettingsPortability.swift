@@ -23,7 +23,7 @@ import Foundation
 ///   - `looksSecret` fails **closed**: any credential-named key (even a future provider's) is
 ///     never exported, so the shape rule can't accidentally leak a secret.
 ///   - `excludedKeys` lists the handful of macshot-owned keys that DO match the shape rule but
-///     are machine-specific (bookmarks, geometry, device UIDs) or migration bookkeeping.
+///     are machine-specific (bookmarks, geometry) or migration bookkeeping.
 enum SettingsPortability {
 
     // MARK: - Envelope
@@ -45,18 +45,15 @@ enum SettingsPortability {
 
     // MARK: - Exclusions
 
-    /// Keys that must never transfer: machine-/path-specific state, hardware IDs, transient
-    /// geometry, and internal migration bookkeeping. (Secrets are handled by `looksSecret`.)
+    /// Keys that must never transfer: machine-/path-specific state, transient geometry, and
+    /// internal migration bookkeeping. (Secrets are handled by `looksSecret`.)
     static let excludedKeys: Set<String> = [
         // Save directories: paths + security-scoped bookmarks are machine-specific.
         "saveDirectory", "saveDirectoryBookmark",
-        "recordingSaveDirectory", "recordingSaveDirectoryBookmark",
         // Selection geometry / last-used resolution: tied to this machine's displays.
         "lastSelectionRect", "lastSelectionScreenFrame",
         "preSelectionResolutionPresetKind", "preSelectionResolutionPresetAspect",
         "preSelectionResolutionPresetWidth", "preSelectionResolutionPresetHeight",
-        // Hardware device identifiers.
-        "selectedCameraDeviceUID", "selectedMicDeviceUID",
         // Internal migration bookkeeping — transferring stale values hides new tools/actions
         // or wrongly re-enables ones the user disabled. (enabledTools/enabledActions DO transfer.)
         "knownToolRawValues", "knownActionTags",

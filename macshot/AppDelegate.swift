@@ -2,7 +2,6 @@ import Cocoa
 import Carbon
 import ServiceManagement
 import UniformTypeIdentifiers
-import AVFoundation
 import Vision
 import WebP
 
@@ -205,23 +204,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var delayCountdownWindow: NSWindow?
     private var delayTimer: Timer?
     private var delayEscMonitor: Any?
-    /// Transient toast for failures that would otherwise be invisible — a save
-    /// that couldn't be written, a recording that produced no file.
+    /// Transient toast for failures that would otherwise be invisible, such as
+    /// a save that couldn't be written.
     private var errorToastController: ErrorToastController?
-    private var recordingEngine: RecordingEngine?
-    private var terminatingAfterRecording = false
     private let terminationCoordinator = ApplicationTerminationCoordinator()
-    private var recordingTerminationWaiter: CheckedContinuation<Void, Never>?
-    private var audioMergeControllers: [UUID: AudioMergeController] = [:]
-    private var recordingOverlayController: OverlayWindowController?
-    private var recordingHUDPanel: RecordingHUDPanel?
-    private var recordingScreenRect: NSRect = .zero  // screen-space capture rect
-    private var recordingScreen: NSScreen?
-    private var mouseHighlightOverlay: MouseHighlightOverlay?
-    private var keystrokeOverlay: KeystrokeOverlay?
-    private var webcamOverlay: WebcamOverlay?
-    private var selectionBorderOverlay: SelectionBorderOverlay?
-    private var menuBarIconWasHidden: Bool = false  // restore after recording if user had it hidden
     private var scrollCaptureController: ScrollCaptureController?
     /// The overlay controller whose selection is being scroll-captured.
     private var scrollCaptureOverlayController: OverlayWindowController?
@@ -235,7 +221,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// capture can be torn down by `rebuildOverlayPool()` later in startup.
     private var isReadyForOpenRequests = false
     private var pendingOpenURLs: [URL] = []
-    /// Capture/record URL actions additionally wait for Screen Recording
+    /// Capture URL actions additionally wait for Screen Recording
     /// permission. Non-capture actions (settings, history, file opens, etc.)
     /// remain usable while the onboarding window is shown.
     private var isReadyForScreenCaptureURLs = false
@@ -270,7 +256,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Clear image-effect state written by a pre-June-2026 build, which
         // otherwise leaves Vivid silently applied to every capture (#345).
         EffectsMigration.runIfNeeded()
-        MicrophoneDeviceSelection.repairLegacyPreference()
 
         // Surface save failures — otherwise a capture that can't be written
         // (full disk, unmounted volume) disappears without a word.
@@ -299,9 +284,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         migrateFilenameTemplateIfNeeded()
 
-        // Reclaim disk from stale tmp leftovers (cancelled recordings,
-        // legacy clipboard PNGs, share-sheet scratch). Runs off the main
-        // thread so it can't delay launch.
+        // Reclaim disk from stale tmp leftovers (legacy clipboard PNGs,
+        // share-sheet scratch). Runs off the main thread so it can't delay
+        // launch.
         LaunchCleanup.runAll()
 
         // Force-init the history singleton so its launch-time orphan
@@ -418,7 +403,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Do not rebuild underneath a capture started through another entry
         // point. A later capture can create any missing pooled controller on
         // demand.
-        if !isCapturing && recordingEngine == nil {
+        if !isCapturing {
             prewarmCapturePath()
         }
         isReadyForScreenCaptureURLs = true
@@ -460,12 +445,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func systemDidWake() {
-        guard !isCapturing, recordingEngine == nil else { return }
+        guard !isCapturing else { return }
         prewarmCapturePath()
     }
 
     @objc private func screenParametersDidChange() {
-        guard !isCapturing, recordingEngine == nil else { return }
+        guard !isCapturing else { return }
         prewarmCapturePath()
     }
 
@@ -495,7 +480,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             setMenuBarIconVisible(true)
         }
         // Only open settings if no windows are visible (e.g. pure menu-bar state).
-        // If editor/video editor is already open, just bring the app to the front.
+        // If an editor is already open, just bring the app to the front.
         if !flag {
             openSettings()
         }
@@ -610,15 +595,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        terminationCoordinator.request(hasActiveWork: recordingEngine != nil || MediaExportCoordinator.shared.hasActiveJobs || ScreenshotHistory.shared.hasPendingWrites,
-            drain: { [weak self] in
-                if let self, let engine = self.recordingEngine {
-                    self.terminatingAfterRecording = true
-                    await withCheckedContinuation { continuation in
-                        self.recordingTerminationWaiter = continuation
-                        engine.stopRecording()
-                    }
-                }
+        terminationCoordinator.request(hasActiveWork: MediaExportCoordinator.shared.hasActiveJobs || ScreenshotHistory.shared.hasPendingWrites,
+            drain: {
                 await MediaExportCoordinator.shared.waitUntilIdle()
                 await ScreenshotHistory.shared.waitUntilIdle()
             }, terminate: { sender.terminate(nil) })
@@ -626,8 +604,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ aNotification: Notification) {
         os_log(.fault, log: timingLog, "macshot terminating — thermalState=%d", ProcessInfo.processInfo.thermalState.rawValue)
-        // Normal quit drains the recording writer and coordinated exports.
-        // A force quit leaves the durable take in place.
         for (_, controller) in overlayControllerPool {
             controller.tearDown()
         }
@@ -707,7 +683,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        applyNormalStatusBarIcon()
+        refreshStatusBarIcon()
         rebuildStatusBarMenu()
     }
 
@@ -715,20 +691,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Mode is "default" (bundled StatusBarIcon asset) or "symbol" (a user-chosen SF Symbol).
     static let statusBarIconModeKey = "statusBarIconMode"
     static let statusBarIconSymbolNameKey = "statusBarIconSymbolName"
-
-    private func applyNormalStatusBarIcon() {
-        if let button = statusItem.button {
-            applyPreferredIconImage(to: button)
-            // Use the NATIVE status-item menu (no custom click action). Showing
-            // the menu by synthesizing a click from the button's mouse-down
-            // action re-enters AppKit's mouse-tracking loop and can hang the main
-            // thread (which also kills the global hotkey). The menu's delegate
-            // handles modal dismissal + prewarm in menuWillOpen instead.
-            button.target = nil
-            button.action = nil
-            statusItem.menu = statusBarMenu
-        }
-    }
 
     /// Sets the button image/title from the user's icon preference. "symbol" mode renders
     /// the chosen SF Symbol as a 22pt template image; anything else — including an empty or
@@ -755,10 +717,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Re-applies the menu bar icon to reflect the user's current preference. Invoked live
-    /// from Settings so changes take effect without a relaunch. No-op while recording — the
-    /// recording state owns the icon then and restores the preferred one when it ends.
+    /// from Settings so changes take effect without a relaunch.
     func refreshStatusBarIcon() {
-        guard recordingEngine == nil, let button = statusItem.button else { return }
+        guard let button = statusItem.button else { return }
         applyPreferredIconImage(to: button)
     }
 
@@ -828,20 +789,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let recordAreaItem = NSMenuItem(title: L("Record Area"), action: #selector(recordArea), keyEquivalent: "")
-        recordAreaItem.target = self
-        recordAreaItem.image = NSImage(systemSymbolName: "record.circle", accessibilityDescription: nil)
-        HotkeyManager.applyMenuShortcut(for: .recordArea, to: recordAreaItem)
-        menu.addItem(recordAreaItem)
-
-        let recordScreenItem = NSMenuItem(title: L("Record Screen"), action: #selector(recordFullScreen), keyEquivalent: "")
-        recordScreenItem.target = self
-        recordScreenItem.image = NSImage(systemSymbolName: "menubar.dock.rectangle", accessibilityDescription: nil)
-        HotkeyManager.applyMenuShortcut(for: .recordScreen, to: recordScreenItem)
-        menu.addItem(recordScreenItem)
-
-        menu.addItem(NSMenuItem.separator())
-
         // Recent Captures submenu
         let historyItem = NSMenuItem(title: L("Recent Captures"), action: nil, keyEquivalent: "")
         historyItem.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: nil)
@@ -863,17 +810,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         openImageItem.target = self
         openImageItem.image = NSImage(systemSymbolName: "photo.on.rectangle.angled", accessibilityDescription: nil)
         menu.addItem(openImageItem)
-
-        let openVideoItem = NSMenuItem(title: L("Open Video..."), action: #selector(openVideoFromMenu), keyEquivalent: "")
-        openVideoItem.target = self
-        openVideoItem.image = NSImage(systemSymbolName: "film", accessibilityDescription: nil)
-        menu.addItem(openVideoItem)
-
-        let recordingsItem = NSMenuItem(title: L("Show Recordings in Finder"),
-            action: #selector(showRecordingsInFinder), keyEquivalent: "")
-        recordingsItem.target = self
-        recordingsItem.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
-        menu.addItem(recordingsItem)
 
         let pasteImageItem = NSMenuItem(title: L("Open from Clipboard"), action: #selector(openImageFromClipboard), keyEquivalent: "")
         pasteImageItem.target = self
@@ -903,11 +839,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.delegate = self  // menuWillOpen dismisses any modal + prewarms capture
         statusBarMenu = menu
-        // Re-attach to the status item unless we're in recording mode (which owns
-        // the icon and uses a custom stop action with no menu).
-        if recordingEngine == nil {
-            statusItem?.menu = menu
-        }
+        // Use the NATIVE status-item menu (no custom click action). Showing
+        // the menu by synthesizing a click from the button's mouse-down
+        // action re-enters AppKit's mouse-tracking loop and can hang the main
+        // thread (which also kills the global hotkey). The menu's delegate
+        // handles modal dismissal + prewarm in menuWillOpen instead.
+        statusItem?.menu = menu
     }
 
     private func makeCaptureMenuItem(_ itemID: CaptureMenuItemID) -> NSMenuItem {
@@ -947,14 +884,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 stamp()
                 self?.perform(#selector(AppDelegate.captureFullScreenFromHotkey))
             },
-            recordArea: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.recordAreaFromHotkey))
-            },
-            recordScreen: { [weak self] in
-                stamp()
-                self?.perform(#selector(AppDelegate.recordFullScreenFromHotkey))
-            },
             historyOverlay: { [weak self] in
                 DispatchQueue.main.async { self?.showHistoryOverlay() }
             },
@@ -986,10 +915,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private var pendingRecordMode: Bool = false
     private var pendingFullScreen: Bool = false
-    private var pendingFullScreenRecord: Bool = false
-    private var pendingFullScreenRecordAutoStart: Bool = false
     private var pendingOCRMode: Bool = false
     private var pendingQuickCaptureMode: Bool = false
     private var pendingScrollCaptureMode: Bool = false
@@ -1021,9 +947,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appToActivate = previousApp
         previousApp = nil
         DispatchQueue.main.async { [weak self] in
-            // Don't hide the app while a recording is in progress — the HUD
-            // and selection border are non-titled panels that would be killed.
-            if self?.recordingEngine != nil { return }
             let hasVisibleWindows = NSApp.windows.contains { $0.isVisible && $0.styleMask.contains(.titled) }
             // Windows we hid for the screenshot count as "visible" for
             // activation-policy purposes — they're coming back as soon as
@@ -1162,37 +1085,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var pendingRestoreLastArea: Bool = false
 
-    @objc private func recordArea() {
-        beginRecordArea(fromMenu: true)
-    }
-
-    @objc private func recordAreaFromHotkey() {
-        beginRecordArea(fromMenu: false)
-    }
-
-    private func beginRecordArea(fromMenu: Bool) {
-        guard canStartCapture else { return }
-        pendingRecordMode = true
-        startCapture(fromMenu: fromMenu)
-    }
-
-    @objc private func recordFullScreen() {
-        beginRecordFullScreen(fromMenu: true)
-    }
-
-    @objc private func recordFullScreenFromHotkey() {
-        beginRecordFullScreen(fromMenu: false)
-    }
-
-    private func beginRecordFullScreen(fromMenu: Bool) {
-        guard canStartCapture else { return }
-        pendingFullScreenRecord = true
-        if UserDefaults.standard.integer(forKey: "captureDelaySeconds") > 0 {
-            pendingFullScreenRecordAutoStart = true
-        }
-        startCapture(fromMenu: fromMenu)
-    }
-
     @objc private func setDelaySeconds(_ sender: NSMenuItem) {
         UserDefaults.standard.set(sender.tag, forKey: "captureDelaySeconds")
         // Update checkmarks
@@ -1204,7 +1096,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Whether a new capture can start right now. The `begin*` entry points set
-    /// their pending mode flag (pendingOCRMode, pendingRecordMode, …) BEFORE
+    /// their pending mode flag (pendingOCRMode, pendingQuickCaptureMode, …) BEFORE
     /// calling `startCapture`. If `startCapture` were to bail at its guards after
     /// the flag was set, the flag would strand and get applied to the *next*
     /// capture — e.g. a stranded `pendingOCRMode` makes a later screenshot spawn
@@ -1214,13 +1106,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// delay-capture countdown `isCapturing` is already true and the pending mode
     /// belongs to that accepted (not-yet-consumed) capture.
     private var canStartCapture: Bool {
-        !isCapturing && recordingEngine == nil
+        !isCapturing
     }
 
     private func startCapture(fromMenu: Bool = false) {
         guard !isCapturing else { return }
-        // Don't allow captures while recording
-        guard recordingEngine == nil else { return }
         let trace = makeCaptureTimingTrace()
         captureTimingTrace = trace
         trace?.mark("startCapture entered fromMenu=\(fromMenu)")
@@ -1343,10 +1233,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         delayCountdownWindow = nil
         removeDelayEscMonitors()
         isCapturing = false
-        pendingRecordMode = false
         pendingFullScreen = false
-        pendingFullScreenRecord = false
-        pendingFullScreenRecordAutoStart = false
         pendingOCRMode = false
         pendingQuickCaptureMode = false
         pendingScrollCaptureMode = false
@@ -1378,7 +1265,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             controller.capturedWindowTitle = capturedWindowTitle
             controller.capturedAppName = FilenameFormatter.appNameForTemplate(previousApp?.localizedName)
-            if pendingRecordMode { controller.setAutoRecordMode() }
             if pendingOCRMode { controller.setAutoOCRMode() }
             if pendingQuickCaptureMode { controller.setAutoQuickSaveMode() }
             if pendingScrollCaptureMode { controller.setAutoScrollCaptureMode() }
@@ -1386,16 +1272,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         overlayControllers.append(contentsOf: controllers)
 
-        pendingRecordMode = false
-        let didApplyFullScreenRecord = pendingFullScreenRecord
-        let didApplyFullScreenRecordAutoStart = pendingFullScreenRecordAutoStart
         let didApplyFullScreen = pendingFullScreen
-        pendingFullScreenRecordAutoStart = false
         pendingOCRMode = false
         pendingQuickCaptureMode = false
         pendingScrollCaptureMode = false
         pendingFullScreen = false
-        pendingFullScreenRecord = false
 
         // Capture now. Overlay windows haven't been ordered front yet, so they
         // won't appear in the capture. Install each display's overlay as soon as
@@ -1420,8 +1301,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         controllers: [controller],
                         mouseScreen: mouseScreen,
                         applyFullScreen: didApplyFullScreen,
-                        applyFullScreenRecord: didApplyFullScreenRecord,
-                        autoStartRecord: didApplyFullScreenRecordAutoStart,
                         markInteractive: isFirst)
                     // Showing a later display makes it key; keep the keyboard
                     // on the display the user is working on.
@@ -1435,9 +1314,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 captures: [],
                 controllers: controllers,
                 mouseScreen: mouseScreen,
-                applyFullScreen: didApplyFullScreen,
-                applyFullScreenRecord: didApplyFullScreenRecord,
-                autoStartRecord: didApplyFullScreenRecordAutoStart)
+                applyFullScreen: didApplyFullScreen)
         }
     }
 
@@ -1460,8 +1337,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         controllers: [OverlayWindowController],
         mouseScreen: NSScreen?,
         applyFullScreen: Bool,
-        applyFullScreenRecord: Bool,
-        autoStartRecord: Bool,
         markInteractive: Bool = true
     ) {
         if captures.isEmpty {
@@ -1489,15 +1364,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let isMouseScreen = (controller.screen == mouseScreen)
                 || (mouseScreen == nil && controller.screen == NSScreen.main)
-            if (applyFullScreen || applyFullScreenRecord) && isMouseScreen {
+            if applyFullScreen && isMouseScreen {
                 measureCaptureTiming("apply full screen selection") {
                     controller.applyFullScreenSelection()
-                }
-            }
-            if applyFullScreenRecord && isMouseScreen {
-                controller.enterRecordingMode()
-                if autoStartRecord {
-                    controller.autoStartRecording()
                 }
             }
         }
@@ -2177,44 +2046,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DetachedEditorWindowController.open(image: image, historyEntryID: id, disableBeautify: true)
     }
 
-    @objc private func showRecordingsInFinder() {
-        let folder = RecordingSessionStore.rootURL
-        do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            NSWorkspace.shared.open(folder)
-        } catch {
-            showFailureToast(error.localizedDescription)
-        }
-    }
-
-    // MARK: - Open Video
-
-    @objc private func openVideoFromMenu() {
-        openVideoWithPanel()
-    }
-
-    private func openVideoWithPanel() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.mpeg4Movie, .quickTimeMovie, .movie, .video, .gif]
-        panel.message = L("Choose a video to open in macshot editor")
-
-        NSApp.activate(ignoringOtherApps: true)
-        panel.begin { response in
-            guard response == .OK else { return }
-            for url in panel.urls {
-                self.openVideoFile(url: url)
-            }
-        }
-    }
-
-    private func openVideoFile(url: URL) {
-        // Never let the editor delete the user's source file on close.
-        VideoEditorWindowController.open(url: url, deleteOnClose: false)
-    }
-
     /// Handle files opened via Finder "Open With", drag-to-dock, or command line.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard isReadyForOpenRequests else {
@@ -2226,7 +2057,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleOpenURLs(_ urls: [URL]) {
         let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "tiff", "tif", "bmp", "gif", "heic", "heif", "webp", "icns"]
-        let videoExtensions: Set<String> = ["mp4", "mov", "m4v"]
         for url in urls {
             if url.scheme == "macshot" {
                 let urlSchemeEnabled = UserDefaults.standard.object(forKey: "urlSchemeEnabled") as? Bool ?? true
@@ -2245,14 +2075,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 handleURLSchemeAction(url)
                 continue
             }
-            let ext = url.pathExtension.lowercased()
-            // GIFs can be opened in either the image editor or the video
-            // editor. Default to image editor (matches prior behavior) — users
-            // wanting to trim a GIF use "Open Video..." explicitly.
-            if imageExtensions.contains(ext) {
+            if imageExtensions.contains(url.pathExtension.lowercased()) {
                 openImageFile(url: url)
-            } else if videoExtensions.contains(ext) {
-                openVideoFile(url: url)
             }
         }
     }
@@ -2261,7 +2085,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Usage: `open macshot://capture`, `open macshot://ocr`, etc.
     private static let screenCaptureURLActions: Set<String> = [
         "capture", "capture-fullscreen", "capture-last", "quick-capture",
-        "ocr", "record", "record-fullscreen", "scroll-capture",
+        "ocr", "scroll-capture",
     ]
 
     private func handleURLSchemeAction(_ url: URL) {
@@ -2271,12 +2095,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case "capture-fullscreen":  captureFullScreen()
         case "quick-capture":       quickCapture()
         case "ocr":                 captureOCR()
-        case "record":              recordArea()
-        case "record-fullscreen":   recordFullScreen()
         case "scroll-capture":      scrollCapture()
         case "history":             showHistoryOverlay()
         case "settings":            openSettings()
-        case "stop-recording":      stopRecording()
         case "capture-last":        captureLastArea()
         case "open":
             if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -2323,15 +2144,8 @@ extension AppDelegate: OverlayWindowControllerDelegate {
     }
 
     func overlayDidCancel(_ controller: OverlayWindowController) {
-        // If the user cancels while in recording setup (before capture started),
-        // just dismiss. If recording is actively capturing, stop it.
-        if controller === recordingOverlayController, let engine = recordingEngine {
-            engine.stopRecording()
-            // stopRecordingUI() will be called by onCompletion callback
-        }
+        // Focus is returned to the previous app by dismissOverlays().
         dismissOverlays()
-
-        // Focus is returned to the previous app by dismissOverlays() above.
     }
 
     func overlayDidConfirm(_ controller: OverlayWindowController, capturedImage: NSImage?, annotationData: CaptureAnnotationData?) {
@@ -2475,477 +2289,6 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         }
     }
 
-    func overlayDidRequestStartRecording(_ controller: OverlayWindowController, rect: NSRect, screen: NSScreen) {
-        recordingScreenRect = rect
-        recordingScreen = screen
-
-        // Capture session overrides before dismissing overlays (which destroys the overlay view)
-        let fpsOverride = controller.sessionRecordingFPS
-        let onStopOverride = controller.sessionRecordingOnStop
-        let delayOverride = controller.sessionRecordingDelay
-        let hideHUD = controller.sessionHideRecordingHUD ?? UserDefaults.standard.bool(forKey: "hideRecordingHUD")
-
-        // Detach webcam preview before dismissing overlays so we can reuse the live session
-        let existingWebcam = controller.detachWebcamPreview()
-
-        // Use the same focus return path as normal screenshot confirm:
-        // dismissOverlays with refocus → returnFocusIfNeeded → NSApp.hide(nil).
-        // This reliably transfers focus AND mouse event routing.
-        // Then create recording UI on the next run loop — all non-activating
-        // panels, so they appear without stealing focus back.
-        dismissOverlays()  // refocusPreviousApp: true (default) — handles focus
-        previousApp = nil
-
-        let delay = delayOverride ?? UserDefaults.standard.integer(forKey: "captureDelaySeconds")
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            if delay > 0 {
-                existingWebcam?.stopPreview()
-                existingWebcam?.close()
-                self.startRecordingCountdown(seconds: delay, rect: rect, screen: screen,
-                                        fpsOverride: fpsOverride,
-                                        onStopOverride: onStopOverride)
-            } else {
-                self.beginRecording(rect: rect, screen: screen,
-                               fpsOverride: fpsOverride,
-                               onStopOverride: onStopOverride,
-                               existingWebcam: existingWebcam,
-                               hideHUD: hideHUD)
-            }
-        }
-    }
-
-    private func startRecordingCountdown(seconds: Int, rect: NSRect, screen: NSScreen,
-                                          fpsOverride: Int?,
-                                          onStopOverride: String?) {
-        let size = NSSize(width: 140, height: 140)
-        let origin = NSPoint(
-            x: rect.midX - size.width / 2,
-            y: rect.midY - size.height / 2
-        )
-
-        let window = NSWindow(
-            contentRect: NSRect(origin: origin, size: size),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.level = .floating
-        window.hasShadow = false
-        window.ignoresMouseEvents = true
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-
-        let countdownView = CountdownView(frame: NSRect(origin: .zero, size: size))
-        countdownView.remaining = seconds
-        window.contentView = countdownView
-        window.makeKeyAndOrderFront(nil)
-        delayCountdownWindow = window
-
-        // Show selection border during countdown so user sees what area will be recorded
-        let border = SelectionBorderOverlay(screen: screen)
-        border.setSelectionRect(rect)
-        border.orderFrontRegardless()
-        selectionBorderOverlay = border
-
-        // Escape to cancel
-        delayEscMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            if event.keyCode == 53 {
-                self?.cancelRecordingCountdown()
-                return nil
-            }
-            return event
-        }
-
-        var remaining = seconds
-        delayTimer?.invalidate()
-        delayTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
-            remaining -= 1
-            if remaining <= 0 {
-                timer.invalidate()
-                self?.delayTimer = nil
-                self?.delayCountdownWindow?.orderOut(nil)
-                self?.delayCountdownWindow = nil
-                self?.removeDelayEscMonitors()
-                self?.beginRecording(rect: rect, screen: screen,
-                                     fpsOverride: fpsOverride,
-                                     onStopOverride: onStopOverride)
-            } else {
-                countdownView.remaining = remaining
-                countdownView.needsDisplay = true
-            }
-        }
-    }
-
-    private func cancelRecordingCountdown() {
-        delayTimer?.invalidate()
-        delayTimer = nil
-        delayCountdownWindow?.orderOut(nil)
-        delayCountdownWindow = nil
-        selectionBorderOverlay?.close()
-        selectionBorderOverlay = nil
-        removeDelayEscMonitors()
-    }
-
-    /// Recordings that open in the video editor keep the pointer, clicks and
-    /// keystrokes as data (default on).
-    static let editablePointerDefaultsKey = "recordEditablePointer"
-    static var recordsEditablePointer: Bool {
-        UserDefaults.standard.object(forKey: editablePointerDefaultsKey) as? Bool ?? true
-    }
-
-    private func beginRecording(rect: NSRect, screen: NSScreen,
-                                 fpsOverride: Int?,
-                                 onStopOverride: String?,
-                                 existingWebcam: WebcamOverlay? = nil,
-                                 hideHUD: Bool = false) {
-        let engine = RecordingEngine()
-        engine.onProgress = { [weak self] seconds in
-            self?.updateRecordingHUD(seconds: seconds)
-        }
-        // Capture audio settings before recording starts (they may change during)
-        let hadSystemAudio = UserDefaults.standard.bool(forKey: "recordSystemAudio")
-        let hadMicAudio = UserDefaults.standard.bool(forKey: "recordMicAudio")
-
-        engine.onCompletion = { [weak self] url, error in
-            guard let self = self else { return }
-            self.stopRecordingUI()
-            if self.terminatingAfterRecording {
-                self.terminatingAfterRecording = false
-                self.recordingTerminationWaiter?.resume()
-                self.recordingTerminationWaiter = nil
-                return
-            }
-
-            if let error = error {
-                // Interrupted capture can still have a playable partial file.
-                // Explain the interruption while delivering that file below.
-                self.showFailureToast(String(format: L("Recording failed: %@"), error.localizedDescription))
-            }
-
-            if let url = url {
-                let deliverRecording: (URL) -> Void = { [weak self] finalURL in
-                    guard let self = self else { return }
-                    let onStop = onStopOverride ?? UserDefaults.standard.string(forKey: "recordingOnStop") ?? "editor"
-                    switch onStop {
-                    case "finder":
-                        // Publish a user-visible copy while keeping the
-                        // original take available in the recording library.
-                        self.revealRecordingInFinder(tmpURL: finalURL)
-                    case "clipboard":
-                        self.copyRecordingToClipboard(url: finalURL)
-                    default:
-                        VideoEditorWindowController.open(url: finalURL)
-                    }
-                }
-
-                // Offer audio merge when both mic + system audio were recorded
-                if hadSystemAudio && hadMicAudio {
-                    let merger = AudioMergeController()
-                    let mergeID = UUID()
-                    self.audioMergeControllers[mergeID] = merger
-                    merger.show(url: url) { [weak self] finalURL in
-                        self?.audioMergeControllers.removeValue(forKey: mergeID)
-                        deliverRecording(finalURL)
-                    }
-                } else {
-                    deliverRecording(url)
-                }
-            }
-        }
-        recordingEngine = engine
-
-        // Always show selection border so user knows what area is being recorded
-        // (may already exist from countdown — recreate to be safe)
-        selectionBorderOverlay?.close()
-        let border = SelectionBorderOverlay(screen: screen)
-        border.setSelectionRect(rect)
-        border.orderFrontRegardless()
-        selectionBorderOverlay = border
-
-        if !hideHUD {
-            // Show the floating timer HUD
-            let hud = RecordingHUDPanel()
-            hud.update(elapsedSeconds: 0)
-            hud.positionOnScreen(relativeTo: rect, screen: screen)
-            hud.onStopRecording = { [weak self] in
-                self?.stopRecording()
-            }
-            hud.onPauseRecording = { [weak self] in
-                self?.recordingEngine?.pauseRecording()
-            }
-            hud.onResumeRecording = { [weak self] in
-                self?.recordingEngine?.resumeRecording()
-            }
-            hud.orderFrontRegardless()
-            recordingHUDPanel = hud
-
-            engine.onPauseChanged = { [weak self] paused in
-                self?.recordingHUDPanel?.setPaused(paused)
-            }
-        }
-
-        // Start mouse highlight overlay if enabled (requires Input Monitoring permission)
-        if UserDefaults.standard.bool(forKey: "recordMouseHighlight") && CGPreflightListenEventAccess() {
-            let overlay = MouseHighlightOverlay(screen: screen)
-            overlay.orderFrontRegardless()
-            overlay.startMonitoring()
-            mouseHighlightOverlay = overlay
-        }
-
-        // Start keystroke overlay if enabled
-        if UserDefaults.standard.bool(forKey: "recordKeystroke") && KeystrokeOverlay.hasInputMonitoringPermission {
-            let overlay = KeystrokeOverlay(screen: screen)
-            overlay.setRecordingRect(rect)
-            overlay.orderFrontRegardless()
-            overlay.startMonitoring()
-            keystrokeOverlay = overlay
-        }
-
-        // Start webcam overlay if enabled — reuse existing session to avoid camera restart flash
-        if UserDefaults.standard.bool(forKey: "recordWebcam") &&
-           AVCaptureDevice.authorizationStatus(for: .video) == .authorized {
-            if let existing = existingWebcam {
-                // Reuse the live preview — just lock it in place
-                existing.setDraggable(false)
-                existing.orderFrontRegardless()
-                webcamOverlay = existing
-            } else {
-                let overlay = WebcamOverlay(screen: screen)
-                let position = WebcamPosition(rawValue: UserDefaults.standard.string(forKey: "webcamPosition") ?? "bottomRight") ?? .bottomRight
-                let shape = WebcamShape(rawValue: UserDefaults.standard.string(forKey: "webcamShape") ?? "circle") ?? .circle
-                overlay.configure(
-                    position: position, size: WebcamSize.savedPoints,
-                    shape: shape, recordingRect: rect)
-                overlay.startPreview(deviceUID: UserDefaults.standard.string(forKey: "selectedCameraDeviceUID"))
-                overlay.setDraggable(false)
-                overlay.orderFrontRegardless()
-                webcamOverlay = overlay
-            }
-        } else {
-            // Webcam not enabled — clean up any detached preview
-            existingWebcam?.stopPreview()
-            existingWebcam?.close()
-        }
-
-        // Turn menu bar icon into a stop button (ensure it's visible even if user hid it)
-        enterRecordingMenuBarMode()
-
-        // Collect window IDs of UI chrome to exclude from the recording
-        // (selection border + HUD). Webcam, mouse highlight, and keystroke
-        // overlays are captured, unless the take opens in the video editor
-        // with an editable pointer: then the editor renders the pointer,
-        // clicks and keystrokes from recorded data, restyleable afterwards.
-        var excludeIDs: [CGWindowID] = []
-        if let w = selectionBorderOverlay { excludeIDs.append(CGWindowID(w.windowNumber)) }
-        if let w = recordingHUDPanel { excludeIDs.append(CGWindowID(w.windowNumber)) }
-        let onStop = onStopOverride ?? UserDefaults.standard.string(forKey: "recordingOnStop") ?? "editor"
-        let editable = onStop == "editor" && Self.recordsEditablePointer
-        if editable {
-            if let w = mouseHighlightOverlay { excludeIDs.append(CGWindowID(w.windowNumber)) }
-            if let w = keystrokeOverlay { excludeIDs.append(CGWindowID(w.windowNumber)) }
-            // The camera records to its own file when its frames can be
-            // tapped; otherwise it stays in the pixels as before.
-            if let webcam = webcamOverlay {
-                let recorder = VideoCameraRecorder()
-                if webcam.startFrameTap({ sample, host in recorder.append(sample, hostTime: host) }) {
-                    engine.cameraRecorder = recorder
-                    engine.onCameraFinished = { [weak webcam] in webcam?.stopFrameTap() }
-                    excludeIDs.append(CGWindowID(webcam.windowNumber))
-                }
-            }
-        }
-        let cameraWindowID = engine.cameraRecorder != nil ? webcamOverlay.map { CGWindowID($0.windowNumber) } : nil
-        engine.onTelemetryStarted = { [weak self] telemetry in
-            guard editable else { return }
-            self?.keystrokeOverlay?.onKey = { [weak telemetry] code, mods, text in
-                telemetry?.recordKey(down: true, keyCode: code, modifiers: mods, characters: text)
-            }
-        }
-
-        // Start recording
-        engine.startRecording(rect: rect, screen: screen, fpsOverride: fpsOverride, excludeWindowNumbers: excludeIDs,
-                              editablePointer: editable, cameraWindowID: cameraWindowID)
-    }
-
-    func overlayDidRequestStopRecording(_ controller: OverlayWindowController) {
-        if let engine = recordingEngine {
-            engine.stopRecording()
-        } else {
-            // Recording mode was entered but capture never started — just dismiss
-            dismissOverlays()
-        }
-    }
-
-    // MARK: - Recording UI
-
-    @objc private func stopRecording() {
-        guard let engine = recordingEngine else { return }
-        engine.stopRecording()
-    }
-
-    private func updateRecordingHUD(seconds: Int) {
-        recordingHUDPanel?.update(elapsedSeconds: seconds)
-        if let screen = recordingScreen, !(recordingHUDPanel?.userHasDragged ?? false) {
-            recordingHUDPanel?.positionOnScreen(relativeTo: recordingScreenRect, screen: screen)
-        }
-    }
-
-    private func enterRecordingMenuBarMode() {
-        menuBarIconWasHidden = UserDefaults.standard.bool(forKey: "hideMenuBarIcon")
-        if menuBarIconWasHidden {
-            setMenuBarIconVisible(true)
-        }
-        // Replace menu with a single stop action, change icon to stop symbol
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "stop.circle.fill", accessibilityDescription: "Stop Recording")
-            button.image?.isTemplate = true
-            button.image?.size = NSSize(width: 22, height: 22)
-        }
-        statusItem.menu = nil
-        statusItem.button?.target = self
-        statusItem.button?.action = #selector(stopRecording)
-    }
-
-    private func exitRecordingMenuBarMode() {
-        applyNormalStatusBarIcon()
-        rebuildStatusBarMenu()
-
-        // Hide icon again if user had it hidden before recording
-        if menuBarIconWasHidden {
-            setMenuBarIconVisible(false)
-            menuBarIconWasHidden = false
-        }
-    }
-
-    /// Copy a recording to a user-visible directory
-    /// and reveal it in Finder. Used by the `recordingOnStop = "finder"`
-    /// flow so the user doesn't end up staring at a deep sandbox path.
-    ///
-    /// Resolution order:
-    ///   1. Recording save directory (if configured + bookmark still valid)
-    ///   2. Same as screenshots (if configured + bookmark still valid)
-    ///   3. Save panel — user picks a location explicitly
-    ///
-    /// On a collision at the destination, we append " (N)" to the filename
-    /// so nothing gets silently overwritten.
-    private func revealRecordingInFinder(tmpURL: URL) {
-        guard let directory = SaveDirectoryAccess.resolveRecordingDirectoryIfAccessible()
-            ?? SaveDirectoryAccess.resolveIfAccessible() else {
-            promptToSaveRecording(tmpURL: tmpURL)
-            return
-        }
-        let access = SaveDirectoryLease(alreadyAccessing: directory)
-        saveRecordingCopy(source: tmpURL, destination: directory.appendingPathComponent(tmpURL.lastPathComponent),
-            avoidCollisions: true, access: access) { [weak self] error in
-            guard !(error is CancellationError) else { return }
-            if self?.terminationCoordinator.isWaiting != true {
-                self?.promptToSaveRecording(tmpURL: tmpURL)
-            } else {
-                self?.showFailureToast(L("Save failed") + ": " + error.localizedDescription)
-            }
-        }
-    }
-
-    /// Cancelling Save leaves the original in the recording library.
-    private func promptToSaveRecording(tmpURL: URL) {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = tmpURL.lastPathComponent
-        panel.title = L("Save Recording")
-        panel.prompt = L("Save")
-        panel.canCreateDirectories = true
-        panel.isExtensionHidden = false
-        panel.begin { [weak self] response in
-            guard response == .OK, let destination = panel.url else { return }
-            self?.saveRecordingCopy(source: tmpURL, destination: destination, avoidCollisions: false) { [weak self] error in
-                guard !(error is CancellationError) else { return }
-                self?.showFailureToast(L("Save failed") + ": " + error.localizedDescription)
-            }
-        }
-    }
-
-    private func saveRecordingCopy(source: URL, destination: URL, avoidCollisions: Bool,
-                                   access: SaveDirectoryLease? = nil, onFailure: @escaping (Error) -> Void) {
-        var publishedURL = destination
-        let job = MediaExportCoordinator.shared.start(title: destination.lastPathComponent, status: L("Saving..."),
-            operation: { cancellation, progress in
-                publishedURL = try await MediaExportIO.perform {
-                    try cancellation.check()
-                    var selectedURL = destination
-                    if avoidCollisions {
-                        let base = destination.deletingPathExtension().lastPathComponent
-                        let ext = destination.pathExtension
-                        var counter = 2
-                        while FileManager.default.fileExists(atPath: selectedURL.path), counter <= 1000 {
-                            selectedURL = destination.deletingLastPathComponent()
-                                .appendingPathComponent("\(base) (\(counter)).\(ext)")
-                            counter += 1
-                        }
-                    }
-                    let save = try AtomicMediaSave(destinationURL: selectedURL)
-                    try save.copySource(source, checkCancellation: cancellation.check, progress: progress)
-                    // Exclusive publication also protects a file created after
-                    // the name check. Every failure retains the durable take.
-                    try save.commit(overwritingExisting: !avoidCollisions,
-                                    beforePublish: cancellation.beginPublication)
-                    return selectedURL
-                }
-            }, completion: { result in
-                withExtendedLifetime(access) {}
-                switch result {
-                case .success: NSWorkspace.shared.activateFileViewerSelecting([publishedURL])
-                case .failure(let error): onFailure(error)
-                }
-            })
-        MediaExportProgressController.show(for: job)
-    }
-
-    private func copyRecordingToClipboard(url: URL) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-
-        // Each take has a durable, unique URL. A later copy must not replace
-        // the bytes behind an earlier clipboard/history reference.
-        let ext = url.pathExtension.lowercased()
-        let pasteURL = url
-        let byteCount = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? Int.max
-
-        if ext == "gif", byteCount <= 32_000_000, let data = try? Data(contentsOf: pasteURL) {
-            // Write raw GIF data so apps can render the animation inline
-            let item = NSPasteboardItem()
-            item.setData(data, forType: NSPasteboard.PasteboardType("com.compuserve.gif"))
-            // Also add file URL for Finder compatibility
-            item.setString(pasteURL.absoluteString, forType: .fileURL)
-            pasteboard.writeObjects([item])
-        } else {
-            // MP4: write file URL (apps like Slack/Discord accept file drops)
-            pasteboard.writeObjects([pasteURL as NSURL])
-        }
-        playCopySound()
-    }
-
-    private func stopRecordingUI() {
-        recordingHUDPanel?.close()
-        recordingHUDPanel = nil
-        selectionBorderOverlay?.close()
-        selectionBorderOverlay = nil
-        mouseHighlightOverlay?.stopMonitoring()
-        mouseHighlightOverlay?.close()
-        mouseHighlightOverlay = nil
-        keystrokeOverlay?.stopMonitoring()
-        keystrokeOverlay?.close()
-        keystrokeOverlay = nil
-        webcamOverlay?.stopPreview()
-        webcamOverlay?.close()
-        webcamOverlay = nil
-        recordingEngine = nil
-        recordingOverlayController = nil
-        recordingScreenRect = .zero
-        recordingScreen = nil
-        exitRecordingMenuBarMode()
-    }
-
     func overlayDidRequestScrollCapture(_ controller: OverlayWindowController, rect: NSRect, screen: NSScreen) {
         if !AXIsProcessTrusted() {
             dismissOverlays()
@@ -3045,23 +2388,6 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-    }
-
-    func overlayDidRequestInputMonitoringPermission(_ controller: OverlayWindowController) {
-        dismissOverlays()
-        KeystrokeOverlay.requestInputMonitoringPermission()
-        let alert = NSAlert()
-        alert.messageText = L("Input Monitoring Required")
-        alert.informativeText = L("macshot needs Input Monitoring permission to highlight mouse clicks or show keystrokes during recording. Please grant access in System Settings, then try again.")
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: L("Open Settings"))
-        alert.addButton(withTitle: L("Cancel"))
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
                 NSWorkspace.shared.open(url)
             }
         }

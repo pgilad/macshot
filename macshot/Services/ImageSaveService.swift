@@ -242,23 +242,21 @@ enum ImageSaveService {
                                    copyPathToClipboard: Bool? = nil,
                                    completion: Completion?) {
         let shouldCopyPath = copyPathToClipboard ?? copyPathAfterSave
-        MediaExportCoordinator.shared.start(title: url.lastPathComponent, status: L("Saving..."), operation: { cancellation, _ in
+        MediaExportCoordinator.shared.start(operation: {
             let savedURL = try await MediaExportIO.perform {
                 defer { withExtendedLifetime(lease) {} }
                 return try autoreleasepool {
-                    try cancellation.check()
                     guard let data = prepared.encode() else { throw CocoaError(.fileWriteUnknown) }
                     if chooseAvailableName {
                         try createSubfolders(for: url, below: root)
                         return try writeWithoutOverwriting(
                             data,
                             in: url.deletingLastPathComponent(),
-                            filename: url.lastPathComponent,
-                            beforePublish: cancellation.beginPublication)
+                            filename: url.lastPathComponent)
                     } else {
                         let transaction = try AtomicMediaSave(destinationURL: url)
                         try data.write(to: transaction.stagingURL)
-                        try transaction.commit(beforePublish: cancellation.beginPublication)
+                        try transaction.commit()
                         return url
                     }
                 }
@@ -349,9 +347,7 @@ enum ImageSaveService {
     /// free path and race, silently replacing one capture.
     nonisolated private static func writeWithoutOverwriting(_ data: Data,
                                                 in dirURL: URL,
-                                                filename: String,
-                                                beforePublish: () throws -> Void) throws -> URL {
-        try beforePublish()
+                                                filename: String) throws -> URL {
         let base = (filename as NSString).deletingPathExtension
         let ext = (filename as NSString).pathExtension
         var candidate = dirURL.appendingPathComponent(filename)

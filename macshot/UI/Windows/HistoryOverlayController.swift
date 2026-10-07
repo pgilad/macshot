@@ -402,13 +402,11 @@ private final class BackdropView: NSView {
 private enum HistoryFilter: String, CaseIterable {
     case all = "All"
     case screenshots = "Screenshots"
-    case gifs = "GIFs"
 
     func matches(_ entry: HistoryEntry) -> Bool {
         switch self {
         case .all: return true
         case .screenshots: return entry.fileExtension == "png"
-        case .gifs: return entry.fileExtension == "gif"
         }
     }
 }
@@ -703,7 +701,6 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
         switch filter {
         case .all: return L("All")
         case .screenshots: return L("Screenshots")
-        case .gifs: return L("GIFs")
         }
     }
 

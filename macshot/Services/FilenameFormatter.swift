@@ -4,9 +4,6 @@ enum FilenameFormatter {
     static let defaultTemplate = "Screenshot {date} at {time}"
     static let userDefaultsKey = "filenameTemplate"
 
-    static let defaultRecordingTemplate = "Recording {date} at {time}"
-    static let recordingUserDefaultsKey = "recordingFilenameTemplate"
-
     /// Optional template used instead of the main one when it contains `{app}`
     /// but no app is known (e.g. a whole-display capture). Empty or missing
     /// means "use the main template anyway".
@@ -35,14 +32,13 @@ enum FilenameFormatter {
         windowTitle: String? = nil,
         appName: String? = nil,
         index: Int? = nil,
-        date: Date = Date(),
-        fallback: String = defaultTemplate
+        date: Date = Date()
     ) -> String {
-        let effective = template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallback : template
+        let effective = template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? defaultTemplate : template
         let rendered = render(template: effective, windowTitle: windowTitle, appName: appName, index: index, date: date)
         let sanitized = FilenameSanitizer.sanitize(rendered)
-        if sanitized.isEmpty && effective != fallback {
-            return format(template: fallback, windowTitle: windowTitle, appName: appName, index: index, date: date, fallback: fallback)
+        if sanitized.isEmpty && effective != defaultTemplate {
+            return format(template: defaultTemplate, windowTitle: windowTitle, appName: appName, index: index, date: date)
         }
         return sanitized.isEmpty ? "Untitled" : sanitized
     }
@@ -61,10 +57,9 @@ enum FilenameFormatter {
         windowTitle: String? = nil,
         appName: String? = nil,
         index: Int? = nil,
-        date: Date = Date(),
-        fallback: String = defaultTemplate
+        date: Date = Date()
     ) -> [String] {
-        var effective = template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallback : template
+        var effective = template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? defaultTemplate : template
         let hasApp = !(appName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         if !hasApp, effective.contains("{app}"),
            let noApp = noAppTemplate?.trimmingCharacters(in: .whitespacesAndNewlines), !noApp.isEmpty {
@@ -79,7 +74,7 @@ enum FilenameFormatter {
             components.append(sanitized)
         }
         if components.isEmpty {
-            return [format(template: fallback, windowTitle: windowTitle, appName: appName, index: index, date: date, fallback: fallback)]
+            return [format(template: defaultTemplate, windowTitle: windowTitle, appName: appName, index: index, date: date)]
         }
         return components
     }

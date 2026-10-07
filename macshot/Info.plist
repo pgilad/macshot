@@ -35,12 +35,6 @@
 			</array>
 		</dict>
 	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>macshot can show a webcam overlay during screen recordings.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>macshot can record microphone audio during screen recordings.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>macshot transcribes your recordings on this Mac to create captions. Audio is not uploaded.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>Privacy - Screen Capture Usage Description</key>

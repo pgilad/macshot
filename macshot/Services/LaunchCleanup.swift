@@ -128,7 +128,6 @@ enum LaunchCleanup {
     /// `LaunchCleaner`-conforming type.
     static let all: [LaunchCleaner] = [
         TmpFileCleaner(),
-        EditorSourceCleaner(),
         ScratchDirectoryCleaner(),
         LegacyClipboardBackingDirectoryCleaner(),
         LegacyClipboardTmpDirectoryCleaner(),
@@ -152,27 +151,12 @@ enum LaunchCleanup {
 
 // MARK: - Concrete cleaners
 
-private struct EditorSourceCleaner: LaunchCleaner {
-    let name = "EditorSourceCleaner"
-    func sweep() -> DirectorySweeper.Result {
-        // APFS clones can share blocks with the original, so a file's logical
-        // size is not a meaningful estimate of reclaimed storage here.
-        DirectorySweeper.Result(removed: VideoSourceSnapshot.removeAbandonedTemporaryCopies())
-    }
-}
-
 /// Sweeps macshot-owned files from `NSTemporaryDirectory()` that match
-/// known stale patterns — legacy UUID-named clipboard PNGs, date-named
-/// captures, microphone scratch, debug logs, upload intermediates,
-/// UUID-named GIF/MP4 scratch files, and macOS sandbox quarantine stubs.
+/// known stale patterns: legacy UUID-named clipboard PNGs, debug logs and
+/// other `macshot_` intermediates.
 ///
-/// Preserves:
-///   - `macshot-clipboard.png` and `macshot-clipboard-recording.*`
-///     (fixed paths that are always-overwritten by design).
-///
-/// `Recording *` files ARE swept after the 24-hour TTL — see the rationale on
-/// `stalePrefixes` below. (An older version of this comment claimed they were
-/// preserved, which contradicted the code.)
+/// Preserves `macshot-clipboard.png` (a fixed path that is always
+/// overwritten by design).
 ///
 /// 24-hour TTL so in-flight operations can't get clobbered.
 private struct TmpFileCleaner: LaunchCleaner {
@@ -186,25 +170,10 @@ private struct TmpFileCleaner: LaunchCleaner {
     /// prefix here is intentional to catch the *legacy* UUID-named form
     /// from pre-fix builds; the current single-file `macshot-clipboard.png`
     /// is explicitly preserved in the filter below.
-    ///
-    /// "Recording " is included now that every `recordingOnStop` branch
-    /// either moves the file out of tmp (editor save / finder reveal) or
-    /// replaces it at a fixed path (clipboard). Any `Recording *` still
-    /// in tmp after 24 hours was definitely abandoned — e.g. the user
-    /// cancelled the Save panel on the finder path, or the app crashed
-    /// mid-editor-session before `deleteOnClose` fired.
     private let stalePrefixes: [String] = [
         "macshot-clipboard-",
-        "macshot_mic_",
-        "macshot_cursor_debug",
         "macshot_",
-        "Recording ",
     ]
-
-    /// Extensions that, when paired with a UUID basename, are our scratch
-    /// output (GIF conversion, video re-encode, copy-with-edits export —
-    /// which keeps the source container, so .mov and .m4v too).
-    private let uuidScratchExtensions: Set<String> = ["gif", "mp4", "mov", "m4v"]
 
     func sweep() -> DirectorySweeper.Result {
         return DirectorySweeper.sweep(
@@ -215,31 +184,9 @@ private struct TmpFileCleaner: LaunchCleaner {
     }
 
     private func isStale(name: String) -> Bool {
-        // Preserve always-overwritten fixed paths.
+        // Preserve the always-overwritten fixed path.
         if name == "macshot-clipboard.png" { return false }
-        if name.hasPrefix("macshot-clipboard-recording.") { return false }
-
-        if stalePrefixes.contains(where: { name.hasPrefix($0) }) { return true }
-        if isUUIDScratchFile(name: name) { return true }
-        if isSandboxQuarantineFile(name: name) { return true }
-        return false
-    }
-
-    /// "<UUID>.gif" / "<UUID>.mp4" — scratch tmps from GIF conversion and
-    /// video re-encode paths.
-    private func isUUIDScratchFile(name: String) -> Bool {
-        let ext = (name as NSString).pathExtension.lowercased()
-        guard uuidScratchExtensions.contains(ext) else { return false }
-        let base = (name as NSString).deletingPathExtension
-        return UUID(uuidString: base) != nil
-    }
-
-    /// "<UUID>.gif.sb-XXXX-YYYY" — macOS sandbox write-quarantine stubs.
-    /// They only appear in our container, so always safe to clean.
-    private func isSandboxQuarantineFile(name: String) -> Bool {
-        guard name.contains(".sb-") else { return false }
-        guard let firstDot = name.firstIndex(of: ".") else { return false }
-        return UUID(uuidString: String(name[..<firstDot])) != nil
+        return stalePrefixes.contains(where: { name.hasPrefix($0) })
     }
 }
 
