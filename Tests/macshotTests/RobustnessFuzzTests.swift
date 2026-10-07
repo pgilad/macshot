@@ -1,5 +1,5 @@
 import Cocoa
-import XCTest
+import Testing
 @testable import macshot
 
 /// Randomized passes over the paths that handle whatever a capture happens to
@@ -7,13 +7,12 @@ import XCTest
 /// hangs, or loses data, which is what actually breaks in the field when an
 /// annotation lands somewhere unusual.
 @MainActor
-final class RobustnessFuzzTests: XCTestCase {
+final class RobustnessFuzzTests {
 
     /// Fixed seed: a failure has to be reproducible from the test name alone.
     private var random = SeededGenerator(seed: 0xC0FFEE_D15_0DED)
 
-    override func setUp() {
-        super.setUp()
+    init() {
         random = SeededGenerator(seed: 0xC0FFEE_D15_0DED)
     }
 
@@ -73,26 +72,26 @@ final class RobustnessFuzzTests: XCTestCase {
 
     // MARK: - Passes
 
-    func testRandomAnnotationsSurviveASaveAndReload() throws {
+    @Test func testRandomAnnotationsSurviveASaveAndReload() throws {
         for iteration in 0..<300 {
             let original = randomAnnotation()
             guard let data = AnnotationSerializer.encode([original]) else {
-                XCTFail("iteration \(iteration): encoding produced nothing for \(original.tool)")
+                Issue.record("iteration \(iteration): encoding produced nothing for \(original.tool)")
                 continue
             }
             guard let decoded = AnnotationSerializer.decode(data)?.first else {
-                XCTFail("iteration \(iteration): \(original.tool) could not be read back")
+                Issue.record("iteration \(iteration): \(original.tool) could not be read back")
                 continue
             }
-            XCTAssertEqual(decoded.tool, original.tool, "iteration \(iteration)")
-            XCTAssertEqual(decoded.startPoint.x, original.startPoint.x, accuracy: 0.001)
-            XCTAssertEqual(decoded.points?.count ?? 0, original.points?.count ?? 0)
+            #expect(decoded.tool == original.tool, "iteration \(iteration)")
+            #expect(abs(decoded.startPoint.x - (original.startPoint.x)) <= 0.001)
+            #expect((decoded.points?.count ?? 0) == (original.points?.count ?? 0))
             // Values that must stay inside their documented range whatever went in.
-            XCTAssertTrue((0...1).contains(decoded.dimOpacity), "iteration \(iteration): dim \(decoded.dimOpacity)")
+            #expect((0...1).contains(decoded.dimOpacity), "iteration \(iteration): dim \(decoded.dimOpacity)")
         }
     }
 
-    func testRandomAnnotationsCloneFaithfully() {
+    @Test func testRandomAnnotationsCloneFaithfully() {
         for iteration in 0..<300 {
             let original = randomAnnotation()
             let copy = original.clone()
@@ -100,13 +99,12 @@ final class RobustnessFuzzTests: XCTestCase {
             let copyProps = Reflect.describedProperties(of: copy)
             for (name, survival) in AnnotationPersistenceTests.census
             where survival == .persisted || survival == .clonedOnly {
-                XCTAssertEqual(copyProps[name], originalProps[name],
-                               "iteration \(iteration): clone lost `\(name)` for \(original.tool)")
+                #expect(copyProps[name] == originalProps[name], "iteration \(iteration): clone lost `\(name)` for \(original.tool)")
             }
         }
     }
 
-    func testRandomAnnotationsDrawWithoutTrapping() {
+    @Test func testRandomAnnotationsDrawWithoutTrapping() {
         let view = OverlayView()
         view.frame = NSRect(x: 0, y: 0, width: 240, height: 180)
         view.screenshotImage = ImageProbe.quadrantImage(width: 240, height: 180)
@@ -114,21 +112,21 @@ final class RobustnessFuzzTests: XCTestCase {
         for iteration in 0..<200 {
             view.annotations = [randomAnnotation()]
             view.cachedCompositedImage = nil
-            XCTAssertNotNil(view.compositedImage(), "iteration \(iteration) failed to render")
+            #expect(view.compositedImage() != nil, "iteration \(iteration) failed to render")
         }
     }
 
-    func testRandomAnnotationsHitTestAndMoveWithoutTrapping() {
+    @Test func testRandomAnnotationsHitTestAndMoveWithoutTrapping() {
         for _ in 0..<500 {
             let ann = randomAnnotation()
             _ = ann.hitTest(point: randomPoint())
             _ = ann.boundingRect
             ann.move(dx: .random(in: -500...500, using: &random), dy: .random(in: -500...500, using: &random))
-            XCTAssertTrue(ann.boundingRect.origin.x.isFinite, "moving produced a non-finite box")
+            #expect(ann.boundingRect.origin.x.isFinite, "moving produced a non-finite box")
         }
     }
 
-    func testRandomFilenameTemplatesAlwaysProduceAUsableName() {
+    @Test func testRandomFilenameTemplatesAlwaysProduceAUsableName() {
         let fragments = ["{date}", "{time}", "{window}", "{index}", "{random}", "{unix}", "{nope}",
                          "/", ":", "..", "\0", "\n", "  ", "🎉", "a", String(repeating: "z", count: 300)]
         for _ in 0..<500 {
@@ -140,15 +138,15 @@ final class RobustnessFuzzTests: XCTestCase {
                 windowTitle: Bool.random(using: &random) ? randomText() : nil,
                 index: Bool.random(using: &random) ? Int.random(in: 0...99, using: &random) : nil)
 
-            XCTAssertFalse(name.isEmpty, "template \(template.debugDescription) produced no filename")
-            XCTAssertFalse(name.contains("/"), "template \(template.debugDescription) produced a path separator")
-            XCTAssertFalse(name.contains("\0"))
-            XCTAssertLessThanOrEqual(name.utf8.count, 200)
-            XCTAssertEqual(name, name.trimmingCharacters(in: .whitespacesAndNewlines))
+            #expect(!name.isEmpty, "template \(template.debugDescription) produced no filename")
+            #expect(!name.contains("/"), "template \(template.debugDescription) produced a path separator")
+            #expect(!name.contains("\0"))
+            #expect(name.utf8.count <= 200)
+            #expect(name == name.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
 
-    func testRandomTextIsNeverMisreadAsACredential() {
+    @Test func testRandomTextIsNeverMisreadAsACredential() {
         // Guard against a pattern so loose that ordinary words get covered.
         let words = ["report", "screenshot", "version", "2026", "hello world", "Chapter 3",
                      "Total: 42", "v4.2.1", "step 1 of 3", "€19.99"]
@@ -157,11 +155,11 @@ final class RobustnessFuzzTests: XCTestCase {
                 .compactMap { _ in words.randomElement(using: &random) }
                 .joined(separator: " ")
             let matches = AutoRedactor.sensitiveMatches(in: text, enabledTypes: nil)
-            XCTAssertTrue(matches.isEmpty, "\"\(text)\" was redacted as \(matches.map(\.name))")
+            #expect(matches.isEmpty, "\"\(text)\" was redacted as \(matches.map(\.name))")
         }
     }
 
-    func testRandomJSONDoesNotCrashTheAnnotationDecoder() {
+    @Test func testRandomJSONDoesNotCrashTheAnnotationDecoder() {
         let fragments = ["{}", "[]", "null", "\"tool\"", "{\"tool\":0}", "{\"tool\":\"x\"}",
                          "{\"points\":[[1]]}", "{\"colorRGBA\":[]}", "1e400", "-0", "\u{FFFD}"]
         for _ in 0..<500 {
@@ -173,7 +171,7 @@ final class RobustnessFuzzTests: XCTestCase {
         }
     }
 
-    func testRandomHistoryIndexRowsDecodeOrAreSkipped() {
+    @Test func testRandomHistoryIndexRowsDecodeOrAreSkipped() {
         let fragments = ["{\"id\":\"00000000-0000-0000-0000-000000000001\"}", "{}", "null", "[]", "{\"id\":123}",
                          "{\"id\":\"00000000-0000-0000-0000-000000000002\",\"pixelWidth\":\"wide\"}", "\"string\""]
         for _ in 0..<300 {
@@ -182,7 +180,7 @@ final class RobustnessFuzzTests: XCTestCase {
                 .joined(separator: ",")
             let rows = LenientArrayDecoder.decode(ScreenshotHistory.IndexEntry.self, from: Data("[\(body)]".utf8))
             for row in rows ?? [] {
-                XCTAssertNotNil(UUID(uuidString: row.id), "a row must name a capture UUID")
+                #expect(UUID(uuidString: row.id) != nil, "a row must name a capture UUID")
             }
         }
     }

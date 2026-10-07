@@ -1,5 +1,5 @@
 import Cocoa
-import XCTest
+import Testing
 @testable import macshot
 
 /// The overlay canvas is the surface every annotation is drawn on. It builds
@@ -7,7 +7,7 @@ import XCTest
 /// — the two things that quietly corrupt a capture when they're wrong — can be
 /// tested directly.
 @MainActor
-final class OverlayCanvasTests: XCTestCase {
+final class OverlayCanvasTests {
 
     private func makeOverlay(width: CGFloat = 400, height: CGFloat = 300) -> OverlayView {
         let view = OverlayView()
@@ -24,21 +24,20 @@ final class OverlayCanvasTests: XCTestCase {
 
     // MARK: - Coordinate rules
 
-    func testCaptureDrawRectIsTheWholeViewInOverlayMode() {
+    @Test func testCaptureDrawRectIsTheWholeViewInOverlayMode() {
         let view = makeOverlay()
-        XCTAssertFalse(view.isEditorMode)
-        XCTAssertEqual(view.captureDrawRect, view.bounds,
-                       "the overlay draws the screenshot across the whole screen")
+        #expect(!view.isEditorMode)
+        #expect(view.captureDrawRect == view.bounds, "the overlay draws the screenshot across the whole screen")
     }
 
-    func testCanvasAndViewCoordinatesAgreeAtDefaultZoom() {
+    @Test func testCanvasAndViewCoordinatesAgreeAtDefaultZoom() {
         let view = makeOverlay()
         let point = NSPoint(x: 123.5, y: 67.25)
-        XCTAssertEqual(view.viewToCanvas(point), point)
-        XCTAssertEqual(view.canvasToView(point), point)
+        #expect(view.viewToCanvas(point) == point)
+        #expect(view.canvasToView(point) == point)
     }
 
-    func testCoordinateConversionRoundTripsWhileZoomed() {
+    @Test func testCoordinateConversionRoundTripsWhileZoomed() {
         let view = makeOverlay()
         view.zoomLevel = 2.5
         view.zoomAnchorCanvas = NSPoint(x: 120, y: 90)
@@ -47,12 +46,12 @@ final class OverlayCanvasTests: XCTestCase {
         for point in [NSPoint(x: 0, y: 0), NSPoint(x: 200, y: 150),
                       NSPoint(x: 399, y: 299), NSPoint(x: -40, y: 500)] {
             let roundTripped = view.canvasToView(view.viewToCanvas(point))
-            XCTAssertEqual(roundTripped.x, point.x, accuracy: 0.0001, "x drifted for \(point)")
-            XCTAssertEqual(roundTripped.y, point.y, accuracy: 0.0001, "y drifted for \(point)")
+            #expect(abs(roundTripped.x - (point.x)) <= 0.0001, "x drifted for \(point)")
+            #expect(abs(roundTripped.y - (point.y)) <= 0.0001, "y drifted for \(point)")
         }
     }
 
-    func testTheZoomAnchorStaysPutWhileZooming() {
+    @Test func testTheZoomAnchorStaysPutWhileZooming() {
         let view = makeOverlay()
         let anchorCanvas = NSPoint(x: 50, y: 60)
         let anchorView = NSPoint(x: 150, y: 160)
@@ -62,22 +61,22 @@ final class OverlayCanvasTests: XCTestCase {
         for zoom in [1.0, 1.5, 4.0, 8.0] as [CGFloat] {
             view.zoomLevel = zoom
             let mapped = view.canvasToView(anchorCanvas)
-            XCTAssertEqual(mapped.x, anchorView.x, accuracy: 0.0001, "anchor moved at \(zoom)x")
-            XCTAssertEqual(mapped.y, anchorView.y, accuracy: 0.0001, "anchor moved at \(zoom)x")
+            #expect(abs(mapped.x - (anchorView.x)) <= 0.0001, "anchor moved at \(zoom)x")
+            #expect(abs(mapped.y - (anchorView.y)) <= 0.0001, "anchor moved at \(zoom)x")
         }
     }
 
-    func testZoomingScalesDistancesFromTheAnchor() {
+    @Test func testZoomingScalesDistancesFromTheAnchor() {
         let view = makeOverlay()
         view.zoomAnchorCanvas = NSPoint(x: 100, y: 100)
         view.zoomAnchorView = NSPoint(x: 100, y: 100)
         view.zoomLevel = 2
 
         let mapped = view.canvasToView(NSPoint(x: 150, y: 100))
-        XCTAssertEqual(mapped.x, 200, accuracy: 0.0001, "50pt from the anchor should land 100pt away at 2x")
+        #expect(abs(mapped.x - (200)) <= 0.0001, "50pt from the anchor should land 100pt away at 2x")
     }
 
-    func testClearingTheZoomAnchorsReturnsToIdentity() {
+    @Test func testClearingTheZoomAnchorsReturnsToIdentity() {
         let view = makeOverlay()
         view.zoomLevel = 3
         view.zoomAnchorCanvas = NSPoint(x: 10, y: 20)
@@ -88,66 +87,65 @@ final class OverlayCanvasTests: XCTestCase {
         view.zoomAnchorView = .zero
 
         let point = NSPoint(x: 77, y: 88)
-        XCTAssertEqual(view.viewToCanvas(point), point)
-        XCTAssertEqual(view.canvasToView(point), point)
+        #expect(view.viewToCanvas(point) == point)
+        #expect(view.canvasToView(point) == point)
     }
 
     // MARK: - Composited output
 
-    func testCompositedImageMatchesTheCaptureRectNotTheViewBounds() throws {
+    @Test func testCompositedImageMatchesTheCaptureRectNotTheViewBounds() throws {
         let view = makeOverlay(width: 420, height: 260)
-        let image = try XCTUnwrap(view.compositedImage())
-        XCTAssertEqual(image.size, view.captureDrawRect.size)
+        let image = try #require(view.compositedImage())
+        #expect(image.size == view.captureDrawRect.size)
     }
 
-    func testCompositedImageIncludesAnnotations() throws {
+    @Test func testCompositedImageIncludesAnnotations() throws {
         let view = makeOverlay(width: 200, height: 200)
-        let before = try XCTUnwrap(view.compositedImage())
+        let before = try #require(view.compositedImage())
 
         let redaction = annotation(.filledRectangle, from: NSPoint(x: 0, y: 0), to: NSPoint(x: 200, y: 200))
         redaction.color = .black
         view.annotations.append(redaction)
         view.cachedCompositedImage = nil
-        let after = try XCTUnwrap(view.compositedImage())
+        let after = try #require(view.compositedImage())
 
-        XCTAssertNotEqual(FieldDescriber.describe(after), FieldDescriber.describe(before),
-                          "an annotation covering the whole capture has to change the output")
+        #expect(FieldDescriber.describe(after) != FieldDescriber.describe(before), "an annotation covering the whole capture has to change the output")
     }
 
-    func testCompositedImageIsStableWhenNothingChanges() throws {
+    @Test func testCompositedImageIsStableWhenNothingChanges() throws {
         let view = makeOverlay(width: 120, height: 90)
         view.annotations.append(annotation(.arrow))
-        let first = try XCTUnwrap(view.compositedImage())
-        let second = try XCTUnwrap(view.compositedImage())
-        XCTAssertEqual(FieldDescriber.describe(first), FieldDescriber.describe(second))
+        let first = try #require(view.compositedImage())
+        let second = try #require(view.compositedImage())
+        #expect(FieldDescriber.describe(first) == FieldDescriber.describe(second))
     }
 
     // MARK: - Undo / redo
 
-    func testSavedUndoIdentitySurvivesRedoButNotADifferentEditAtTheSameDepth() {
+    @Test func testSavedUndoIdentitySurvivesRedoButNotADifferentEditAtTheSameDepth() {
         let view = makeOverlay()
         let first = annotation(.arrow)
         view.annotations.append(first)
         view.undoStack.append(.added(first))
         let saved = view.undoStateIdentity
         view.undo()
-        XCTAssertNotEqual(view.undoStateIdentity, saved)
+        #expect(view.undoStateIdentity != saved)
         view.redo()
-        XCTAssertEqual(view.undoStateIdentity, saved)
+        #expect(view.undoStateIdentity == saved)
         view.undo()
         let replacement = annotation(.ellipse)
         view.annotations.append(replacement)
         view.undoStack.append(.added(replacement))
         view.redoStack.removeAll()
-        XCTAssertEqual(view.undoStack.count, 1)
-        XCTAssertNotEqual(view.undoStateIdentity, saved)
+        #expect(view.undoStack.count == 1)
+        #expect(view.undoStateIdentity != saved)
         let branch = view.undoStateIdentity
         view.undo()
         view.redo()
-        XCTAssertEqual(view.undoStateIdentity, branch)
+        #expect(view.undoStateIdentity == branch)
     }
 
-    func testGroupedUndoAndRedoRestoreSavedIdentity() {
+    @Test func testGroupedUndoAndRedoRestoreSavedIdentity() {
         let view = makeOverlay()
         let group = UUID()
         let annotations = [annotation(.arrow), annotation(.ellipse)]
@@ -157,37 +155,37 @@ final class OverlayCanvasTests: XCTestCase {
         view.undoStack.append(contentsOf: annotations.map { .added($0) })
         let saved = view.undoStateIdentity
         view.undo()
-        XCTAssertEqual(view.undoStateIdentity, initial)
+        #expect(view.undoStateIdentity == initial)
         view.redo()
-        XCTAssertEqual(view.undoStateIdentity, saved)
+        #expect(view.undoStateIdentity == saved)
     }
 
-    func testUndoRemovesTheLastAnnotationAndRedoPutsItBack() {
+    @Test func testUndoRemovesTheLastAnnotationAndRedoPutsItBack() {
         let view = makeOverlay()
         let ann = annotation()
         view.annotations.append(ann)
         view.undoStack.append(.added(ann))
 
         view.undo()
-        XCTAssertTrue(view.annotations.isEmpty)
-        XCTAssertEqual(view.redoStack.count, 1)
+        #expect(view.annotations.isEmpty)
+        #expect(view.redoStack.count == 1)
 
         view.redo()
-        XCTAssertEqual(view.annotations.count, 1)
-        XCTAssertTrue(view.annotations.first === ann, "redo must restore the same annotation, not a copy")
-        XCTAssertTrue(view.redoStack.isEmpty)
+        #expect(view.annotations.count == 1)
+        #expect(view.annotations.first === ann, "redo must restore the same annotation, not a copy")
+        #expect(view.redoStack.isEmpty)
     }
 
-    func testUndoOnAnEmptyStackDoesNothing() {
+    @Test func testUndoOnAnEmptyStackDoesNothing() {
         let view = makeOverlay()
         view.undo()
         view.redo()
-        XCTAssertTrue(view.annotations.isEmpty)
-        XCTAssertTrue(view.undoStack.isEmpty)
-        XCTAssertTrue(view.redoStack.isEmpty)
+        #expect(view.annotations.isEmpty)
+        #expect(view.undoStack.isEmpty)
+        #expect(view.redoStack.isEmpty)
     }
 
-    func testUndoRestoresADeletedAnnotationInItsOriginalPlace() {
+    @Test func testUndoRestoresADeletedAnnotationInItsOriginalPlace() {
         let view = makeOverlay()
         let first = annotation(.pencil)
         let middle = annotation(.arrow)
@@ -196,20 +194,20 @@ final class OverlayCanvasTests: XCTestCase {
         view.undoStack.append(.deleted(middle, 1))
 
         view.undo()
-        XCTAssertEqual(view.annotations.count, 3)
-        XCTAssertTrue(view.annotations[1] === middle, "z-order matters: it has to come back where it was")
+        #expect(view.annotations.count == 3)
+        #expect(view.annotations[1] === middle, "z-order matters: it has to come back where it was")
     }
 
-    func testUndoingADeletionAtAStaleIndexDoesNotCrash() {
+    @Test func testUndoingADeletionAtAStaleIndexDoesNotCrash() {
         let view = makeOverlay()
         view.annotations = [annotation()]
         view.undoStack.append(.deleted(annotation(.arrow), 99))  // index from a longer list
 
         view.undo()
-        XCTAssertEqual(view.annotations.count, 2, "a stale index must clamp, not trap")
+        #expect(view.annotations.count == 2, "a stale index must clamp, not trap")
     }
 
-    func testABatchOfAnnotationsUndoesTogether() {
+    @Test func testABatchOfAnnotationsUndoesTogether() {
         // Auto-redact adds one annotation per detected match, all sharing a
         // group id; a single undo has to take the whole batch.
         let view = makeOverlay()
@@ -225,13 +223,13 @@ final class OverlayCanvasTests: XCTestCase {
         for ann in batch { view.undoStack.append(.added(ann)) }
 
         view.undo()
-        XCTAssertTrue(view.annotations.isEmpty, "the whole redaction pass should disappear at once")
+        #expect(view.annotations.isEmpty, "the whole redaction pass should disappear at once")
 
         view.redo()
-        XCTAssertEqual(view.annotations.count, 4, "and come back at once")
+        #expect(view.annotations.count == 4, "and come back at once")
     }
 
-    func testAnUngroupedAnnotationIsNotSweptUpByABatchUndo() {
+    @Test func testAnUngroupedAnnotationIsNotSweptUpByABatchUndo() {
         let view = makeOverlay()
         let manual = annotation(.arrow)
         let group = UUID()
@@ -242,11 +240,11 @@ final class OverlayCanvasTests: XCTestCase {
         view.undoStack = [.added(manual), .added(redaction)]
 
         view.undo()
-        XCTAssertEqual(view.annotations.count, 1)
-        XCTAssertTrue(view.annotations.first === manual, "an unrelated annotation must survive")
+        #expect(view.annotations.count == 1)
+        #expect(view.annotations.first === manual, "an unrelated annotation must survive")
     }
 
-    func testUndoingAPropertyChangeRestoresTheOldStyle() {
+    @Test func testUndoingAPropertyChangeRestoresTheOldStyle() {
         let view = makeOverlay()
         let ann = annotation(.rectangle)
         ann.strokeWidth = 3
@@ -259,14 +257,14 @@ final class OverlayCanvasTests: XCTestCase {
         view.undoStack.append(.propertyChange(annotation: ann, snapshot: snapshot))
 
         view.undo()
-        XCTAssertEqual(ann.strokeWidth, 3)
-        XCTAssertEqual(FieldDescriber.describe(ann.color), FieldDescriber.describe(NSColor.red))
+        #expect(ann.strokeWidth == 3)
+        #expect(FieldDescriber.describe(ann.color) == FieldDescriber.describe(NSColor.red))
 
         view.redo()
-        XCTAssertEqual(ann.strokeWidth, 12, "redo has to put the new style back")
+        #expect(ann.strokeWidth == 12, "redo has to put the new style back")
     }
 
-    func testNumberingCountsBackDownWhenUndone() {
+    @Test func testNumberingCountsBackDownWhenUndone() {
         let view = makeOverlay()
         view.numberCounter = 3
         let third = annotation(.number)
@@ -275,49 +273,49 @@ final class OverlayCanvasTests: XCTestCase {
         view.undoStack.append(.added(third))
 
         view.undo()
-        XCTAssertEqual(view.numberCounter, 2, "the next badge should reuse the number that was undone")
+        #expect(view.numberCounter == 2, "the next badge should reuse the number that was undone")
     }
 
-    func testRepeatedUndoAndRedoConvergeOnTheSameState() {
+    @Test func testRepeatedUndoAndRedoConvergeOnTheSameState() {
         let view = makeOverlay()
         let annotations = [annotation(.pencil), annotation(.arrow), annotation(.text)]
         view.annotations = annotations
         view.undoStack = annotations.map { .added($0) }
 
         for _ in 0..<5 { view.undo() }   // more undos than entries
-        XCTAssertTrue(view.annotations.isEmpty)
+        #expect(view.annotations.isEmpty)
 
         for _ in 0..<5 { view.redo() }   // more redos than entries
-        XCTAssertEqual(view.annotations.count, 3)
-        XCTAssertEqual(view.annotations.map(\.tool), annotations.map(\.tool), "order must be preserved")
+        #expect(view.annotations.count == 3)
+        #expect(view.annotations.map(\.tool) == annotations.map(\.tool), "order must be preserved")
     }
 
-    func testUndoingAnImageTransformRestoresThePreviousImage() throws {
+    @Test func testUndoingAnImageTransformRestoresThePreviousImage() throws {
         let view = makeOverlay(width: 100, height: 100)
-        let original = try XCTUnwrap(view.screenshotImage)
+        let original = try #require(view.screenshotImage)
         let flipped = ImageProbe.solidImage(width: 60, height: 40)
 
         view.undoStack.append(.imageTransform(previousImage: original, previousSnappedWindowImage: nil, annotationOffsets: []))
         view.screenshotImage = flipped
 
         view.undo()
-        XCTAssertEqual(view.screenshotImage?.size, original.size)
+        #expect(view.screenshotImage?.size == original.size)
 
         view.redo()
-        XCTAssertEqual(view.screenshotImage?.size, flipped.size)
+        #expect(view.screenshotImage?.size == flipped.size)
     }
 
     // MARK: - Selection
 
-    func testApplySelectionStoresTheRect() {
+    @Test func testApplySelectionStoresTheRect() {
         let view = makeOverlay()
         view.applySelection(NSRect(x: 20, y: 30, width: 120, height: 90))
-        XCTAssertEqual(view.selectionRect, NSRect(x: 20, y: 30, width: 120, height: 90))
+        #expect(view.selectionRect == NSRect(x: 20, y: 30, width: 120, height: 90))
     }
 
     // MARK: - Drawing every tool
 
-    func testEveryToolDrawsWithoutCrashing() throws {
+    @Test func testEveryToolDrawsWithoutCrashing() throws {
         // Annotations draw themselves; a degenerate shape must not trap.
         let view = makeOverlay(width: 200, height: 160)
         let geometries: [(NSPoint, NSPoint)] = [
@@ -336,19 +334,19 @@ final class OverlayCanvasTests: XCTestCase {
                 ann.points = [start, NSPoint(x: (start.x + end.x) / 2, y: end.y), end]
                 view.annotations = [ann]
                 view.cachedCompositedImage = nil
-                XCTAssertNotNil(view.compositedImage(), "\(tool) failed to render at \(start)–\(end)")
+                #expect(view.compositedImage() != nil, "\(tool) failed to render at \(start)–\(end)")
             }
         }
     }
 
-    func testAnnotationsWithHugeStrokeWidthsStillRender() throws {
+    @Test func testAnnotationsWithHugeStrokeWidthsStillRender() throws {
         let view = makeOverlay(width: 100, height: 100)
         for width in [0, 1, 200, 5000] as [CGFloat] {
             let ann = annotation(.rectangle)
             ann.strokeWidth = width
             view.annotations = [ann]
             view.cachedCompositedImage = nil
-            XCTAssertNotNil(view.compositedImage(), "stroke width \(width) failed to render")
+            #expect(view.compositedImage() != nil, "stroke width \(width) failed to render")
         }
     }
 }

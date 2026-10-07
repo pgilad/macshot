@@ -1,10 +1,10 @@
 import AppKit
 import CoreText
 import Vision
-import XCTest
+import Testing
 @testable import macshot
 
-final class VisionOCRTests: XCTestCase {
+final class VisionOCRTests {
     private func line(_ text: String) -> OCRTextObservation {
         OCRTextObservation(text: text, boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.8, height: 0.3))
     }
@@ -24,113 +24,111 @@ final class VisionOCRTests: XCTestCase {
     }
 
     // Exercise the full production path from a cold process, including deadlines.
-    func testRepeatedRecognitionAndSubstringGeometry() {
+    @Test func testRepeatedRecognitionAndSubstringGeometry() async {
         let image = image("Contact hello@example.com today")
         for attempt in 1...6 {
-            let done = expectation(description: "OCR attempt \(attempt)")
+            let done = TestExpectation(description: "OCR attempt \(attempt)")
             let started = Date()
             VisionOCR.performTextRecognition(cgImage: image) { lines, error in
-                XCTAssertNil(error)
+                #expect(error == nil)
                 let text = lines.map(\.text).joined(separator: "\n")
-                XCTAssertTrue(text.contains("hello@example.com"), text)
+                #expect(text.contains("hello@example.com"), "\(text)")
                 if let line = lines.first(where: { $0.text.contains("hello@example.com") }),
                    let range = line.text.range(of: "hello@example.com") {
                     let box = line.boundingBox(for: range)
-                    XCTAssertNotNil(box)
-                    XCTAssertGreaterThan(box?.width ?? 0, 0)
-                    XCTAssertLessThan(box?.width ?? 1, line.boundingBox.width)
-                    XCTAssertTrue(CGRect(x: 0, y: 0, width: 1, height: 1).contains(line.boundingBox))
+                    #expect(box != nil)
+                    #expect((box?.width ?? 0) > 0)
+                    #expect((box?.width ?? 1) < line.boundingBox.width)
+                    #expect(CGRect(x: 0, y: 0, width: 1, height: 1).contains(line.boundingBox))
                 }
                 let elapsed = Date().timeIntervalSince(started)
-                XCTAssertLessThan(elapsed, 12)
+                #expect(elapsed < 12)
                 print("OCR production attempt \(attempt): \(elapsed)s")
                 done.fulfill()
             }
-            wait(for: [done], timeout: 12)
+            await fulfillment(of: [done], timeout: 12)
         }
     }
 
     // A fast fallback must not mask the legacy first-succeeds-then-fails bug.
-    func testRepeatedRequestsThroughAccurateAPI() {
+    @Test func testRepeatedRequestsThroughAccurateAPI() async {
         let image = image("Accurate recognition")
         for attempt in 1...6 {
-            let done = expectation(description: "primary accurate request \(attempt)")
+            let done = TestExpectation(description: "primary accurate request \(attempt)")
             _ = VisionOCR.startTextRecognition(cgImage: image, recognitionLevel: .accurate) { result in
                 switch result {
-                case .failure(let error): XCTFail("Accurate request \(attempt) failed: \(error)")
+                case .failure(let error): Issue.record("Accurate request \(attempt) failed: \(error)")
                 case .success(let lines):
                     let text = lines.map(\.text).joined(separator: "\n")
-                    XCTAssertTrue(text.contains("Accurate recognition"), text)
+                    #expect(text.contains("Accurate recognition"), "\(text)")
                 }
                 done.fulfill()
             }
             // This unbounded single-attempt entry point intentionally bypasses
             // recovery. The production deadline is tested independently.
-            wait(for: [done], timeout: 60)
+            await fulfillment(of: [done], timeout: 60)
         }
     }
 
-    func testTextRecognitionPreservesCyrillic() throws {
-        guard #available(macOS 15.0, *) else { throw XCTSkip("Modern Vision language support") }
-        let done = expectation(description: "Cyrillic OCR")
+    @Test func testTextRecognitionPreservesCyrillic() async throws {
+        let done = TestExpectation(description: "Cyrillic OCR")
         _ = VisionOCR.startTextRecognition(cgImage: image("Привет мир"), recognitionLevel: .accurate) { result in
             switch result {
-            case .failure(let error): XCTFail("Cyrillic OCR failed: \(error)")
+            case .failure(let error): Issue.record("Cyrillic OCR failed: \(error)")
             case .success(let lines):
                 let text = lines.map(\.text).joined(separator: "\n")
-                XCTAssertTrue(text.contains("Привет"), text)
+                #expect(text.contains("Привет"), "\(text)")
             }
             done.fulfill()
         }
         // Cold accurate model compilation can still take >30s on macOS 27.
         // The production deadline/fallback is exercised separately above.
-        wait(for: [done], timeout: 60)
+        await fulfillment(of: [done], timeout: 60)
     }
 
-    func testEmptyAccurateResultRetriesFast() {
-        assertRetry(for: .success([]))
-        assertRetry(for: .success([line(" \n ")]))
+    @Test func testEmptyAccurateResultRetriesFast() async {
+        await assertRetry(for: .success([]))
+        await assertRetry(for: .success([line(" \n ")]))
     }
 
-    func testAccurateErrorRetriesFast() {
-        assertRetry(for: .failure(NSError(domain: "E5RT", code: 13)))
+    @Test func testAccurateErrorRetriesFast() async {
+        await assertRetry(for: .failure(NSError(domain: "E5RT", code: 13)))
     }
 
-    private func assertRetry(for firstResult: Result<[OCRTextObservation], Error>) {
-        let done = expectation(description: "fast recovery")
+    private func assertRetry(for firstResult: Result<[OCRTextObservation], Error>) async {
+        let done = TestExpectation(description: "fast recovery")
         var levels: [VNRequestTextRecognitionLevel] = []
         OCRRecognitionSession(timeout: 1, startAttempt: { level, callback in
             levels.append(level)
             callback(level == .accurate ? firstResult : .success([self.line("Recovered")]))
             return {}
         }, completion: { observations, error in
-            XCTAssertNil(error)
-            XCTAssertEqual(observations.map(\.text), ["Recovered"])
-            XCTAssertEqual(levels, [.accurate, .fast])
+            #expect(error == nil)
+            #expect(observations.map(\.text) == ["Recovered"])
+            #expect(levels == [.accurate, .fast])
             done.fulfill()
         }).start()
-        wait(for: [done], timeout: 2)
+        await fulfillment(of: [done], timeout: 2)
     }
 
-    func testAccurateSuccessDoesNotRetry() {
-        let done = expectation(description: "accurate success")
+    @Test func testAccurateSuccessDoesNotRetry() async {
+        let done = TestExpectation(description: "accurate success")
         OCRRecognitionSession(timeout: 1, startAttempt: { level, callback in
-            XCTAssertEqual(level, .accurate)
+            #expect(level == .accurate)
             callback(.success([self.line("Recognized")]))
             return {}
         }, completion: { lines, error in
-            XCTAssertNil(error)
-            XCTAssertEqual(lines.map(\.text), ["Recognized"])
+            #expect(error == nil)
+            #expect(lines.map(\.text) == ["Recognized"])
             done.fulfill()
         }).start()
-        wait(for: [done], timeout: 2)
+        await fulfillment(of: [done], timeout: 2)
     }
 
-    func testTimedOutAttemptIsCancelledAndLateDuplicateResultsAreIgnored() {
-        let done = expectation(description: "fast result delivered once")
-        done.assertForOverFulfill = true
-        let late = expectation(description: "late primary results delivered")
-        let cancelled = expectation(description: "primary cancelled")
+    @Test func testTimedOutAttemptIsCancelledAndLateDuplicateResultsAreIgnored() async {
+        let done = TestExpectation(description: "fast result delivered once")
+        let late = TestExpectation(description: "late primary results delivered")
+        let cancelled = TestExpectation(description: "primary cancelled")
         OCRRecognitionSession(timeout: 0.03, startAttempt: { level, callback in
             if level == .accurate {
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.12) {
@@ -144,51 +142,51 @@ final class VisionOCRTests: XCTestCase {
             callback(.success([self.line("Duplicate")]))
             return {}
         }, completion: { lines, error in
-            XCTAssertNil(error)
-            XCTAssertEqual(lines.map(\.text), ["Fast"])
+            #expect(error == nil)
+            #expect(lines.map(\.text) == ["Fast"])
             done.fulfill()
         }).start()
-        wait(for: [done, cancelled, late], timeout: 2)
+        await fulfillment(of: [done, cancelled, late], timeout: 2)
         // Drain the serial queue's late callbacks before ending this test.
-        let drained = expectation(description: "late callbacks drained")
+        let drained = TestExpectation(description: "late callbacks drained")
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) { drained.fulfill() }
-        wait(for: [drained], timeout: 1)
+        await fulfillment(of: [drained], timeout: 1)
     }
 
-    func testBothStalledAttemptsFinishWithTimeout() {
-        let done = expectation(description: "bounded failure")
-        let cancelled = expectation(description: "both cancelled")
+    @Test func testBothStalledAttemptsFinishWithTimeout() async {
+        let done = TestExpectation(description: "bounded failure")
+        let cancelled = TestExpectation(description: "both cancelled")
         cancelled.expectedFulfillmentCount = 2
         let started = Date()
         OCRRecognitionSession(timeout: 0.03, startAttempt: { _, _ in
             return { cancelled.fulfill() }
         }, completion: { lines, error in
-            XCTAssertTrue(lines.isEmpty)
-            XCTAssertTrue(error is OCRRecognitionSession.Failure)
-            XCTAssertLessThan(Date().timeIntervalSince(started), 1)
+            #expect(lines.isEmpty)
+            #expect(error is OCRRecognitionSession.Failure)
+            #expect(Date().timeIntervalSince(started) < 1)
             done.fulfill()
         }).start()
-        wait(for: [done, cancelled], timeout: 2)
+        await fulfillment(of: [done, cancelled], timeout: 2)
     }
 
-    func testFastEmptyResultDoesNotLoop() {
-        let done = expectation(description: "blank image")
+    @Test func testFastEmptyResultDoesNotLoop() async {
+        let done = TestExpectation(description: "blank image")
         var attempts = 0
         OCRRecognitionSession(timeout: 1, startAttempt: { _, callback in
             attempts += 1
             callback(.success([]))
             return {}
         }, completion: { lines, error in
-            XCTAssertEqual(attempts, 2)
-            XCTAssertNil(error)
-            XCTAssertTrue(lines.isEmpty)
+            #expect(attempts == 2)
+            #expect(error == nil)
+            #expect(lines.isEmpty)
             done.fulfill()
         }).start()
-        wait(for: [done], timeout: 2)
+        await fulfillment(of: [done], timeout: 2)
     }
 
-    func testFastFailureIsReportedAfterOneRetry() {
-        let done = expectation(description: "final failure")
+    @Test func testFastFailureIsReportedAfterOneRetry() async {
+        let done = TestExpectation(description: "final failure")
         let failure = NSError(domain: "E5RT", code: 13)
         var attempts = 0
         OCRRecognitionSession(timeout: 1, startAttempt: { _, callback in
@@ -196,25 +194,24 @@ final class VisionOCRTests: XCTestCase {
             callback(.failure(failure))
             return {}
         }, completion: { lines, error in
-            XCTAssertEqual(attempts, 2)
-            XCTAssertTrue(lines.isEmpty)
-            XCTAssertEqual(error as NSError?, failure)
+            #expect(attempts == 2)
+            #expect(lines.isEmpty)
+            #expect((error as NSError?) == failure)
             done.fulfill()
         }).start()
-        wait(for: [done], timeout: 2)
+        await fulfillment(of: [done], timeout: 2)
     }
 
-    func testFastRecognitionWorksAndQRPayloadFallbackRemains() {
-        let done = expectation(description: "fast OCR")
+    @Test func testFastRecognitionWorksAndQRPayloadFallbackRemains() async {
+        let done = TestExpectation(description: "fast OCR")
         _ = VisionOCR.startTextRecognition(cgImage: image("Hello World"), recognitionLevel: .fast) { result in
             switch result {
-            case .failure(let error): XCTFail("Fast OCR failed: \(error)")
-            case .success(let lines): XCTAssertTrue(lines.map(\.text).joined().contains("Hello"))
+            case .failure(let error): Issue.record("Fast OCR failed: \(error)")
+            case .success(let lines): #expect(lines.map(\.text).joined().contains("Hello"))
             }
             done.fulfill()
         }
-        wait(for: [done], timeout: 12)
-        XCTAssertEqual(OCRScanResult(text: "", qrCodes: [QRCodePayload(value: "https://example.com")]).copyText,
-                       "https://example.com")
+        await fulfillment(of: [done], timeout: 12)
+        #expect(OCRScanResult(text: "", qrCodes: [QRCodePayload(value: "https://example.com")]).copyText == "https://example.com")
     }
 }

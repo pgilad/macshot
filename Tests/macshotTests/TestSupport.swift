@@ -1,5 +1,5 @@
 import Cocoa
-import XCTest
+import Testing
 @testable import macshot
 
 // MARK: - Value description
@@ -191,33 +191,54 @@ enum Reflect {
 
 // MARK: - Defaults isolation
 
-extension XCTestCase {
-
-    /// Runs `body` with the given UserDefaults keys set, restoring them after.
-    /// Tests run in the xctest process, so this never touches the shipping app's
-    /// preferences — but tests still shouldn't leak state into each other.
-    func withDefaults(_ values: [String: Any?], _ body: () throws -> Void) rethrows {
-        let defaults = UserDefaults.standard
-        var previous: [String: Any?] = [:]
-        for (key, value) in values {
-            previous[key] = defaults.object(forKey: key)
+/// Runs `body` with the given UserDefaults keys set, restoring them after.
+/// Tests run in the test process, so this never touches the shipping app's
+/// preferences — but tests still shouldn't leak state into each other.
+func withDefaults(_ values: [String: Any?], _ body: () throws -> Void) rethrows {
+    let defaults = UserDefaults.standard
+    var previous: [String: Any?] = [:]
+    for (key, value) in values {
+        previous[key] = defaults.object(forKey: key)
+        if let value = value as Any?, !(value is NSNull) {
+            defaults.set(value, forKey: key)
+        } else {
+            defaults.removeObject(forKey: key)
+        }
+    }
+    defer {
+        for (key, value) in previous {
             if let value = value as Any?, !(value is NSNull) {
                 defaults.set(value, forKey: key)
             } else {
                 defaults.removeObject(forKey: key)
             }
         }
-        defer {
-            for (key, value) in previous {
-                if let value = value as Any?, !(value is NSNull) {
-                    defaults.set(value, forKey: key)
-                } else {
-                    defaults.removeObject(forKey: key)
-                }
+    }
+    try body()
+}
+
+/// `withDefaults` for a body that awaits.
+func withDefaults(_ values: [String: Any?], _ body: () async throws -> Void) async rethrows {
+    let defaults = UserDefaults.standard
+    var previous: [String: Any?] = [:]
+    for (key, value) in values {
+        previous[key] = defaults.object(forKey: key)
+        if let value = value as Any?, !(value is NSNull) {
+            defaults.set(value, forKey: key)
+        } else {
+            defaults.removeObject(forKey: key)
+        }
+    }
+    defer {
+        for (key, value) in previous {
+            if let value = value as Any?, !(value is NSNull) {
+                defaults.set(value, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
             }
         }
-        try body()
     }
+    try await body()
 }
 
 // MARK: - Synthetic key events
@@ -260,5 +281,40 @@ enum TestKeyEvent {
             fatalError("could not synthesize key event for \(characters)")
         }
         return event
+    }
+}
+
+// MARK: - Waiting for completions
+
+/// Stands in for XCTestExpectation. Completions may fulfill it from any thread.
+nonisolated final class TestExpectation: @unchecked Sendable {
+    let description: String
+    var expectedFulfillmentCount = 1
+    private let lock = NSLock()
+    private var fulfillments = 0
+
+    init(description: String) {
+        self.description = description
+    }
+
+    func fulfill() {
+        lock.withLock { fulfillments += 1 }
+    }
+
+    var isFulfilled: Bool {
+        lock.withLock { fulfillments >= expectedFulfillmentCount }
+    }
+}
+
+/// Waits for the expectations like XCTest's `wait(for:timeout:)`, and records an
+/// issue for each one that times out. Awaiting suspends the main actor, so
+/// completions that hop to the main queue can run.
+func fulfillment(of expectations: [TestExpectation], timeout: TimeInterval = 5) async {
+    let deadline = Date().addingTimeInterval(timeout)
+    while expectations.contains(where: { !$0.isFulfilled }), Date() < deadline {
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+    for expectation in expectations where !expectation.isFulfilled {
+        Issue.record("Timed out waiting for \(expectation.description)")
     }
 }

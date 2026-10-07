@@ -1,9 +1,9 @@
 import Cocoa
-import XCTest
+import Testing
 @testable import macshot
 
 @MainActor
-final class KeyboardMoveSelectionTests: XCTestCase {
+final class KeyboardMoveSelectionTests {
     private func withOverlay(_ body: (MoveSelectionOverlay) -> Void) {
         withDefaults(["overlayToolShortcuts": nil]) {
             // Invalidate the shortcut cache both before use and before the
@@ -16,10 +16,10 @@ final class KeyboardMoveSelectionTests: XCTestCase {
         }
     }
 
-    func testSpaceStartsMoveSelection() {
+    @Test func testSpaceStartsMoveSelection() {
         withOverlay { view in
             view.keyDown(with: TestKeyEvent.keyDown(characters: " ", keyCode: 49))
-            XCTAssertEqual(view.moveEligibility, [true])
+            #expect(view.moveEligibility == [true])
         }
     }
 }

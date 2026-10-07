@@ -32,8 +32,8 @@ install: app ## Build, then replace the app in /Applications and start it
 	cp -R "$(APP_DIR)" "$(INSTALL_DIR)/macshot.app"
 	open "$(INSTALL_DIR)/macshot.app"
 
-test: ## Unit tests
-	$(SWIFT) test $(SWIFT_FLAGS) $(TEST_FLAGS)
+test: ## Unit tests, one at a time: they share UserDefaults and the pasteboard
+	$(SWIFT) test --no-parallel $(SWIFT_FLAGS) $(TEST_FLAGS)
 
 run: app ## Start the bundled build from build/
 	open "$(APP_DIR)"

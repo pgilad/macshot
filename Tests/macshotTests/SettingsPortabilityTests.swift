@@ -1,79 +1,79 @@
-import XCTest
+import Cocoa
+import Testing
 @testable import macshot
 
 /// Exported settings files get shared, attached to bug reports and synced
 /// between machines. The export filter is therefore a security boundary: it has
 /// to fail closed for anything that looks like a credential.
-final class SettingsPortabilityTests: XCTestCase {
+final class SettingsPortabilityTests {
 
     // MARK: - Secrets never leave the machine
 
-    func testKnownCredentialKeysAreNeverPortable() {
+    @Test func testKnownCredentialKeysAreNeverPortable() {
         let credentials = [
             "serviceAPIKey", "serviceRefreshToken", "serviceAccessToken", "storageSecretKey",
             "saveDirectoryBookmark",
             "translationApiKey", "userPassword", "someCredential",
         ]
         for key in credentials {
-            XCTAssertFalse(SettingsPortability.isPortable(key), "`\(key)` must never be exported")
+            #expect(!SettingsPortability.isPortable(key), "`\(key)` must never be exported")
         }
     }
 
-    func testSecretDetectionIsCaseInsensitiveAndSubstringBased() {
+    @Test func testSecretDetectionIsCaseInsensitiveAndSubstringBased() {
         for key in ["myAPIKey", "MYAPIKEY", "providerToken", "TOKEN_store", "xSecrety", "oauthPassword"] {
-            XCTAssertTrue(SettingsPortability.looksSecret(key), "`\(key)` should read as a secret")
+            #expect(SettingsPortability.looksSecret(key), "`\(key)` should read as a secret")
         }
     }
 
-    func testAFutureProvidersCredentialIsExcludedByName() {
+    @Test func testAFutureProvidersCredentialIsExcludedByName() {
         // The point of the substring rule: a provider added later is covered
         // without anyone remembering to update an exclusion list.
         for key in ["dropboxApiKey", "azureSecret", "newProviderAccessToken", "somethingPassword"] {
-            XCTAssertFalse(SettingsPortability.isPortable(key), "`\(key)` slipped through the secret filter")
+            #expect(!SettingsPortability.isPortable(key), "`\(key)` slipped through the secret filter")
         }
     }
 
     // MARK: - Machine-specific state stays behind
 
-    func testMachineSpecificKeysAreNotPortable() {
+    @Test func testMachineSpecificKeysAreNotPortable() {
         for key in SettingsPortability.excludedKeys {
-            XCTAssertFalse(SettingsPortability.isPortable(key), "`\(key)` is machine-specific and must not transfer")
+            #expect(!SettingsPortability.isPortable(key), "`\(key)` is machine-specific and must not transfer")
         }
     }
 
-    func testUploadHistoryAndAccountEmailStayLocal() {
+    @Test func testUploadHistoryAndAccountEmailStayLocal() {
     }
 
     // MARK: - System keys are filtered out
 
-    func testSystemInjectedKeysAreNotPortable() {
+    @Test func testSystemInjectedKeysAreNotPortable() {
         let systemKeys = [
             "NSWindowFrame main", "AppleLanguages", "com.apple.trackpad.scrolling",
             "kCIEnableCoreImage", "_internalThing", "AKLastIDMSEnvironment",
             "METAL_ERROR_MODE", "KB_Something", "Country",
         ]
         for key in systemKeys {
-            XCTAssertFalse(SettingsPortability.isPortable(key), "`\(key)` is injected by macOS, not a macshot setting")
+            #expect(!SettingsPortability.isPortable(key), "`\(key)` is injected by macOS, not a macshot setting")
         }
     }
 
-    func testScreamingSnakeCaseIsNotAppAuthored() {
-        XCTAssertFalse(SettingsPortability.looksAppAuthored("METAL_DEVICE_WRAPPER_TYPE"))
-        XCTAssertFalse(SettingsPortability.looksAppAuthored("SOME_OTHER_ENV"))
-        XCTAssertTrue(SettingsPortability.looksAppAuthored("beautify_enabled"),
-                      "a lowercase key with an underscore is still app-authored")
+    @Test func testScreamingSnakeCaseIsNotAppAuthored() {
+        #expect(!SettingsPortability.looksAppAuthored("METAL_DEVICE_WRAPPER_TYPE"))
+        #expect(!SettingsPortability.looksAppAuthored("SOME_OTHER_ENV"))
+        #expect(SettingsPortability.looksAppAuthored("beautify_enabled"), "a lowercase key with an underscore is still app-authored")
     }
 
-    func testKeysStartingWithACapitalAreNotAppAuthored() {
-        XCTAssertFalse(SettingsPortability.looksAppAuthored("Country"))
-        XCTAssertFalse(SettingsPortability.looksAppAuthored("WindowState"))
-        XCTAssertFalse(SettingsPortability.looksAppAuthored(""))
-        XCTAssertFalse(SettingsPortability.looksAppAuthored("9lives"), "a key that doesn't start with a letter")
+    @Test func testKeysStartingWithACapitalAreNotAppAuthored() {
+        #expect(!SettingsPortability.looksAppAuthored("Country"))
+        #expect(!SettingsPortability.looksAppAuthored("WindowState"))
+        #expect(!SettingsPortability.looksAppAuthored(""))
+        #expect(!SettingsPortability.looksAppAuthored("9lives"), "a key that doesn't start with a letter")
     }
 
     // MARK: - Real settings do transfer
 
-    func testEverydaySettingsArePortable() {
+    @Test func testEverydaySettingsArePortable() {
         let settings = [
             "imageFormat", "imageQuality", "downscaleRetina",
             "historySize", "enabledTools", "beautifyEnabled", "beautifyStyleIndex",
@@ -81,80 +81,79 @@ final class SettingsPortabilityTests: XCTestCase {
             "overlayToolShortcuts", "hotkeyKeyCode", "hotkeyModifiers",
         ]
         for key in settings {
-            XCTAssertTrue(SettingsPortability.isPortable(key), "`\(key)` is a normal setting and should transfer")
+            #expect(SettingsPortability.isPortable(key), "`\(key)` is a normal setting and should transfer")
         }
     }
 
     // MARK: - Import validation
 
-    func testImportRejectsNonJSON() {
-        XCTAssertThrowsError(try SettingsPortability.importData(Data("not json".utf8))) { error in
-            XCTAssertTrue(error is SettingsPortability.ImportError, "got \(error)")
+    @Test func testImportRejectsNonJSON() {
+        #expect(throws: SettingsPortability.ImportError.self) {
+            try SettingsPortability.importData(Data("not json".utf8))
         }
     }
 
-    func testImportRejectsAFileFromADifferentApp() throws {
+    @Test func testImportRejectsAFileFromADifferentApp() throws {
         let json = try JSONSerialization.data(withJSONObject: [
             "type": "some-other-app-settings",
             "schemaVersion": 1,
             "settings": ["imageFormat": "png"],
         ])
-        XCTAssertThrowsError(try SettingsPortability.importData(json))
+        #expect(throws: (any Error).self) { try SettingsPortability.importData(json) }
     }
 
-    func testImportRejectsANewerSchema() throws {
+    @Test func testImportRejectsANewerSchema() throws {
         let json = try JSONSerialization.data(withJSONObject: [
             "type": SettingsPortability.fileType,
             "schemaVersion": SettingsPortability.schemaVersion + 1,
             "settings": ["imageFormat": "png"],
         ])
-        XCTAssertThrowsError(try SettingsPortability.importData(json),
-                             "a file from a newer macshot must be refused, not half-applied")
+        #expect(throws: (any Error).self, "a file from a newer macshot must be refused, not half-applied") { try SettingsPortability.importData(json) }
     }
 
-    func testImportRejectsAFileWithNoSettings() throws {
+    @Test func testImportRejectsAFileWithNoSettings() throws {
         let json = try JSONSerialization.data(withJSONObject: [
             "type": SettingsPortability.fileType,
             "schemaVersion": SettingsPortability.schemaVersion,
         ])
-        XCTAssertThrowsError(try SettingsPortability.importData(json))
+        #expect(throws: (any Error).self) { try SettingsPortability.importData(json) }
     }
 
-    func testImportErrorsAllDescribeThemselves() {
+    @Test func testImportErrorsAllDescribeThemselves() {
         let errors: [SettingsPortability.ImportError] = [
             .notJSON, .wrongFileType, .newerSchema(found: 9), .missingSettings,
         ]
         for error in errors {
-            XCTAssertFalse((error.errorDescription ?? "").isEmpty, "\(error) has no user-facing message")
+            #expect(!(error.errorDescription ?? "").isEmpty, "\(error) has no user-facing message")
         }
     }
 
     // MARK: - Export
 
-    func testExportContainsOnlyPortableKeys() throws {
+    @Test func testExportContainsOnlyPortableKeys() throws {
         let result = try SettingsPortability.exportData()
         let object = try JSONSerialization.jsonObject(with: result.data) as? [String: Any]
-        let settings = try XCTUnwrap(object?["settings"] as? [String: Any])
+        let settings = try #require(object?["settings"] as? [String: Any])
         for key in settings.keys {
-            XCTAssertTrue(SettingsPortability.isPortable(key), "export leaked `\(key)`")
+            #expect(SettingsPortability.isPortable(key), "export leaked `\(key)`")
         }
     }
 
-    func testExportIsTaggedSoItCanBeRecognized() throws {
+    @Test func testExportIsTaggedSoItCanBeRecognized() throws {
         let result = try SettingsPortability.exportData()
         let object = try JSONSerialization.jsonObject(with: result.data) as? [String: Any]
-        XCTAssertEqual(object?["type"] as? String, SettingsPortability.fileType)
-        XCTAssertEqual(object?["schemaVersion"] as? Int, SettingsPortability.schemaVersion)
+        #expect((object?["type"] as? String) == SettingsPortability.fileType)
+        #expect((object?["schemaVersion"] as? Int) == SettingsPortability.schemaVersion)
     }
 
-    func testSuggestedFilenameIsAValidJSONName() {
+    @Test func testSuggestedFilenameIsAValidJSONName() {
         let name = SettingsPortability.suggestedExportFilename()
-        XCTAssertTrue(name.hasSuffix(".json"))
-        XCTAssertFalse(name.contains("/"))
-        XCTAssertFalse(name.contains(":"))
+        #expect(name.hasSuffix(".json"))
+        #expect(!name.contains("/"))
+        #expect(!name.contains(":"))
     }
 
-    func testExportedSecretKeysAreAbsentEvenWhenSet() throws {
+    @Test func testExportedSecretKeysAreAbsentEvenWhenSet() throws {
         try withDefaults([
             "serviceAPIKey": "secret-value-1234",
             "storageSecretKey": "another-secret",
@@ -162,8 +161,8 @@ final class SettingsPortabilityTests: XCTestCase {
         ]) {
             let result = try SettingsPortability.exportData()
             let text = String(decoding: result.data, as: UTF8.self)
-            XCTAssertFalse(text.contains("secret-value-1234"), "an API key reached the export file")
-            XCTAssertFalse(text.contains("another-secret"), "an S3 secret reached the export file")
+            #expect(!text.contains("secret-value-1234"), "an API key reached the export file")
+            #expect(!text.contains("another-secret"), "an S3 secret reached the export file")
         }
     }
 }

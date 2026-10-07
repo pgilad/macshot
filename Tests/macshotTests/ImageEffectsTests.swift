@@ -1,12 +1,12 @@
 import Cocoa
-import XCTest
+import Testing
 @testable import macshot
 
 /// Image effects are applied to the capture on its way out, so a preset wired
 /// to the wrong filter (or one that silently does nothing) ships in the file
 /// the user shares.
 @MainActor
-final class ImageEffectsTests: XCTestCase {
+final class ImageEffectsTests {
 
     /// A photo-like image: flat colour can't show a tonal effect.
     private func sample() -> NSImage {
@@ -30,99 +30,99 @@ final class ImageEffectsTests: XCTestCase {
         return config
     }
 
-    func testTheDefaultConfigIsIdentity() {
-        XCTAssertTrue(ImageEffectsConfig().isIdentity)
+    @Test func testTheDefaultConfigIsIdentity() {
+        #expect(ImageEffectsConfig().isIdentity)
     }
 
-    func testAnyAdjustmentBreaksIdentity() {
+    @Test func testAnyAdjustmentBreaksIdentity() {
         for change: (inout ImageEffectsConfig) -> Void in [
             { $0.preset = .noir }, { $0.brightness = 0.1 },
             { $0.contrast = 1.2 }, { $0.saturation = 0.5 }, { $0.sharpness = 0.4 },
         ] {
             var config = ImageEffectsConfig()
             change(&config)
-            XCTAssertFalse(config.isIdentity)
+            #expect(!config.isIdentity)
         }
     }
 
-    func testAnIdentityConfigReturnsTheSameImage() {
+    @Test func testAnIdentityConfigReturnsTheSameImage() {
         let image = sample()
-        XCTAssertTrue(ImageEffects.apply(to: image, config: ImageEffectsConfig()) === image)
+        #expect(ImageEffects.apply(to: image, config: ImageEffectsConfig()) === image)
     }
 
-    func testEveryPresetChangesTheImage() {
+    @Test func testEveryPresetChangesTheImage() {
         let image = sample()
         let original = describe(image)
         for preset in ImageEffectPreset.allCases where preset != .none {
             let result = describe(ImageEffects.apply(to: image, config: config(preset)))
-            XCTAssertNotEqual(result, original, "\(preset.displayName) left the image untouched")
+            #expect(result != original, "\(preset.displayName) left the image untouched")
         }
     }
 
-    func testEveryPresetProducesADistinctLook() {
+    @Test func testEveryPresetProducesADistinctLook() {
         // Two presets rendering identically means one is wired to the wrong filter.
         var seen: [String: String] = [:]
         for preset in ImageEffectPreset.allCases where preset != .none {
             let rendered = describe(ImageEffects.apply(to: sample(), config: config(preset)))
             if let other = seen[rendered] {
-                XCTFail("\(preset.displayName) renders identically to \(other)")
+                Issue.record("\(preset.displayName) renders identically to \(other)")
             }
             seen[rendered] = preset.displayName
         }
     }
 
-    func testMonochromePresetsRemoveColour() throws {
+    @Test func testMonochromePresetsRemoveColour() throws {
         for preset in [ImageEffectPreset.noir, .mono] {
             let result = ImageEffects.apply(to: sample(), config: config(preset))
-            let pixel = try XCTUnwrap(ImageProbe.pixelColor(result, x: 30, y: 10))
-            XCTAssertEqual(pixel.redComponent, pixel.greenComponent, accuracy: 0.03, "\(preset.displayName)")
-            XCTAssertEqual(pixel.greenComponent, pixel.blueComponent, accuracy: 0.03, "\(preset.displayName)")
+            let pixel = try #require(ImageProbe.pixelColor(result, x: 30, y: 10))
+            #expect(abs(pixel.redComponent - (pixel.greenComponent)) <= 0.03, "\(preset.displayName)")
+            #expect(abs(pixel.greenComponent - (pixel.blueComponent)) <= 0.03, "\(preset.displayName)")
         }
     }
 
-    func testBrightnessMovesTheImageInTheRightDirection() throws {
+    @Test func testBrightnessMovesTheImageInTheRightDirection() throws {
         var brighter = ImageEffectsConfig()
         brighter.brightness = 0.3
         var darker = ImageEffectsConfig()
         darker.brightness = -0.3
 
         let source = sample()
-        let base = try XCTUnwrap(ImageProbe.pixelColor(source, x: 20, y: 20)).redComponent
-        let up = try XCTUnwrap(ImageProbe.pixelColor(ImageEffects.apply(to: source, config: brighter), x: 20, y: 20))
-        let down = try XCTUnwrap(ImageProbe.pixelColor(ImageEffects.apply(to: source, config: darker), x: 20, y: 20))
+        let base = try #require(ImageProbe.pixelColor(source, x: 20, y: 20)).redComponent
+        let up = try #require(ImageProbe.pixelColor(ImageEffects.apply(to: source, config: brighter), x: 20, y: 20))
+        let down = try #require(ImageProbe.pixelColor(ImageEffects.apply(to: source, config: darker), x: 20, y: 20))
 
-        XCTAssertGreaterThan(up.redComponent, base)
-        XCTAssertLessThan(down.redComponent, base)
+        #expect(up.redComponent > base)
+        #expect(down.redComponent < base)
     }
 
-    func testSaturationCanRemoveColourEntirely() throws {
+    @Test func testSaturationCanRemoveColourEntirely() throws {
         var grey = ImageEffectsConfig()
         grey.saturation = 0
         let result = ImageEffects.apply(to: sample(), config: grey)
-        let pixel = try XCTUnwrap(ImageProbe.pixelColor(result, x: 30, y: 10))
-        XCTAssertEqual(pixel.redComponent, pixel.blueComponent, accuracy: 0.03)
+        let pixel = try #require(ImageProbe.pixelColor(result, x: 30, y: 10))
+        #expect(abs(pixel.redComponent - (pixel.blueComponent)) <= 0.03)
     }
 
-    func testEffectsKeepTheImageSize() {
+    @Test func testEffectsKeepTheImageSize() {
         for preset in ImageEffectPreset.allCases {
             let result = ImageEffects.apply(to: sample(), config: config(preset))
-            XCTAssertEqual(result.size, NSSize(width: 40, height: 40), "\(preset.displayName)")
+            #expect(result.size == NSSize(width: 40, height: 40), "\(preset.displayName)")
         }
     }
 
-    func testSharpnessIsApplied() {
+    @Test func testSharpnessIsApplied() {
         var sharp = ImageEffectsConfig()
         sharp.sharpness = 1.5
-        XCTAssertNotEqual(describe(ImageEffects.apply(to: sample(), config: sharp)), describe(sample()))
+        #expect(describe(ImageEffects.apply(to: sample(), config: sharp)) != describe(sample()))
     }
 
-    func testEveryPresetHasADisplayName() {
+    @Test func testEveryPresetHasADisplayName() {
         for preset in ImageEffectPreset.allCases {
-            XCTAssertFalse(preset.displayName.isEmpty)
+            #expect(!preset.displayName.isEmpty)
         }
     }
 
-    func testADegenerateImageDoesNotCrashTheFilterChain() {
+    @Test func testADegenerateImageDoesNotCrashTheFilterChain() {
         var config = ImageEffectsConfig()
         config.preset = .vivid
         config.sharpness = 2

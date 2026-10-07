@@ -1,11 +1,11 @@
 import Cocoa
-import XCTest
+import Testing
 @testable import macshot
 
 /// Scroll capture decides where a frozen header ends and where the scrollbar
 /// starts by comparing consecutive frames. Get either wrong and the stitched
 /// image repeats a header band or drags the scrollbar into the match.
-final class ScrollFrameAnalyzerTests: XCTestCase {
+final class ScrollFrameAnalyzerTests {
 
     private let layouts: [(CGImageAlphaInfo, CGBitmapInfo, [Int])] = [
         (.premultipliedFirst, .byteOrder32Little, [2, 1, 0]), // BGRA
@@ -28,26 +28,26 @@ final class ScrollFrameAnalyzerTests: XCTestCase {
                 for component in 0..<3 { bytes[y * stride + x * 4 + layout.2[component]] = rgb[component] }
             }
         }
-        let provider = try XCTUnwrap(CGDataProvider(data: Data(bytes) as CFData))
-        return try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+        let provider = try #require(CGDataProvider(data: Data(bytes) as CFData))
+        return try #require(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
             bytesPerRow: stride, space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGBitmapInfo(rawValue: layout.0.rawValue | layout.1.rawValue), provider: provider,
             decode: nil, shouldInterpolate: false, intent: .defaultIntent))
     }
 
-    func testMatchingColoursCompareAcrossAllSupportedByteLayouts() throws {
+    @Test func testMatchingColoursCompareAcrossAllSupportedByteLayouts() throws {
         let reference = try layoutFrame(layouts[0]) { _, _ in [40, 80, 120] }
         for layout in layouts {
             let image = try layoutFrame(layout) { _, _ in [40, 80, 120] }
-            let colour = try XCTUnwrap(NSBitmapImageRep(cgImage: image).colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB))
-            XCTAssertEqual(colour.redComponent, 40.0 / 255, accuracy: 0.01)
-            XCTAssertEqual(colour.blueComponent, 120.0 / 255, accuracy: 0.01)
-            XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: image, previous: reference, rightMarginPx: 0), 40)
-            XCTAssertEqual(ScrollFrameAnalyzer.scrollbarWidth(current: image, previous: reference), 0)
+            let colour = try #require(NSBitmapImageRep(cgImage: image).colorAt(x: 0, y: 0)?.usingColorSpace(.deviceRGB))
+            #expect(abs(colour.redComponent - (40.0 / 255)) <= 0.01)
+            #expect(abs(colour.blueComponent - (120.0 / 255)) <= 0.01)
+            #expect(ScrollFrameAnalyzer.frozenTopRows(current: image, previous: reference, rightMarginPx: 0) == 40)
+            #expect(ScrollFrameAnalyzer.scrollbarWidth(current: image, previous: reference) == 0)
         }
     }
 
-    func testEachColourChannelParticipatesInHeaderAndScrollbarDetection() throws {
+    @Test func testEachColourChannelParticipatesInHeaderAndScrollbarDetection() throws {
         for layout in layouts {
             let before = try layoutFrame(layout) { _, _ in [40, 80, 120] }
             for channel in 0..<3 {
@@ -56,24 +56,24 @@ final class ScrollFrameAnalyzerTests: XCTestCase {
                     if y >= 12 || x >= 74 { rgb[channel] = 240 }
                     return rgb
                 }
-                XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 6), 12)
+                #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 6) == 12)
                 // Use a scrollbar-only change so page content cannot obscure its inner edge.
                 let scrollbar = try layoutFrame(layout) { x, _ in
                     var rgb: [UInt8] = [40, 80, 120]
                     if x >= 74 { rgb[channel] = 240 }
                     return rgb
                 }
-                XCTAssertEqual(ScrollFrameAnalyzer.scrollbarWidth(current: scrollbar, previous: before), 6)
+                #expect(ScrollFrameAnalyzer.scrollbarWidth(current: scrollbar, previous: before) == 6)
             }
         }
     }
 
-    func testUnusedPixelByteDoesNotLookLikeScrolling() throws {
+    @Test func testUnusedPixelByteDoesNotLookLikeScrolling() throws {
         for layout in layouts where layout.0 == .noneSkipFirst || layout.0 == .noneSkipLast {
             let before = try layoutFrame(layout, unused: 0) { _, _ in [40, 80, 120] }
             let after = try layoutFrame(layout, unused: 255) { _, _ in [40, 80, 120] }
-            XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0), 40)
-            XCTAssertEqual(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before), 0)
+            #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0) == 40)
+            #expect(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before) == 0)
         }
     }
 
@@ -100,9 +100,9 @@ final class ScrollFrameAnalyzerTests: XCTestCase {
                 bytes[y * bytesPerRow + width * 4 + pad] = UInt8((y * 31 + pad * 17) % 256)
             }
         }
-        let data = try XCTUnwrap(CFDataCreate(nil, bytes, bytes.count))
-        let provider = try XCTUnwrap(CGDataProvider(data: data))
-        return try XCTUnwrap(CGImage(
+        let data = try #require(CFDataCreate(nil, bytes, bytes.count))
+        let provider = try #require(CGDataProvider(data: data))
+        return try #require(CGImage(
             width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
             bytesPerRow: bytesPerRow,
             space: CGColorSpaceCreateDeviceRGB(),
@@ -132,135 +132,130 @@ final class ScrollFrameAnalyzerTests: XCTestCase {
 
     // MARK: - Frame validation
 
-    func testRegistrationShiftNeedsFiniteOverlappingFrames() {
+    @Test func testRegistrationShiftNeedsFiniteOverlappingFrames() {
         for shift: CGFloat in [.nan, .infinity, -.infinity, 800, -800, 1e18] {
-            XCTAssertNil(ScrollFrameAnalyzer.validatedVerticalShift(shift, frameHeight: 800))
+            #expect(ScrollFrameAnalyzer.validatedVerticalShift(shift, frameHeight: 800) == nil)
         }
-        XCTAssertNil(ScrollFrameAnalyzer.validatedVerticalShift(10, frameHeight: 0))
-        XCTAssertEqual(ScrollFrameAnalyzer.validatedVerticalShift(120.5, frameHeight: 800), 120.5)
-        XCTAssertEqual(ScrollFrameAnalyzer.validatedVerticalShift(-120.5, frameHeight: 800), -120.5)
-        XCTAssertEqual(ScrollFrameAnalyzer.validatedVerticalShift(0, frameHeight: 800), 0)
+        #expect(ScrollFrameAnalyzer.validatedVerticalShift(10, frameHeight: 0) == nil)
+        #expect(ScrollFrameAnalyzer.validatedVerticalShift(120.5, frameHeight: 800) == 120.5)
+        #expect(ScrollFrameAnalyzer.validatedVerticalShift(-120.5, frameHeight: 800) == -120.5)
+        #expect(ScrollFrameAnalyzer.validatedVerticalShift(0, frameHeight: 800) == 0)
     }
 
-    func testFrameRejectsUnsupportedPixelFormats() throws {
-        let gray = try XCTUnwrap(CGContext(
+    @Test func testFrameRejectsUnsupportedPixelFormats() throws {
+        let gray = try #require(CGContext(
             data: nil, width: 10, height: 10, bitsPerComponent: 8, bytesPerRow: 10,
             space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)?.makeImage())
-        XCTAssertNil(ScrollFrameAnalyzer.frame(for: gray),
-                     "an 8-bit grayscale buffer must be refused, not indexed as if it were BGRA")
+        #expect(ScrollFrameAnalyzer.frame(for: gray) == nil, "an 8-bit grayscale buffer must be refused, not indexed as if it were BGRA")
     }
 
-    func testFrameAcceptsAPaddedThirtyTwoBitImage() throws {
+    @Test func testFrameAcceptsAPaddedThirtyTwoBitImage() throws {
         let image = try makePage(headerRows: 0, scrollOffset: 0, rowPadding: 28)
-        let frame = try XCTUnwrap(ScrollFrameAnalyzer.frame(for: image))
-        XCTAssertEqual(frame.bytesPerRow, 80 * 4 + 28, "the analyzer must use the image's own stride")
+        let frame = try #require(ScrollFrameAnalyzer.frame(for: image))
+        #expect(frame.bytesPerRow == (80 * 4 + 28), "the analyzer must use the image's own stride")
     }
 
-    func testOffsetsOutsideTheImageAreRefused() throws {
-        let frame = try XCTUnwrap(ScrollFrameAnalyzer.frame(for: try makePage(headerRows: 0, scrollOffset: 0)))
-        XCTAssertNil(frame.offset(x: -1, y: 0))
-        XCTAssertNil(frame.offset(x: 0, y: -1))
-        XCTAssertNil(frame.offset(x: frame.width, y: 0))
-        XCTAssertNil(frame.offset(x: 0, y: frame.height))
-        XCTAssertNotNil(frame.offset(x: frame.width - 1, y: frame.height - 1))
+    @Test func testOffsetsOutsideTheImageAreRefused() throws {
+        let frame = try #require(ScrollFrameAnalyzer.frame(for: try makePage(headerRows: 0, scrollOffset: 0)))
+        #expect(frame.offset(x: -1, y: 0) == nil)
+        #expect(frame.offset(x: 0, y: -1) == nil)
+        #expect(frame.offset(x: frame.width, y: 0) == nil)
+        #expect(frame.offset(x: 0, y: frame.height) == nil)
+        #expect(frame.offset(x: frame.width - 1, y: frame.height - 1) != nil)
     }
 
     // MARK: - Frozen header
 
-    func testHeaderIsFoundWhereTheContentStartsMoving() throws {
+    @Test func testHeaderIsFoundWhereTheContentStartsMoving() throws {
         let before = try makePage(headerRows: 18, scrollOffset: 0)
         let after = try makePage(headerRows: 18, scrollOffset: 12)
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0), 18)
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0) == 18)
     }
 
-    func testHeaderDetectionIsUnaffectedByRowPadding() throws {
+    @Test func testHeaderDetectionIsUnaffectedByRowPadding() throws {
         // The old code derived the stride as width*4, so every row after the
         // first was read from the wrong offset once the rows were padded.
         let before = try makePage(headerRows: 18, scrollOffset: 0, rowPadding: 44)
         let after = try makePage(headerRows: 18, scrollOffset: 12, rowPadding: 44)
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0), 18,
-                       "padded rows must give the same answer as unpadded ones")
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0) == 18, "padded rows must give the same answer as unpadded ones")
     }
 
-    func testAPageWithoutAHeaderReportsZeroFrozenRows() throws {
+    @Test func testAPageWithoutAHeaderReportsZeroFrozenRows() throws {
         let before = try makePage(headerRows: 0, scrollOffset: 0)
         let after = try makePage(headerRows: 0, scrollOffset: 9)
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0), 0)
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0) == 0)
     }
 
-    func testIdenticalFramesReportEveryRowFrozen() throws {
+    @Test func testIdenticalFramesReportEveryRowFrozen() throws {
         let frame = try makePage(headerRows: 10, scrollOffset: 0)
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: frame, previous: frame, rightMarginPx: 0), 60,
-                       "a pair that didn't scroll says nothing about a header")
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: frame, previous: frame, rightMarginPx: 0) == 60, "a pair that didn't scroll says nothing about a header")
     }
 
-    func testTheScrollbarIsExcludedFromHeaderDetection() throws {
+    @Test func testTheScrollbarIsExcludedFromHeaderDetection() throws {
         // With the scrollbar included, its moving thumb makes the very first row
         // look changed and the header is missed.
         let before = try makePage(headerRows: 20, scrollOffset: 0, scrollbarWidth: 6)
         let after = try makePage(headerRows: 20, scrollOffset: 14, scrollbarWidth: 6)
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 10), 20)
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 10) == 20)
     }
 
-    func testMismatchedFrameSizesAreRefusedRatherThanGuessed() throws {
+    @Test func testMismatchedFrameSizesAreRefusedRatherThanGuessed() throws {
         let small = try makePage(width: 40, height: 30, headerRows: 5, scrollOffset: 0)
         let large = try makePage(width: 80, height: 60, headerRows: 5, scrollOffset: 5)
-        XCTAssertNil(ScrollFrameAnalyzer.frozenTopRows(current: large, previous: small, rightMarginPx: 0))
-        XCTAssertNil(ScrollFrameAnalyzer.scrollbarWidth(current: large, previous: small))
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: large, previous: small, rightMarginPx: 0) == nil)
+        #expect(ScrollFrameAnalyzer.scrollbarWidth(current: large, previous: small) == nil)
     }
 
-    func testAMarginWiderThanTheFrameStillComparesSomething() throws {
+    @Test func testAMarginWiderThanTheFrameStillComparesSomething() throws {
         let before = try makePage(headerRows: 15, scrollOffset: 0)
         let after = try makePage(headerRows: 15, scrollOffset: 10)
         let rows = ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 9999)
-        XCTAssertNotNil(rows, "an absurd margin must not divide the scan down to nothing")
+        #expect(rows != nil, "an absurd margin must not divide the scan down to nothing")
     }
 
     // MARK: - Scrollbar
 
-    func testScrollbarWidthMatchesTheMovingStrip() throws {
+    @Test func testScrollbarWidthMatchesTheMovingStrip() throws {
         let before = try makePage(headerRows: 0, scrollOffset: 0, scrollbarWidth: 8)
         let after = try makePage(headerRows: 0, scrollOffset: 20, scrollbarWidth: 8)
-        let width = try XCTUnwrap(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before))
-        XCTAssertEqual(width, 8, accuracy: 2, "detected strip should track the scrollbar's real width")
+        let width = try #require(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before))
+        #expect(abs(width - (8)) <= 2, "detected strip should track the scrollbar's real width")
     }
 
-    func testScrollbarDetectionIsUnaffectedByRowPadding() throws {
+    @Test func testScrollbarDetectionIsUnaffectedByRowPadding() throws {
         let before = try makePage(headerRows: 0, scrollOffset: 0, rowPadding: 12, scrollbarWidth: 8)
         let after = try makePage(headerRows: 0, scrollOffset: 20, rowPadding: 12, scrollbarWidth: 8)
-        let width = try XCTUnwrap(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before))
-        XCTAssertEqual(width, 8, accuracy: 2)
+        let width = try #require(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before))
+        #expect(abs(width - (8)) <= 2)
     }
 
-    func testNoScrollbarMeansZeroWidth() throws {
+    @Test func testNoScrollbarMeansZeroWidth() throws {
         // Content changes, but the right edge is part of that content and
         // changes too — so there is no *separate* static-then-moving strip.
         let before = try makeFrame(width: 80, height: 60) { _, _ in (100, 100, 100) }
         let after = try makeFrame(width: 80, height: 60) { _, _ in (100, 100, 100) }
-        XCTAssertEqual(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before), 0,
-                       "two identical frames have no moving strip")
+        #expect(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before) == 0, "two identical frames have no moving strip")
     }
 
-    func testTinyFramesDoNotCrashTheScan() throws {
+    @Test func testTinyFramesDoNotCrashTheScan() throws {
         for size in [1, 2, 3, 5] {
             let before = try makeFrame(width: size, height: size) { x, _ in (UInt8(x * 10), 0, 0) }
             let after = try makeFrame(width: size, height: size) { x, _ in (UInt8(x * 20), 0, 0) }
-            XCTAssertNotNil(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before),
-                            "a \(size)x\(size) frame must still be comparable")
-            XCTAssertNotNil(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0))
+            #expect(ScrollFrameAnalyzer.scrollbarWidth(current: after, previous: before) != nil, "a \(size)x\(size) frame must still be comparable")
+            #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0) != nil)
         }
     }
 
-    func testOnePixelFrameIsHandled() throws {
+    @Test func testOnePixelFrameIsHandled() throws {
         let a = try makeFrame(width: 1, height: 1) { _, _ in (0, 0, 0) }
         let b = try makeFrame(width: 1, height: 1) { _, _ in (255, 255, 255) }
-        XCTAssertEqual(ScrollFrameAnalyzer.scrollbarWidth(current: a, previous: b), 0)
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: a, previous: b, rightMarginPx: 0), 0)
+        #expect(ScrollFrameAnalyzer.scrollbarWidth(current: a, previous: b) == 0)
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: a, previous: b, rightMarginPx: 0) == 0)
     }
 
     // MARK: - Noise tolerance
 
-    func testSubtleNoiseIsNotMistakenForContentChange() throws {
+    @Test func testSubtleNoiseIsNotMistakenForContentChange() throws {
         // Antialiasing and compression move a channel by a point or two; that
         // must not read as "this row scrolled".
         let before = try makePage(headerRows: 25, scrollOffset: 0)
@@ -269,6 +264,6 @@ final class ScrollFrameAnalyzerTests: XCTestCase {
             let contentRow = y + 12
             return (UInt8((contentRow * 37) % 256), UInt8((contentRow * 11) % 256), UInt8((x * 5) % 256))
         }
-        XCTAssertEqual(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0), 25)
+        #expect(ScrollFrameAnalyzer.frozenTopRows(current: after, previous: before, rightMarginPx: 0) == 25)
     }
 }
