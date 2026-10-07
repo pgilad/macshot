@@ -635,7 +635,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
 
-        menu.delegate = self  // menuWillOpen dismisses any modal + prewarms capture
+        menu.delegate = self  // menuWillOpen disables items under a modal dialog + prewarms capture
         statusBarMenu = menu
         // Use the NATIVE status-item menu (no custom click action). Showing
         // the menu by synthesizing a click from the button's mouse-down
@@ -666,7 +666,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Hotkey
 
     private func registerHotkey() {
-        HotkeyManager.shared.registerAll(
+        let failures = HotkeyManager.shared.registerAll(
             captureArea: { [weak self] in
                 self?.perform(#selector(AppDelegate.captureScreen))
             },
@@ -698,6 +698,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.async { self?.clearHistorySilently() }
             }
         )
+        reportHotkeyFailures(failures)
+    }
+
+    /// Slots already reported as not registered, so that changing an unrelated
+    /// shortcut does not show the same message again.
+    private var reportedHotkeyFailures: [HotkeyManager.HotkeySlot: HotkeyManager.RegistrationFailure] = [:]
+
+    private func reportHotkeyFailures(_ failures: [HotkeyManager.HotkeySlot: HotkeyManager.RegistrationFailure]) {
+        let newFailures = failures.filter { reportedHotkeyFailures[$0.key] != $0.value }
+        reportedHotkeyFailures = failures
+        guard !newFailures.isEmpty else { return }
+        showFailureToast(HotkeyManager.failureMessage(for: newFailures))
     }
 
     private var pendingFullScreen: Bool = false
@@ -2076,14 +2088,22 @@ extension AppDelegate: PinWindowControllerDelegate {
 extension AppDelegate: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         // Only for the main status-bar menu (the history submenu rebuilds via
-        // menuNeedsUpdate). Dismiss any active modal before the menu shows, and
-        // pre-warm ScreenCaptureKit content while the user browses.
+        // menuNeedsUpdate). Pre-warm ScreenCaptureKit content while the user
+        // browses.
         guard menu === statusBarMenu else { return }
         ScreenCaptureManager.prewarm()
-        if let modalWin = NSApp.modalWindow {
-            NSApp.stopModal()
-            modalWin.close()
+        // A modal dialog blocks input to the overlay and every other macshot
+        // window. Keep the dialog open (the user may still need to answer it)
+        // and offer only Quit until it closes.
+        let dialogIsOpen = NSApp.modalWindow != nil
+        for item in menu.items where item.action != #selector(quitApp) {
+            item.isEnabled = !dialogIsOpen
         }
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        guard menu === statusBarMenu else { return }
+        HotkeyManager.bringModalDialogToFront()
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

@@ -81,15 +81,29 @@ class HotkeyManager {
         }
     }
 
+    /// Why a slot's chord did not register.
+    enum RegistrationFailure: Equatable {
+        /// Another macshot slot registered the same chord first.
+        case usedBy(HotkeySlot)
+        /// The system refused the chord: another app registered it exclusively,
+        /// or it is not allowed.
+        case refused(OSStatus)
+    }
+
     private var hotKeyRefs: [HotkeySlot: EventHotKeyRef] = [:]
     private var callbacks: [HotkeySlot: () -> Void] = [:]
     private var eventHandlerRef: EventHandlerRef?
+    /// Slots whose chord did not register in the last `register` call for them.
+    private(set) var failures: [HotkeySlot: RegistrationFailure] = [:]
 
     private init() {}
 
     /// Register a callback for a hotkey slot. Reads keyCode/modifiers from UserDefaults.
-    func register(slot: HotkeySlot, callback: @escaping () -> Void) {
+    /// Returns false when the chord did not register (see `failures`).
+    @discardableResult
+    func register(slot: HotkeySlot, callback: @escaping () -> Void) -> Bool {
         callbacks[slot] = callback
+        failures[slot] = nil
 
         // Unregister existing hotkey for this slot
         if let ref = hotKeyRefs[slot] {
@@ -98,23 +112,32 @@ class HotkeyManager {
         }
 
         let (keyCode, modifiers) = Self.readHotkey(for: slot)
-        guard modifiers != 0 || Self.isFunctionKey(keyCode) else { return }  // no modifiers = disabled (unless function key)
+        guard modifiers != 0 || Self.isFunctionKey(keyCode) else { return true }  // no modifiers = disabled (unless function key)
 
         installEventHandler()
         var ref: EventHotKeyRef?
-        var hotkeyID = EventHotKeyID(signature: OSType(0x4D53_4854), id: UInt32(slot.rawValue))
+        let hotkeyID = EventHotKeyID(signature: OSType(0x4D53_4854), id: UInt32(slot.rawValue))
 
         let status = RegisterEventHotKey(
             keyCode, modifiers, hotkeyID,
             GetApplicationEventTarget(), 0, &ref
         )
-        if status == noErr, let ref = ref {
-            hotKeyRefs[slot] = ref
+        guard status == noErr, let ref else {
+            let owner = hotKeyRefs.keys.first { other in
+                let chord = Self.readHotkey(for: other)
+                return chord.keyCode == keyCode && chord.modifiers == modifiers
+            }
+            failures[slot] = owner.map { .usedBy($0) } ?? .refused(status)
+            return false
         }
+        hotKeyRefs[slot] = ref
+        return true
     }
 
-    /// Register all hotkeys with their callbacks.
-    func registerAll(captureArea: @escaping () -> Void, captureFullScreen: @escaping () -> Void, historyOverlay: @escaping () -> Void, captureOCR: @escaping () -> Void, quickCapture: @escaping () -> Void, scrollCapture: @escaping () -> Void, openFromClipboard: @escaping () -> Void, captureLastArea: @escaping () -> Void, pinFromClipboard: @escaping () -> Void, clearHistory: @escaping () -> Void) {
+    /// Register all hotkeys with their callbacks. Returns the slots that did
+    /// not register.
+    @discardableResult
+    func registerAll(captureArea: @escaping () -> Void, captureFullScreen: @escaping () -> Void, historyOverlay: @escaping () -> Void, captureOCR: @escaping () -> Void, quickCapture: @escaping () -> Void, scrollCapture: @escaping () -> Void, openFromClipboard: @escaping () -> Void, captureLastArea: @escaping () -> Void, pinFromClipboard: @escaping () -> Void, clearHistory: @escaping () -> Void) -> [HotkeySlot: RegistrationFailure] {
         unregisterAll()
         register(slot: .captureArea, callback: captureArea)
         register(slot: .captureFullScreen, callback: captureFullScreen)
@@ -126,6 +149,41 @@ class HotkeyManager {
         register(slot: .captureLastArea, callback: captureLastArea)
         register(slot: .pinFromClipboard, callback: pinFromClipboard)
         register(slot: .clearHistory, callback: clearHistory)
+        return failures
+    }
+
+    /// One line for a slot that did not register, for the failure toast and
+    /// the Shortcuts settings.
+    static func failureDescription(for slot: HotkeySlot, _ failure: RegistrationFailure) -> String {
+        let chord = displayString(for: slot)
+        switch failure {
+        case .usedBy(let other):
+            return "\(chord) for \(slot.label) does not work: \(other.label) already uses it."
+        case .refused:
+            return "\(chord) for \(slot.label) does not work: another app uses it, or macOS does not allow it."
+        }
+    }
+
+    static func failureMessage(for failures: [HotkeySlot: RegistrationFailure]) -> String {
+        let lines = HotkeySlot.allCases.compactMap { slot in
+            failures[slot].map { failureDescription(for: slot, $0) }
+        }
+        let advice = lines.count == 1
+            ? "Choose a different shortcut in Settings → Shortcuts."
+            : "Choose different shortcuts in Settings → Shortcuts."
+        return (lines + [advice]).joined(separator: "\n")
+    }
+
+    /// A dialog that runs modally blocks input to every other macshot window,
+    /// so a capture started now could not be used. Bring the dialog to the
+    /// front instead of closing it: the user may still need to answer it.
+    /// Returns false when no modal dialog is open.
+    @discardableResult
+    static func bringModalDialogToFront() -> Bool {
+        guard let dialog = NSApp.modalWindow else { return false }
+        NSApp.activate()
+        dialog.makeKeyAndOrderFront(nil)
+        return true
     }
 
     private func installEventHandler() {
@@ -144,11 +202,11 @@ class HotkeyManager {
                                   nil, MemoryLayout<EventHotKeyID>.size, nil, &hotkeyID)
 
                 if let slot = HotkeySlot(rawValue: Int(hotkeyID.id)), let callback = mgr.callbacks[slot] {
-                    if NSApp.modalWindow != nil {
-                        NSApp.stopModal()
-                        NSApp.modalWindow?.close()
+                    if HotkeyManager.bringModalDialogToFront() {
+                        NSSound.beep()
+                    } else {
+                        callback()
                     }
-                    callback()
                 }
                 return noErr
             },
@@ -161,6 +219,7 @@ class HotkeyManager {
             UnregisterEventHotKey(ref)
         }
         hotKeyRefs.removeAll()
+        failures.removeAll()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil

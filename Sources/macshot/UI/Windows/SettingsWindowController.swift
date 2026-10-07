@@ -1168,8 +1168,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             field.alignment = .center
             field.setContentHuggingPriority(.defaultHigh, for: .horizontal)
             field.widthAnchor.constraint(equalToConstant: 80).isActive = true
-            field.stringValue = HotkeyManager.displayString(for: slot)
-
             let btn = NSButton(title: "Set", target: self, action: #selector(recordShortcut(_:)))
             btn.bezelStyle = .rounded
             btn.tag = slot.rawValue
@@ -1196,6 +1194,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
             hotkeyFields[slot] = field
             hotkeyButtons[slot] = btn
+            refreshHotkeyField(slot)
 
             stack.addArrangedSubview(labeledRow("\(slot.label):", controls: [field, btn, clearBtn, resetBtn]))
             stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
@@ -1361,10 +1360,30 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             let keyCode = UInt32(event.keyCode)
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) { return nil }
             HotkeyManager.saveHotkey(for: slot, keyCode: keyCode, modifiers: carbonMods)
-            self.hotkeyFields[slot]?.stringValue = HotkeyManager.displayString(for: slot)
             self.stopShortcutRecording()
             self.onHotkeyChanged?()
+            self.refreshHotkeyFields()
             return nil
+        }
+    }
+
+    /// Re-registering one slot can fix or break another, so refresh them all.
+    private func refreshHotkeyFields() {
+        for slot in HotkeyManager.HotkeySlot.allCases {
+            refreshHotkeyField(slot)
+        }
+    }
+
+    /// Shows the chord, in red with the reason as a tooltip when it did not register.
+    private func refreshHotkeyField(_ slot: HotkeyManager.HotkeySlot) {
+        guard let field = hotkeyFields[slot] else { return }
+        field.stringValue = HotkeyManager.displayString(for: slot)
+        if let failure = HotkeyManager.shared.failures[slot] {
+            field.textColor = .systemRed
+            field.toolTip = HotkeyManager.failureDescription(for: slot, failure)
+        } else {
+            field.textColor = .labelColor
+            field.toolTip = nil
         }
     }
 
@@ -1372,22 +1391,22 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         guard let slot = HotkeyManager.HotkeySlot(rawValue: sender.tag) else { return }
         stopShortcutRecording()
         HotkeyManager.disableHotkey(for: slot)
-        hotkeyFields[slot]?.stringValue = "None"
         onHotkeyChanged?()
+        refreshHotkeyFields()
     }
 
     @objc private func resetShortcut(_ sender: NSButton) {
         guard let slot = HotkeyManager.HotkeySlot(rawValue: sender.tag) else { return }
         stopShortcutRecording()
         HotkeyManager.saveHotkey(for: slot, keyCode: slot.defaultKeyCode, modifiers: slot.defaultModifiers)
-        hotkeyFields[slot]?.stringValue = HotkeyManager.displayString(for: slot)
         onHotkeyChanged?()
+        refreshHotkeyFields()
     }
 
     private func stopShortcutRecording() {
         if let slot = recordingSlot {
             hotkeyButtons[slot]?.title = "Set"
-            hotkeyFields[slot]?.stringValue = HotkeyManager.displayString(for: slot)
+            refreshHotkeyField(slot)
         }
         recordingSlot = nil
         if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
@@ -1890,9 +1909,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     // MARK: - Load settings
 
     func refreshShortcutDisplaysForKeyboardLayout() {
-        for slot in HotkeyManager.HotkeySlot.allCases {
-            hotkeyFields[slot]?.stringValue = HotkeyManager.displayString(for: slot)
-        }
+        refreshHotkeyFields()
         for action in EditorCommandShortcutManager.Action.allCases {
             commandShortcutFields[action]?.stringValue = EditorCommandShortcutManager.displayString(for: action)
         }

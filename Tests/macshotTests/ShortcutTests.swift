@@ -367,4 +367,35 @@ final class HotkeyManagerTests {
             #expect(!HotkeyManager.displayString(for: slot).isEmpty)
         }
     }
+
+    @Test func testAFailureNamesTheChordTheSlotAndWhatToDo() {
+        let area = HotkeyManager.HotkeySlot.captureArea
+        let screen = HotkeyManager.HotkeySlot.captureFullScreen
+        let keys: [String: Any?] = [
+            area.keyCodeKey: kVK_F13, area.modifiersKey: cmdKey | shiftKey, area.disabledKey: nil,
+            screen.keyCodeKey: kVK_F13, screen.modifiersKey: cmdKey | shiftKey, screen.disabledKey: nil,
+        ]
+        withDefaults(keys) {
+            let taken = HotkeyManager.failureMessage(for: [screen: .usedBy(area)])
+            #expect(taken.contains("\u{21E7}\u{2318}F13 for Capture Screen"))
+            #expect(taken.contains("Capture Area already uses it"))
+            #expect(taken.hasSuffix("Choose a different shortcut in Settings → Shortcuts."))
+
+            let refused = HotkeyManager.failureMessage(for: [area: .refused(-9878)])
+            #expect(refused.contains("another app uses it"))
+        }
+    }
+
+    @Test func testSeveralFailuresAreListedInSlotOrder() {
+        let area = HotkeyManager.HotkeySlot.captureArea
+        let history = HotkeyManager.HotkeySlot.historyOverlay
+        withDefaults([area.disabledKey: nil, history.disabledKey: nil]) {
+            let message = HotkeyManager.failureMessage(for: [history: .refused(-9878), area: .refused(-9878)])
+            let lines = message.components(separatedBy: "\n")
+            #expect(lines.count == 3)
+            #expect(lines[0].contains("Capture Area"))
+            #expect(lines[1].contains("History"))
+            #expect(lines[2] == "Choose different shortcuts in Settings → Shortcuts.")
+        }
+    }
 }
