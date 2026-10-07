@@ -95,8 +95,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     private var filenameTemplatePreview: NSTextField!
     private var recordingFilenameTemplateField: NSTextField!
     private var recordingFilenameTemplatePreview: NSTextField!
-    private var autoUpdateCheckbox: NSButton!
-    private var betaUpdateCheckbox: NSButton!
     private var accentColorWell: NSColorWell!
     private var iconColorWell: NSColorWell!
     private var bgColorWell: NSColorWell!
@@ -507,14 +505,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         urlSchemeRow.spacing = 4
         urlSchemeRow.alignment = .centerY
         stack.addArrangedSubview(indented(urlSchemeRow))
-        stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
-
-        autoUpdateCheckbox = NSButton(checkboxWithTitle: L("Check for updates automatically"), target: self, action: #selector(autoUpdateChanged(_:)))
-        stack.addArrangedSubview(indented(autoUpdateCheckbox))
-        stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
-
-        betaUpdateCheckbox = NSButton(checkboxWithTitle: L("Check for beta updates"), target: self, action: #selector(betaUpdateChanged(_:)))
-        stack.addArrangedSubview(indented(betaUpdateCheckbox))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
         // ── Appearance ───────────────────────────────────────
@@ -2683,11 +2673,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         recordingFilenameTemplateField.stringValue = UserDefaults.standard.string(forKey: FilenameFormatter.recordingUserDefaultsKey) ?? FilenameFormatter.defaultRecordingTemplate
         updateRecordingFilenamePreview()
 
-        let autoUpdate = UserDefaults.standard.object(forKey: "SUEnableAutomaticChecks") as? Bool ?? true
-        autoUpdateCheckbox.state = autoUpdate ? .on : .off
-
-        betaUpdateCheckbox.state = UserDefaults.standard.bool(forKey: "betaUpdatesEnabled") ? .on : .off
-
         accentColorWell.color = ToolbarLayout.accentColor
         iconColorWell.color = ToolbarLayout.iconColor
         bgColorWell.color = ToolbarLayout.bgColor
@@ -3370,14 +3355,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let custom = menuBarIconModePopup.indexOfSelectedItem == 1
         menuBarIconSymbolField.isEnabled = custom
         menuBarIconPresetPopup.isEnabled = custom
-    }
-
-    @objc private func autoUpdateChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "SUEnableAutomaticChecks")
-    }
-
-    @objc private func betaUpdateChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "betaUpdatesEnabled")
     }
 
     @objc private func translationProviderChanged(_ sender: NSPopUpButton) {

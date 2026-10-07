@@ -2,25 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>Google OAuth</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.92758256085-8gkpg2b9to7bu7to0vgh9c7af755hp5d</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>macshot Actions</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>macshot</string>
-			</array>
-		</dict>
-	</array>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -43,25 +24,34 @@
 			</array>
 		</dict>
 	</array>
-	<key>Privacy - Screen Capture Usage Description</key>
-	<string>macshot needs screen recording permission to capture screenshots.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>macshot can record microphone audio during screen recordings.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Google OAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.92758256085-8gkpg2b9to7bu7to0vgh9c7af755hp5d</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>macshot Actions</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>macshot</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>macshot can show a webcam overlay during screen recordings.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>macshot can record microphone audio during screen recordings.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>macshot transcribes your recordings on this Mac to create captions. Audio is not uploaded.</string>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/sw33tLie/macshot/main/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>+5RTT9lGyoeOYAYuNfCdPhxugmruYvRDyFXgk6VPY1c=</string>
-	<key>SUScheduledCheckInterval</key>
-	<integer>86400</integer>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUEnableInstallerLauncherService</key>
-	<true/>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
+	<key>Privacy - Screen Capture Usage Description</key>
+	<string>macshot needs screen recording permission to capture screenshots.</string>
 </dict>
 </plist>

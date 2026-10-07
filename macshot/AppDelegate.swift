@@ -1,6 +1,5 @@
 import Cocoa
 import Carbon
-import Sparkle
 import ServiceManagement
 import UniformTypeIdentifiers
 import AVFoundation
@@ -191,10 +190,9 @@ private final class CaptureTimingTrace: @unchecked Sendable {
 }
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
-    private var updaterController: SPUStandardUpdaterController!
     private var overlayControllers: [OverlayWindowController] = []
     private var settingsController: SettingsWindowController?
     private var onboardingController: PermissionOnboardingController?
@@ -315,11 +313,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         // something references ScreenshotHistory.shared.
         _ = ScreenshotHistory.shared
 
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
-        // Disable silent update downloads — updates should only apply
-        // via explicit user action ("Check for Updates..." / Install),
-        // so an automatic update can't be mistaken for a silent crash.
-        updaterController.updater.automaticallyDownloadsUpdates = false
         setupMainMenu()
         setupStatusBar()
         DistributedNotificationCenter.default().addObserver(
@@ -905,11 +898,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         prefsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: nil)
         menu.addItem(prefsItem)
 
-        let updateItem = NSMenuItem(title: L("Check for Updates..."), action: #selector(checkForUpdates), keyEquivalent: "")
-        updateItem.target = self
-        updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
-        menu.addItem(updateItem)
-
         menu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(title: L("Quit macshot"), action: #selector(quitApp), keyEquivalent: "q")
@@ -1015,7 +1003,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
     /// The app that was active before macshot showed its overlay.
     private var previousApp: NSRunningApplication?
 
-    /// Titled macshot windows (editors, preferences, Sparkle, etc.) that were
+    /// Titled macshot windows (editors, preferences, etc.) that were
     /// visible when capture started. We `orderOut` them so `NSApp.activate`
     /// during capture can't drag them in front of the user's frontmost app,
     /// then `orderFront` them when the overlay dismisses. Kept in the order
@@ -2441,19 +2429,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
 
     // MARK: - Quit
 
-    @objc private func checkForUpdates() {
-        NSApp.activate(ignoringOtherApps: true)
-        updaterController.checkForUpdates(nil)
-    }
-
     @objc private func quitApp() {
         NSApp.terminate(nil)
-    }
-
-    // MARK: - SPUUpdaterDelegate
-
-    func allowedChannels(for updater: SPUUpdater) -> Set<String> {
-        UserDefaults.standard.bool(forKey: "betaUpdatesEnabled") ? ["beta"] : []
     }
 }
 
