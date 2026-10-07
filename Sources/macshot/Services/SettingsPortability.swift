@@ -57,7 +57,7 @@ enum SettingsPortability {
         // Internal migration bookkeeping — transferring stale values hides new tools/actions
         // or wrongly re-enables ones the user disabled. (enabledTools/enabledActions DO transfer.)
         "knownToolRawValues", "knownActionTags",
-        "suppressMoveToApplications", "useWindowTitleInFilename",
+        "useWindowTitleInFilename",
     ]
 
     /// Prefixes of OS/framework key families macOS injects into every app's domain. Stable —
