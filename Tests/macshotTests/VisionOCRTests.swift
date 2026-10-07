@@ -4,6 +4,11 @@ import Vision
 import Testing
 @testable import macshot
 
+/// The macOS 27 CI VM cannot compile Vision's accurate text recognition model
+/// (E5RT error), so CI sets MACSHOT_SKIP_ACCURATE_OCR there. The macOS 26 job
+/// and a Mac run these tests.
+private let accurateOCRAvailable = ProcessInfo.processInfo.environment["MACSHOT_SKIP_ACCURATE_OCR"] == nil
+
 final class VisionOCRTests {
     private func line(_ text: String) -> OCRTextObservation {
         OCRTextObservation(text: text, boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.8, height: 0.3))
@@ -51,7 +56,8 @@ final class VisionOCRTests {
     }
 
     // A fast fallback must not mask the legacy first-succeeds-then-fails bug.
-    @Test func testRepeatedRequestsThroughAccurateAPI() async {
+    @Test(.enabled(if: accurateOCRAvailable))
+    func testRepeatedRequestsThroughAccurateAPI() async {
         let image = image("Accurate recognition")
         for attempt in 1...6 {
             let done = TestExpectation(description: "primary accurate request \(attempt)")
@@ -70,7 +76,8 @@ final class VisionOCRTests {
         }
     }
 
-    @Test func testTextRecognitionPreservesCyrillic() async throws {
+    @Test(.enabled(if: accurateOCRAvailable))
+    func testTextRecognitionPreservesCyrillic() async throws {
         let done = TestExpectation(description: "Cyrillic OCR")
         _ = VisionOCR.startTextRecognition(cgImage: image("Привет мир"), recognitionLevel: .accurate) { result in
             switch result {
