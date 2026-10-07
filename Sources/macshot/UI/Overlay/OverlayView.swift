@@ -125,14 +125,16 @@ class OverlayView: NSView {
                     querySnapTarget(at: NSEvent.mouseLocation)
                 }
             }
-            // Build (or invalidate) the boundary-snap edge index off the main thread.
+            // Invalidate the boundary-snap edge index. Only the display under the
+            // pointer builds a new one now; the others build on first mouse move.
             boundarySnapBuildGeneration += 1
             boundarySnapIndex = nil
+            boundarySnapBuildInFlight = false
             boundarySnapGuideX = nil
             boundarySnapGuideY = nil
             pendingAutoAdjustSelection = false
-            if boundarySnapEnabled, !isEditorMode {
-                scheduleBoundarySnapIndexBuild()
+            if let frame = window?.frame, frame.contains(NSEvent.mouseLocation) {
+                requestBoundarySnapIndexIfNeeded()
             }
         }
     }
@@ -881,13 +883,17 @@ class OverlayView: NSView {
     }
 
     // Boundary snapping — snap the selection's dragged edges to strong color
-    // edges in the captured image (UI lines, window borders, etc.). Off by
+    // edges in the captured image (UI lines, window borders, etc.). On by
     // default. Hold Option while dragging to bypass.
     var boundarySnapEnabled: Bool {
         UserDefaults.standard.object(forKey: "boundarySnapEnabled") as? Bool ?? true
     }
     private var boundarySnapIndex: BoundarySnapIndex?
     private var boundarySnapBuildGeneration = 0
+    private var boundarySnapBuildInFlight = false
+    /// The generation the last finished build was for. A build that returns
+    /// nil is not retried on every mouse move.
+    private var boundarySnapBuiltGeneration = -1
     private var pendingAutoAdjustSelection = false
     /// Snap radius in overlay points.
     private let boundarySnapRadiusPoints: CGFloat = 4
@@ -1101,6 +1107,7 @@ class OverlayView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        requestBoundarySnapIndexIfNeeded()
 
         // Anchored selection (right-click in idle → track cursor without
         // holding a button). Shares all modifier behaviour with drag-based
@@ -5497,6 +5504,7 @@ class OverlayView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        requestBoundarySnapIndexIfNeeded()
         justDismissedTextEditor = false  // reset per click; set below if we commit one
 
         // Anchored selection commit: a left-click while the right-click-
@@ -7332,18 +7340,31 @@ class OverlayView: NSView {
         needsDisplay = true
     }
 
+    /// Builds the edge index for drag snapping once the pointer is on this
+    /// display. The index holds 2 bytes per screenshot pixel (about 40 MB on a
+    /// 6K display), so displays the user never points at do not build one.
+    private func requestBoundarySnapIndexIfNeeded() {
+        guard boundarySnapBuiltGeneration != boundarySnapBuildGeneration,
+              !boundarySnapBuildInFlight, !isEditorMode, screenshotImage != nil,
+              boundarySnapEnabled else { return }
+        scheduleBoundarySnapIndexBuild()
+    }
+
     /// Build the boundary-snap edge index for the current screenshot off the
     /// main thread, discarding the result if a newer screenshot arrived.
     private func scheduleBoundarySnapIndexBuild() {
-        guard let image = screenshotImage,
+        guard !boundarySnapBuildInFlight, let image = screenshotImage,
               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
+        boundarySnapBuildInFlight = true
         let generation = boundarySnapBuildGeneration
         let drawRect = captureDrawRect
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let index = BoundarySnapIndex.build(from: cgImage, drawRect: drawRect)
             DispatchQueue.main.async {
                 guard let self, self.boundarySnapBuildGeneration == generation else { return }
+                self.boundarySnapBuildInFlight = false
+                self.boundarySnapBuiltGeneration = generation
                 self.boundarySnapIndex = index
                 if self.pendingAutoAdjustSelection {
                     self.pendingAutoAdjustSelection = false

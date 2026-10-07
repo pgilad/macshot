@@ -84,6 +84,38 @@ final class BoundarySnapIndexTests {
         let hit = try #require(index.nearestVertical(toViewX: 76, yMinView: 20, yMaxView: 140, radiusPoints: 12))
         #expect(abs(hit.viewPosition - (80)) <= 1.5, "pixel 160 of a 2x capture is point 80")
     }
+
+    @Test func testBandedBuildMatchesASinglePass() throws {
+        // The index converts the image a band of rows at a time. The boundaries
+        // between bands must measure the same as the rest of the image.
+        let width = 37, height = 53
+        let image = ImageProbe.makeImage(width: width, height: height) { context in
+            for y in 0..<height {
+                for x in 0..<width {
+                    let v = CGFloat((x * 7 + y * 13 + x * y) % 17) / 16
+                    context.setFillColor(CGColor(srgbRed: v, green: 1 - v, blue: v * v, alpha: 1))
+                    context.fill(CGRect(x: x, y: y, width: 1, height: 1))
+                }
+            }
+        }.cgImage(forProposedRect: nil, context: nil, hints: nil)!
+        let drawRect = NSRect(x: 0, y: 0, width: width, height: height)
+        let whole = try #require(BoundarySnapIndex.build(from: image, drawRect: drawRect, bandRows: height))
+        for bandRows in [1, 2, 7, 52] {
+            let banded = try #require(BoundarySnapIndex.build(from: image, drawRect: drawRect, bandRows: bandRows))
+            #expect(banded.verticalDiff == whole.verticalDiff, "bands of \(bandRows) rows")
+            #expect(banded.horizontalDiff == whole.horizontalDiff, "bands of \(bandRows) rows")
+        }
+    }
+
+    @Test func testAHorizontalEdgeOnABandBoundaryIsFound() throws {
+        // Image row 256 (from the top) is the first row of the second band.
+        let height = 400
+        let index = try #require(BoundarySnapIndex.build(
+            from: edgedImage(height: height, edgeY: height - BoundarySnapIndex.defaultBandRows),
+            drawRect: NSRect(x: 0, y: 0, width: 200, height: height)))
+        let hit = try #require(index.nearestHorizontal(toViewY: 146, xMinView: 10, xMaxView: 60, radiusPoints: 12))
+        #expect(abs(hit.viewPosition - 144) <= 1.5)
+    }
 }
 
 /// The preview image behind the overlay is a downscale of the capture. It has

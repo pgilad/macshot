@@ -20,12 +20,14 @@ struct BoundarySnapIndex {
     /// view points ↔ image pixels.
     let drawRect: NSRect
 
-    /// Per-pixel vertical edge strength: difference between column x-1 and x.
-    /// Indexed `[y * (width + 1) + xBoundary]`, xBoundary in 1…width-1.
-    private let verticalDiff: [Float]
-    /// Per-pixel horizontal edge strength: difference between row y-1 and y.
-    /// Indexed `[yBoundary * width + x]`, yBoundary in 1…height-1.
-    private let horizontalDiff: [Float]
+    /// Per-pixel vertical edge strength: difference between column x-1 and x,
+    /// at `storageScale`. Indexed `[y * (width + 1) + xBoundary]`, xBoundary in
+    /// 1…width-1.
+    let verticalDiff: [UInt8]
+    /// Per-pixel horizontal edge strength: difference between row y-1 and y,
+    /// at `storageScale`. Indexed `[yBoundary * width + x]`, yBoundary in
+    /// 1…height-1.
+    let horizontalDiff: [UInt8]
 
     /// A qualifying snap target.
     struct Hit {
@@ -40,56 +42,75 @@ struct BoundarySnapIndex {
     private static let minMeanDiff: Float = 28      // 0…~441 (RGB euclidean)
     private static let minSupportFraction: Float = 0.55
 
+    /// The diffs are stored at half scale, one byte each: the largest RGB
+    /// distance, √(3·255²) ≈ 442, becomes 221. A 6K capture (20 MP) needs
+    /// 2 × 20 MB instead of 2 × 81 MB as Float.
+    private static let storageScale: Float = 0.5
+    private static let minStoredDiff = UInt8((minMeanDiff * storageScale).rounded())
+
+    /// Rows converted to RGBA8 at a time. The temporary pixel buffer holds
+    /// one band (plus one row of overlap), not the whole screenshot.
+    static let defaultBandRows = 256
+
     // MARK: - Build
 
     /// Build the index from a screenshot CGImage drawn into `drawRect`.
     /// Returns nil for degenerate images. Safe to call off the main thread.
-    static func build(from cgImage: CGImage, drawRect: NSRect) -> BoundarySnapIndex? {
+    nonisolated static func build(from cgImage: CGImage, drawRect: NSRect,
+                                  bandRows: Int = defaultBandRows) -> BoundarySnapIndex? {
         let w = cgImage.width
         let h = cgImage.height
-        guard w >= 2, h >= 2, drawRect.width > 0, drawRect.height > 0 else { return nil }
-        // Cap work on huge displays (e.g. 6K) — downscaling isn't needed; the
-        // arrays are O(pixels) which is fine up to ~20MP. Bail only if absurd.
+        guard w >= 2, h >= 2, drawRect.width > 0, drawRect.height > 0, bandRows >= 1 else { return nil }
+        // The arrays are O(pixels): 2 bytes per pixel. Bail only if absurd.
         guard w * h <= 40_000_000 else { return nil }
 
-        // Render into a known RGBA8 buffer so component access is predictable.
+        // Render a band at a time into a known RGBA8 buffer so component access
+        // is predictable. Row 0 of the buffer is the top row of the band.
         let bytesPerRow = w * 4
-        var pixels = [UInt8](repeating: 0, count: h * bytesPerRow)
+        let bufferRows = min(h, bandRows + 1)
+        var pixels = [UInt8](repeating: 0, count: bufferRows * bytesPerRow)
+        var vDiff = [UInt8](repeating: 0, count: h * (w + 1))
+        var hDiff = [UInt8](repeating: 0, count: h * w)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        guard let ctx = pixels.withUnsafeMutableBytes({ ptr -> CGContext? in
-            CGContext(
-                data: ptr.baseAddress, width: w, height: h,
-                bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: colorSpace,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        }) else { return nil }
-        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
 
-        var vDiff = [Float](repeating: 0, count: h * (w + 1))
-        var hDiff = [Float](repeating: 0, count: (h) * w)
+        // Each band measures image rows bandStart..<bandEnd (top-down). It also
+        // renders the row above it, for the horizontal boundary at bandStart.
+        var bandStart = 0
+        while bandStart < h {
+            let firstRow = max(0, bandStart - 1)
+            let bandEnd = min(h, bandStart + bandRows)
+            let rows = bandEnd - firstRow
+            let rendered = pixels.withUnsafeMutableBytes { ptr -> Bool in
+                guard let ctx = CGContext(
+                    data: ptr.baseAddress, width: w, height: rows,
+                    bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: colorSpace,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                else { return false }
+                // Place the image so its row `firstRow` is the top of the context.
+                ctx.draw(cgImage, in: CGRect(x: 0, y: rows + firstRow - h, width: w, height: h))
+                return true
+            }
+            guard rendered else { return nil }
 
-        pixels.withUnsafeBufferPointer { buf in
-            let p = buf.baseAddress!
-            // Vertical boundaries: |column x - column x-1| per row.
-            for y in 0..<h {
-                let row = y * bytesPerRow
-                let vBase = y * (w + 1)
-                for x in 1..<w {
-                    let a = row + (x - 1) * 4
-                    let b = row + x * 4
-                    vDiff[vBase + x] = colorDist(p, a, b)
+            pixels.withUnsafeBufferPointer { buf in
+                let p = buf.baseAddress!
+                for y in bandStart..<bandEnd {
+                    let row = (y - firstRow) * bytesPerRow
+                    // Vertical boundaries: |column x - column x-1| in row y.
+                    let vBase = y * (w + 1)
+                    for x in 1..<w {
+                        vDiff[vBase + x] = storedDist(p, row + (x - 1) * 4, row + x * 4)
+                    }
+                    // Horizontal boundary: |row y - row y-1| per column.
+                    guard y >= 1 else { continue }
+                    let rowAbove = row - bytesPerRow
+                    let hBase = y * w
+                    for x in 0..<w {
+                        hDiff[hBase + x] = storedDist(p, rowAbove + x * 4, row + x * 4)
+                    }
                 }
             }
-            // Horizontal boundaries: |row y - row y-1| per column.
-            for y in 1..<h {
-                let rowA = (y - 1) * bytesPerRow
-                let rowB = y * bytesPerRow
-                let hBase = y * w
-                for x in 0..<w {
-                    let a = rowA + x * 4
-                    let b = rowB + x * 4
-                    hDiff[hBase + x] = colorDist(p, a, b)
-                }
-            }
+            bandStart = bandEnd
         }
 
         return BoundarySnapIndex(
@@ -98,11 +119,11 @@ struct BoundarySnapIndex {
     }
 
     @inline(__always)
-    private static func colorDist(_ p: UnsafePointer<UInt8>, _ a: Int, _ b: Int) -> Float {
+    private nonisolated static func storedDist(_ p: UnsafePointer<UInt8>, _ a: Int, _ b: Int) -> UInt8 {
         let dr = Float(Int(p[a]) - Int(p[b]))
         let dg = Float(Int(p[a + 1]) - Int(p[b + 1]))
         let db = Float(Int(p[a + 2]) - Int(p[b + 2]))
-        return (dr * dr + dg * dg + db * db).squareRoot()
+        return UInt8(((dr * dr + dg * dg + db * db).squareRoot() * storageScale).rounded())
     }
 
     // MARK: - Coordinate mapping
@@ -143,14 +164,14 @@ struct BoundarySnapIndex {
         let hi = min(width - 1, center + radiusPx)
         guard lo <= hi else { return nil }
         for b in lo...hi {
-            var sum: Float = 0
+            var sum = 0
             var support = 0
             for y in y0...y1 {
                 let d = verticalDiff[y * (width + 1) + b]
-                sum += d
-                if d >= Self.minMeanDiff { support += 1 }
+                sum += Int(d)
+                if d >= Self.minStoredDiff { support += 1 }
             }
-            let mean = sum / Float(span)
+            let mean = Float(sum) / Self.storageScale / Float(span)
             let supportFrac = Float(support) / Float(span)
             guard mean >= Self.minMeanDiff, supportFrac >= Self.minSupportFraction else { continue }
             // Prefer a true local maximum (sharper than its neighbours).
@@ -181,15 +202,15 @@ struct BoundarySnapIndex {
         let hi = min(height - 1, center + radiusPx)
         guard lo <= hi else { return nil }
         for b in lo...hi {
-            var sum: Float = 0
+            var sum = 0
             var support = 0
             let base = b * width
             for x in x0...x1 {
                 let d = horizontalDiff[base + x]
-                sum += d
-                if d >= Self.minMeanDiff { support += 1 }
+                sum += Int(d)
+                if d >= Self.minStoredDiff { support += 1 }
             }
-            let mean = sum / Float(span)
+            let mean = Float(sum) / Self.storageScale / Float(span)
             let supportFrac = Float(support) / Float(span)
             guard mean >= Self.minMeanDiff, supportFrac >= Self.minSupportFraction else { continue }
             let dist = abs(b - center)
