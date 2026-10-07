@@ -933,20 +933,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
 
-        var remaining = seconds
         delayTimer?.invalidate()
         delayTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
-            remaining -= 1
-            if remaining <= 0 {
-                timer.invalidate()
-                self?.delayTimer = nil
-                self?.delayCountdownWindow?.orderOut(nil)
-                self?.delayCountdownWindow = nil
-                self?.removeDelayEscMonitors()
-                self?.performCapture()
-            } else {
-                countdownView.remaining = remaining
-                countdownView.needsDisplay = true
+            guard let self else { timer.invalidate(); return }
+            // A scheduled timer fires on the main run loop.
+            MainActor.assumeIsolated {
+                countdownView.remaining -= 1
+                if countdownView.remaining <= 0 {
+                    self.delayTimer?.invalidate()
+                    self.delayTimer = nil
+                    self.delayCountdownWindow?.orderOut(nil)
+                    self.delayCountdownWindow = nil
+                    self.removeDelayEscMonitors()
+                    self.performCapture()
+                } else {
+                    countdownView.needsDisplay = true
+                }
             }
         }
     }
@@ -1197,8 +1199,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard !stashedBackgroundWindows.isEmpty else { return }
         stashedWindowCloseObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: nil, queue: .main) { [weak self] note in
+                guard let window = note.object as? NSWindow else { return }
                 MainActor.assumeIsolated {
-                    guard let self = self, let window = note.object as? NSWindow else { return }
+                    guard let self = self else { return }
                     self.backgroundWindowRestoration.remove(window)
                     if self.stashedBackgroundWindows.isEmpty { self.clearBackgroundRestoreObservers() }
                 }
@@ -1215,9 +1218,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let token = backgroundWindowRestoration.schedule() else { return }
         backgroundWindowRestoreObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] note in
+                guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
                 MainActor.assumeIsolated {
-                    guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                          app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
                     self?.restoreBackgroundWindows(ifCurrent: token)
                 }
             }
@@ -1371,7 +1374,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.level = .floating
 
         NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
             panel.begin { [weak self] response in
                 guard response == .OK, let dirURL = panel.url else { return }
                 let rawTemplate = UserDefaults.standard.string(forKey: FilenameFormatter.userDefaultsKey) ?? FilenameFormatter.defaultTemplate
@@ -1379,23 +1382,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let template = rawTemplate.contains("{index}") ? rawTemplate : "\(rawTemplate)-{index}"
                 let batchDate = Date()
 
-                DispatchQueue.global(qos: .userInitiated).async {
-                    for (i, image) in images.enumerated() {
-                        guard let data = ImageEncoder.encode(image) else { continue }
-                        let base = FilenameFormatter.format(template: template, index: i + 1, date: batchDate)
-                        let filename = "\(base).\(ImageEncoder.fileExtension)"
-                        let fileURL = dirURL.appendingPathComponent(filename)
-                        try? data.write(to: fileURL)
+                // Take the pixels and names on the main actor; encode and write off it.
+                let files = images.enumerated().compactMap { i, image -> (ImageEncoder.PreparedImage, URL)? in
+                    guard let prepared = try? ImageEncoder.PreparedImage(image) else { return nil }
+                    let base = FilenameFormatter.format(template: template, index: i + 1, date: batchDate)
+                    return (prepared, dirURL.appendingPathComponent("\(base).\(prepared.format.fileExtension)"))
+                }
+                Task { [weak self] in
+                    let failed = images.count - files.count + (await Self.writeImages(files))
+                    guard let self else { return }
+                    guard failed == 0 else {
+                        // Keep the thumbnails, so the captures that failed are not lost.
+                        self.showFailureToast("Could not save \(failed) of \(images.count) screenshots to \(dirURL.lastPathComponent).")
+                        return
                     }
-                    DispatchQueue.main.async {
-                        self?.playCopySound()
-                        let all = self?.thumbnailControllers ?? []
-                        self?.thumbnailControllers.removeAll()
-                        for c in all { c.dismiss() }
-                    }
+                    self.playCopySound()
+                    let all = self.thumbnailControllers
+                    self.thumbnailControllers.removeAll()
+                    for c in all { c.dismiss() }
                 }
             }
         }
+    }
+
+    /// Encodes and writes each image off the main thread. Returns how many failed.
+    @concurrent
+    private nonisolated static func writeImages(_ files: [(ImageEncoder.PreparedImage, URL)]) async -> Int {
+        var failed = 0
+        for (prepared, fileURL) in files {
+            guard let data = prepared.encode(), (try? data.write(to: fileURL)) != nil else {
+                failed += 1
+                continue
+            }
+        }
+        return failed
     }
 
     private func reflowThumbnails() {
@@ -1453,32 +1473,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func runOCR(on image: NSImage) {
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            VisionOCR.performTextAndQRCodeRecognition(cgImage: cgImage) { [weak self] result in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
-                    let shouldCopy = ocrAction == 0 || ocrAction == 2
-                    let shouldShowWindow = ocrAction == 0 || ocrAction == 1
+        Task { [weak self] in
+            let result = await VisionOCR.recognizeTextAndQRCodes(in: cgImage)
+            guard let self else { return }
+            let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
+            let shouldCopy = ocrAction == 0 || ocrAction == 2
+            let shouldShowWindow = ocrAction == 0 || ocrAction == 1
 
-                    if shouldCopy && !result.copyText.isEmpty {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(result.copyText, forType: .string)
-                    }
+            if shouldCopy && !result.copyText.isEmpty {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(result.copyText, forType: .string)
+            }
 
-                    if shouldShowWindow {
-                        self.ocrController?.close()
-                        let ocr = OCRResultController(text: result.text, image: image, qrCodes: result.qrCodes)
-                        // Drop our reference when the window closes (incl. red-X),
-                        // but only if it's still this controller (a newer OCR run
-                        // may have replaced it).
-                        ocr.onClose = { [weak self, weak ocr] in
-                            if self?.ocrController === ocr { self?.ocrController = nil }
-                        }
-                        self.ocrController = ocr
-                        ocr.show()
-                    }
+            if shouldShowWindow {
+                self.ocrController?.close()
+                let ocr = OCRResultController(text: result.text, image: image, qrCodes: result.qrCodes)
+                // Drop our reference when the window closes (incl. red-X),
+                // but only if it's still this controller (a newer OCR run
+                // may have replaced it).
+                ocr.onClose = { [weak self, weak ocr] in
+                    if self?.ocrController === ocr { self?.ocrController = nil }
                 }
+                self.ocrController = ocr
+                ocr.show()
             }
         }
     }
@@ -1825,23 +1842,31 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         }
     }
 
+    /// Asks macOS to prompt for Accessibility, then explains why macshot needs it.
+    /// `reason` completes "macshot needs Accessibility permission …".
+    private func requestAccessibilityPermission(reason: String) {
+        // The value of kAXTrustedCheckOptionPrompt. The imported C global is
+        // mutable shared state to Swift 6.
+        let opts = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        AXIsProcessTrustedWithOptions(opts)
+        let alert = NSAlert()
+        alert.messageText = "Accessibility Access Required"
+        alert.informativeText = "macshot needs Accessibility permission \(reason). Please grant access in System Settings, then try again."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Cancel")
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
     func overlayDidRequestScrollCapture(_ controller: OverlayWindowController, rect: NSRect, screen: NSScreen) {
         if !AXIsProcessTrusted() {
             dismissOverlays()
-            let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-            AXIsProcessTrustedWithOptions(opts)
-            let alert = NSAlert()
-            alert.messageText = "Accessibility Access Required"
-            alert.informativeText = "macshot needs Accessibility permission for scroll capture. Please grant access in System Settings, then try again."
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Open Settings")
-            alert.addButton(withTitle: "Cancel")
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
+            requestAccessibilityPermission(reason: "for scroll capture")
             return
         }
 
@@ -1913,20 +1938,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
 
     func overlayDidRequestAccessibilityPermission(_ controller: OverlayWindowController) {
         dismissOverlays()
-        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        AXIsProcessTrustedWithOptions(opts)
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Access Required"
-        alert.informativeText = "macshot needs Accessibility permission to snap to individual interface elements. Please grant access in System Settings, then try again."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open Settings")
-        alert.addButton(withTitle: "Cancel")
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        requestAccessibilityPermission(reason: "to snap to individual interface elements")
     }
 
     func overlayDidRequestToggleAutoScroll(_ controller: OverlayWindowController) {
@@ -1944,20 +1956,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
                 scrollCaptureOverlayController = nil
                 dismissOverlays()
 
-                let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-                AXIsProcessTrustedWithOptions(opts)
-                let alert = NSAlert()
-                alert.messageText = "Accessibility Access Required"
-                alert.informativeText = "macshot needs Accessibility permission to auto-scroll other apps. Please grant access in System Settings, then try again."
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Open Settings")
-                alert.addButton(withTitle: "Cancel")
-                let response = alert.runModal()
-                if response == .alertFirstButtonReturn {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
+                requestAccessibilityPermission(reason: "to auto-scroll other apps")
                 return
             }
         }

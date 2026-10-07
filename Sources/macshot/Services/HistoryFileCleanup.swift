@@ -3,7 +3,7 @@ import Foundation
 /// Unindexed originals can be the only surviving part of a failed history
 /// transaction. Automatic cleanup reclaims regenerable caches, never captures,
 /// raw images, annotations or edit state. Retention/explicit deletion owns those.
-enum HistoryFileCleanup {
+nonisolated enum HistoryFileCleanup {
     @discardableResult
     static func sweep(directory: URL, indexedIDs: Set<String>?, asOf date: Date) -> DirectorySweeper.Result {
         // A missing, unreadable or partly salvaged index is not proof of orphanhood.

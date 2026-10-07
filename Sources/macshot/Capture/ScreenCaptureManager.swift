@@ -134,11 +134,7 @@ class ScreenCaptureManager {
             config.ignoreShadows = false
             config.displayIntent = .local
             config.dynamicRange = .sdr
-            let result = await captureScreenshotOutput(rect: rect, configuration: config)
-            guard
-                result.error == nil,
-                let output = result.output,
-                let image = output.sdrImage ?? output.hdrImage
+            guard let image = await captureScreenshotImage(rect: rect, configuration: config)
             else { continue }
             let capture = ScreenCapture(screen: screen, image: image)
             captures.append(capture)
@@ -147,15 +143,17 @@ class ScreenCaptureManager {
         return captures
     }
 
-    private static func captureScreenshotOutput(
+    /// The captured pixels, or nil when the capture failed. Only the image
+    /// leaves the completion handler: the output object is not Sendable.
+    private static func captureScreenshotImage(
         rect: CGRect,
         configuration: SCScreenshotConfiguration
-    ) async -> (output: SCScreenshotOutput?, error: Error?) {
+    ) async -> CGImage? {
         await withCheckedContinuation { continuation in
             SCScreenshotManager.captureScreenshot(rect: rect, configuration: configuration) {
                 output,
                 error in
-                continuation.resume(returning: (output, error))
+                continuation.resume(returning: error == nil ? (output?.sdrImage ?? output?.hdrImage) : nil)
             }
         }
     }
@@ -187,79 +185,11 @@ class ScreenCaptureManager {
         return context.makeImage() ?? image
     }
 
-    static func captureAllScreens(
-        excludingWindowNumbers: [CGWindowID] = [],
-        completion: @escaping ([ScreenCapture]) -> Void
-    ) {
+    /// Captures every display, one at a time, and calls `completion` on the
+    /// main actor with the captures that succeeded.
+    static func captureAllScreens(completion: @escaping ([ScreenCapture]) -> Void) {
         Task {
-            do {
-                // When excluding windows, fetch fresh content so newly-created
-                // windows (e.g. thumbnails spawned after the cache was built) are
-                // present in the window list and can actually be excluded.
-                let content: SCShareableContent
-                if !excludingWindowNumbers.isEmpty {
-                    content = try await SCShareableContent.excludingDesktopWindows(
-                        true, onScreenWindowsOnly: true)
-                } else {
-                    content = try await shareableContent()
-                }
-                let displays = content.displays
-                let screens = NSScreen.screens
-
-                // Resolve window numbers to SCWindow objects for exclusion
-                let excludedSCWindows: [SCWindow] = excludingWindowNumbers.compactMap { wid in
-                    content.windows.first(where: { CGWindowID($0.windowID) == wid })
-                }
-
-                // Build display-screen pairs
-                var pairs: [(SCDisplay, NSScreen)] = []
-                for display in displays {
-                    if let screen = screens.first(where: { $0.displayID == display.displayID }) {
-                        pairs.append((display, screen))
-                    }
-                }
-
-                // Capture all displays concurrently
-                let captures = await withTaskGroup(
-                    of: ScreenCapture?.self, returning: [ScreenCapture].self
-                ) { group in
-                    for (display, screen) in pairs {
-                        group.addTask {
-                            // SCScreenshotManager: single-shot API, no stream overhead
-                            let filter = SCContentFilter(
-                                display: display, excludingWindows: excludedSCWindows)
-                            let config = SCStreamConfiguration()
-                            let scale = Int(screen.backingScaleFactor)
-                            config.width = display.width * scale
-                            config.height = display.height * scale
-                            config.showsCursor = UserDefaults.standard.bool(
-                                forKey: "captureCursor")
-                            config.captureResolution = .best
-
-                            guard
-                                let image = try? await SCScreenshotManager.captureImage(
-                                    contentFilter: filter, configuration: config
-                                )
-                            else { return nil }
-                            return ScreenCapture(screen: screen, image: image)
-                        }
-                    }
-                    var results: [ScreenCapture] = []
-                    for await capture in group {
-                        if let capture = capture {
-                            results.append(capture)
-                        }
-                    }
-                    return results
-                }
-
-                await MainActor.run { completion(captures) }
-            } catch {
-                #if DEBUG
-                    NSLog("macshot: screen capture error: \(error.localizedDescription)")
-                #endif
-                await MainActor.run { completion([]) }
-            }
+            completion(await captureAllScreensImmediately())
         }
     }
 

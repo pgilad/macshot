@@ -10,7 +10,7 @@ import Testing
 private let accurateOCRAvailable = ProcessInfo.processInfo.environment["MACSHOT_SKIP_ACCURATE_OCR"] == nil
 
 final class VisionOCRTests {
-    private func line(_ text: String) -> OCRTextObservation {
+    private nonisolated func line(_ text: String) -> OCRTextObservation {
         OCRTextObservation(text: text, boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.8, height: 0.3))
     }
 
@@ -104,15 +104,15 @@ final class VisionOCRTests {
 
     private func assertRetry(for firstResult: Result<[OCRTextObservation], Error>) async {
         let done = TestExpectation(description: "fast recovery")
-        var levels: [VNRequestTextRecognitionLevel] = []
+        let levels = LockedValue<[VNRequestTextRecognitionLevel]>([])
         OCRRecognitionSession(timeout: 1, startAttempt: { level, callback in
-            levels.append(level)
+            levels.update { $0.append(level) }
             callback(level == .accurate ? firstResult : .success([self.line("Recovered")]))
             return {}
         }, completion: { observations, error in
             #expect(error == nil)
             #expect(observations.map(\.text) == ["Recovered"])
-            #expect(levels == [.accurate, .fast])
+            #expect(levels.current == [.accurate, .fast])
             done.fulfill()
         }).start()
         await fulfillment(of: [done], timeout: 2)
@@ -178,13 +178,13 @@ final class VisionOCRTests {
 
     @Test func testFastEmptyResultDoesNotLoop() async {
         let done = TestExpectation(description: "blank image")
-        var attempts = 0
+        let attempts = LockedValue(0)
         OCRRecognitionSession(timeout: 1, startAttempt: { _, callback in
-            attempts += 1
+            attempts.update { $0 += 1 }
             callback(.success([]))
             return {}
         }, completion: { lines, error in
-            #expect(attempts == 2)
+            #expect(attempts.current == 2)
             #expect(error == nil)
             #expect(lines.isEmpty)
             done.fulfill()
@@ -195,13 +195,13 @@ final class VisionOCRTests {
     @Test func testFastFailureIsReportedAfterOneRetry() async {
         let done = TestExpectation(description: "final failure")
         let failure = NSError(domain: "E5RT", code: 13)
-        var attempts = 0
+        let attempts = LockedValue(0)
         OCRRecognitionSession(timeout: 1, startAttempt: { _, callback in
-            attempts += 1
+            attempts.update { $0 += 1 }
             callback(.failure(failure))
             return {}
         }, completion: { lines, error in
-            #expect(attempts == 2)
+            #expect(attempts.current == 2)
             #expect(lines.isEmpty)
             #expect((error as NSError?) == failure)
             done.fulfill()

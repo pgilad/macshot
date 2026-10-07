@@ -229,7 +229,7 @@ class HotkeyManager {
     /// Legacy — kept for backward compatibility.
     func unregister() { unregisterAll() }
 
-    deinit { unregisterAll() }
+    isolated deinit { unregisterAll() }
 
     // MARK: - UserDefaults Helpers
 

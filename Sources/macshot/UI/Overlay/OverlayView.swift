@@ -3362,13 +3362,15 @@ class OverlayView: NSView {
                 timer.invalidate()
                 return
             }
-            self.beautifyToolbarAnimProgress += 0.08  // ~12 frames = 0.2s
-            if self.beautifyToolbarAnimProgress >= 1.0 {
-                self.beautifyToolbarAnimProgress = 1.0
-                timer.invalidate()
-                self.beautifyToolbarAnimTimer = nil
+            MainActor.assumeIsolated {
+                self.beautifyToolbarAnimProgress += 0.08  // ~12 frames = 0.2s
+                if self.beautifyToolbarAnimProgress >= 1.0 {
+                    self.beautifyToolbarAnimProgress = 1.0
+                    self.beautifyToolbarAnimTimer?.invalidate()
+                    self.beautifyToolbarAnimTimer = nil
+                }
+                self.needsDisplay = true
             }
-            self.needsDisplay = true
         }
     }
 
@@ -4999,6 +5001,63 @@ class OverlayView: NSView {
         ]
     }
 
+    /// The pointer stayed down on an annotation with the pencil or marker:
+    /// select it and start dragging it instead of drawing.
+    private func handleLongPress(at point: NSPoint) {
+        longPressTriggered = true
+        longPressTimer = nil
+        // Select the annotation under the long-press point
+        if let clicked = annotations.reversed().first(where: { $0.isMovable && $0.hitTest(point: point) }) {
+            shiftClickPendingDeselect = nil
+            if NSEvent.modifierFlags.contains(.control) {
+                if isSelected(clicked) {
+                    shiftClickPendingDeselect = clicked
+                } else {
+                    selectedAnnotations.append(clicked)
+                }
+            } else if !isSelected(clicked) {
+                selectedAnnotation = clicked
+            }
+            isDraggingAnnotation = true
+            didMoveAnnotation = false
+            annotationDragStart = point
+            // Build cache of non-selected annotations for fast drag rendering
+            cachedAnnotationLayerExcludingSelected = buildAnnotationLayer(excluding: Set(selectedAnnotations.map { ObjectIdentifier($0) }))
+            // Cancel any in-progress pencil stroke
+            currentAnnotation = nil
+            NSCursor.closedHand.set()
+            needsDisplay = true
+        }
+    }
+
+    /// One frame of the animated editor zoom: ease 25% of the remaining
+    /// distance toward `editorZoomTarget`.
+    private func stepEditorZoomAnimation() {
+        guard let sv = enclosingScrollView else {
+            editorZoomAnimTimer?.invalidate()
+            editorZoomAnimTimer = nil
+            return
+        }
+        let current = sv.magnification
+        let target = editorZoomTarget
+        let diff = target - current
+        if abs(diff) < 0.001 {
+            sv.setMagnification(target, centeredAt: editorZoomCursorDoc)
+            editorZoomAnimTimer?.invalidate()
+            editorZoomAnimTimer = nil
+            needsDisplay = true
+            if let topBar = sv.superview?.subviews.compactMap({ $0 as? EditorTopBarView }).first {
+                topBar.updateZoom(target)
+            }
+            return
+        }
+        let next = current + diff * 0.25
+        sv.setMagnification(next, centeredAt: editorZoomCursorDoc)
+        if let topBar = sv.superview?.subviews.compactMap({ $0 as? EditorTopBarView }).first {
+            topBar.updateZoom(next)
+        }
+    }
+
     // MARK: - Overlay Error
 
     func showOverlayError(_ message: String) {
@@ -5007,8 +5066,10 @@ class OverlayView: NSView {
         needsDisplay = true
         overlayErrorTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) {
             [weak self] _ in
-            self?.overlayErrorMessage = nil
-            self?.needsDisplay = true
+            MainActor.assumeIsolated {
+                self?.overlayErrorMessage = nil
+                self?.needsDisplay = true
+            }
         }
     }
 
@@ -6992,29 +7053,8 @@ class OverlayView: NSView {
 
             if editorZoomAnimTimer == nil {
                 editorZoomAnimTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
-                    guard let self = self, let sv = self.enclosingScrollView else {
-                        timer.invalidate()
-                        return
-                    }
-                    let current = sv.magnification
-                    let target = self.editorZoomTarget
-                    let diff = target - current
-                    if abs(diff) < 0.001 {
-                        sv.setMagnification(target, centeredAt: self.editorZoomCursorDoc)
-                        timer.invalidate()
-                        self.editorZoomAnimTimer = nil
-                        self.needsDisplay = true
-                        if let topBar = sv.superview?.subviews.compactMap({ $0 as? EditorTopBarView }).first {
-                            topBar.updateZoom(target)
-                        }
-                        return
-                    }
-                    // Ease toward target: move 25% of remaining distance per frame
-                    let next = current + diff * 0.25
-                    sv.setMagnification(next, centeredAt: self.editorZoomCursorDoc)
-                    if let topBar = sv.superview?.subviews.compactMap({ $0 as? EditorTopBarView }).first {
-                        topBar.updateZoom(next)
-                    }
+                    guard let self else { timer.invalidate(); return }
+                    MainActor.assumeIsolated { self.stepEditorZoomAnimation() }
                 }
             }
             return
@@ -7032,7 +7072,7 @@ class OverlayView: NSView {
         // Debounce the full-resolution redraw to when zooming stops (150ms idle).
         editorZoomRedrawTimer?.invalidate()
         editorZoomRedrawTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [weak self] _ in
-            self?.needsDisplay = true
+            MainActor.assumeIsolated { self?.needsDisplay = true }
         }
 
         if let topBar = sv.superview?.subviews.compactMap({ $0 as? EditorTopBarView }).first {
@@ -8095,31 +8135,7 @@ class OverlayView: NSView {
                 longPressTriggered = false
                 longPressTimer?.invalidate()
                 longPressTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
-                    guard let self = self else { return }
-                    self.longPressTriggered = true
-                    self.longPressTimer = nil
-                    // Select the annotation under the long-press point
-                    if let clicked = self.annotations.reversed().first(where: { $0.isMovable && $0.hitTest(point: point) }) {
-                        self.shiftClickPendingDeselect = nil
-                        if NSEvent.modifierFlags.contains(.control) {
-                            if self.isSelected(clicked) {
-                                self.shiftClickPendingDeselect = clicked
-                            } else {
-                                self.selectedAnnotations.append(clicked)
-                            }
-                        } else if !self.isSelected(clicked) {
-                            self.selectedAnnotation = clicked
-                        }
-                        self.isDraggingAnnotation = true
-                        self.didMoveAnnotation = false
-                        self.annotationDragStart = point
-                        // Build cache of non-selected annotations for fast drag rendering
-                        self.cachedAnnotationLayerExcludingSelected = self.buildAnnotationLayer(excluding: Set(self.selectedAnnotations.map { ObjectIdentifier($0) }))
-                        // Cancel any in-progress pencil stroke
-                        self.currentAnnotation = nil
-                        NSCursor.closedHand.set()
-                        self.needsDisplay = true
-                    }
+                    MainActor.assumeIsolated { self?.handleLongPress(at: point) }
                 }
             }
         }

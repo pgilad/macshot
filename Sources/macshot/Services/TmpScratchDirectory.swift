@@ -13,7 +13,7 @@ import Foundation
 /// Solution: isolate these writes in a subfolder we 100% own, then let
 /// `LaunchCleanup.runAll()` sweep the whole folder. Anything older than
 /// a few minutes is definitely not being read any more.
-enum TmpScratchDirectory {
+nonisolated enum TmpScratchDirectory {
 
     /// Path to the scratch subfolder. Created lazily on first access.
     static let url: URL = {

@@ -177,17 +177,14 @@ final class MarkerToolHandler: AnnotationToolHandler {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            VisionOCR.performTextRecognition(cgImage: cgImage) { [weak self, weak canvas] observations, _ in
-                guard let self = self, let canvas = canvas else { return }
-                DispatchQueue.main.async {
-                    self.cachedObservations = observations
-                    self.cachedSelectionRect = selectionRect
-                    self.applySmartSnap(annotation: annotation, observations: observations,
-                                        strokeMinX: minX, strokeMaxX: maxX, strokeY: strokeY,
-                                        selectionRect: selectionRect, canvas: canvas)
-                }
-            }
+        Task { [weak self, weak canvas] in
+            let observations = await VisionOCR.recognizeText(in: cgImage)
+            guard let self = self, let canvas = canvas else { return }
+            self.cachedObservations = observations
+            self.cachedSelectionRect = selectionRect
+            self.applySmartSnap(annotation: annotation, observations: observations,
+                                strokeMinX: minX, strokeMaxX: maxX, strokeY: strokeY,
+                                selectionRect: selectionRect, canvas: canvas)
         }
     }
 
@@ -281,14 +278,11 @@ final class MarkerToolHandler: AnnotationToolHandler {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            VisionOCR.performTextRecognition(cgImage: cgImage) { [weak self] observations, _ in
-                DispatchQueue.main.async { [weak self] in
-                    self?.cachedObservations = observations
-                    self?.cachedSelectionRect = selectionRect
-                    self?.ocrInFlight = false
-                }
-            }
+        Task { [weak self] in
+            let observations = await VisionOCR.recognizeText(in: cgImage)
+            self?.cachedObservations = observations
+            self?.cachedSelectionRect = selectionRect
+            self?.ocrInFlight = false
         }
     }
 

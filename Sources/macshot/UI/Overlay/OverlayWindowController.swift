@@ -1,7 +1,6 @@
 import Cocoa
 import CoreImage
 import UniformTypeIdentifiers
-import Vision
 
 /// Editable annotation data bundled with a confirmed capture.
 struct CaptureAnnotationData {
@@ -614,16 +613,11 @@ extension OverlayWindowController: OverlayViewDelegate {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            VisionOCR.performTextAndQRCodeRecognition(cgImage: cgImage) { [weak self] result in
-                guard let self = self else { return }
-                let capturedImage = image  // capture before dismiss
-                DispatchQueue.main.async {
-                    self.playCopySound()
-                    self.dismiss()
-                    self.overlayDelegate?.overlayDidRequestOCR(self, result: result, image: capturedImage)
-                }
-            }
+        Task {
+            let result = await VisionOCR.recognizeTextAndQRCodes(in: cgImage)
+            playCopySound()
+            dismiss()
+            overlayDelegate?.overlayDidRequestOCR(self, result: result, image: image)
         }
     }
 
@@ -797,69 +791,26 @@ extension OverlayWindowController: OverlayViewDelegate {
             return
         }
 
-        let request = VNGenerateForegroundInstanceMaskRequest()
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try handler.perform([request])
-                guard let result = request.results?.first else {
-                    throw NSError(domain: "Macshot", code: 1)
-                }
-
-                let maskPixelBuffer = try result.generateScaledMaskForImage(
-                    forInstances: result.allInstances, from: handler)
-
-                let originalCIImage = CIImage(cgImage: cgImage)
-                let maskCIImage = CIImage(cvPixelBuffer: maskPixelBuffer)
-
-                // Blend original with mask
-                guard let filter = CIFilter(name: "CIBlendWithMask") else {
-                    throw NSError(domain: "Macshot", code: 2)
-                }
-                filter.setValue(originalCIImage, forKey: kCIInputImageKey)
-                filter.setValue(maskCIImage, forKey: kCIInputMaskImageKey)
-                filter.setValue(
-                    CIImage(color: .clear).cropped(to: originalCIImage.extent),
-                    forKey: kCIInputBackgroundImageKey)
-
-                guard let outputCIImage = filter.outputImage else {
-                    throw NSError(domain: "Macshot", code: 3)
-                }
-
-                let context = CIContext()
-                guard
-                    let finalCGImage = context.createCGImage(
-                        outputCIImage, from: outputCIImage.extent)
-                else { throw NSError(domain: "Macshot", code: 4) }
-
-                let finalNSImage = NSImage(cgImage: finalCGImage, size: image.size)
-
-                DispatchQueue.main.async {
-                    let mode = QuickCaptureMode.current
-                    if mode.shouldCopyImage {
-                        self.copyImageToClipboard(finalNSImage)
-                    }
-                    if mode.shouldSave {
-                        ImageSaveService.saveToConfiguredFolder(
-                            finalNSImage,
-                            windowTitle: self.capturedWindowTitle,
-                            appName: appName,
-                            copyPathToClipboard: mode.copyPathOverride)
-                    }
-                    self.playCopySound()
-                    self.dismiss()
-                    self.overlayDelegate?.overlayDidConfirm(self, capturedImage: finalNSImage, annotationData: nil)
-                }
-            } catch {
-                #if DEBUG
-                    print("Vision background removal error: \(error.localizedDescription)")
-                #endif
-                DispatchQueue.main.async {
-                    self.overlayView?.showOverlayError(
-                        "Background removal failed. No clear subject was found.")
-                }
+        Task {
+            guard let cutout = try? await BackgroundRemover.removeBackground(from: cgImage) else {
+                overlayView?.showOverlayError(BackgroundRemover.failureMessage)
+                return
             }
+            let finalNSImage = NSImage(cgImage: cutout, size: image.size)
+            let mode = QuickCaptureMode.current
+            if mode.shouldCopyImage {
+                copyImageToClipboard(finalNSImage)
+            }
+            if mode.shouldSave {
+                ImageSaveService.saveToConfiguredFolder(
+                    finalNSImage,
+                    windowTitle: capturedWindowTitle,
+                    appName: appName,
+                    copyPathToClipboard: mode.copyPathOverride)
+            }
+            playCopySound()
+            dismiss()
+            overlayDelegate?.overlayDidConfirm(self, capturedImage: finalNSImage, annotationData: nil)
         }
     }
 

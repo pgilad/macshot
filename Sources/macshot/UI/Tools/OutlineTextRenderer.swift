@@ -16,8 +16,8 @@ import AppKit
 /// the baked image are pixel-identical in every state (typing, committed, resize,
 /// re-edit).
 extension NSAttributedString.Key {
-    static let macshotOutlineColor = NSAttributedString.Key("macshotOutlineColor")
-    static let macshotOutlineWidth = NSAttributedString.Key("macshotOutlineWidth")
+    nonisolated static let macshotOutlineColor = NSAttributedString.Key("macshotOutlineColor")
+    nonisolated static let macshotOutlineWidth = NSAttributedString.Key("macshotOutlineWidth")
 }
 
 enum OutlineTextRenderer {
@@ -25,10 +25,10 @@ enum OutlineTextRenderer {
     /// Outline thickness as a fraction of the font point size when no explicit
     /// width is given. Tuned to read like the old `-6.0` stroke but drawn outside,
     /// so it looks consistent across small and large text.
-    static let autoWidthFraction: CGFloat = 0.09
+    nonisolated static let autoWidthFraction: CGFloat = 0.09
 
     /// Resolve the outline width for a font, honoring an explicit override.
-    static func outlineWidth(for font: NSFont, explicit: CGFloat?) -> CGFloat {
+    nonisolated static func outlineWidth(for font: NSFont, explicit: CGFloat?) -> CGFloat {
         if let explicit, explicit > 0 { return explicit }
         return max(1, font.pointSize * autoWidthFraction)
     }
@@ -110,7 +110,8 @@ enum OutlineTextRenderer {
 /// (thick, outline color) and then lets the normal fill draw on top. The fill
 /// covers the inner half of the stroke, leaving a clean outer outline — never a
 /// centered stroke that thins the fill.
-final class OutlineTextLayoutManager: NSLayoutManager {
+/// NSLayoutManager is not tied to the main actor, so neither are these overrides.
+nonisolated final class OutlineTextLayoutManager: NSLayoutManager {
 
     /// The outline color/width for the run currently being drawn, set in
     /// `drawGlyphs` before AppKit calls `showCGGlyphs`. nil = no outline.

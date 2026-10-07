@@ -159,9 +159,8 @@ enum ImageEncoder {
     }
 
     static func copyToClipboard(_ image: NSImage) {
-        let pasteboard = NSPasteboard.general
         let generation = beginClipboardCopy()
-        let changeCount = pasteboard.changeCount
+        let changeCount = NSPasteboard.general.changeCount
         let includeFormat = clipboardIncludesImageFormat
         guard let prepared = try? PreparedImage(image) else { return }
 
@@ -170,6 +169,7 @@ enum ImageEncoder {
             guard !representations.isEmpty else { return }
 
             DispatchQueue.main.async {
+                let pasteboard = NSPasteboard.general
                 guard isCurrentClipboardCopy(generation), pasteboard.changeCount == changeCount else { return }
                 writeImagePasteboard(pasteboard, representations: representations)
             }

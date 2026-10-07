@@ -7,7 +7,7 @@ import Foundation
 // Every cleanup we do at launch boils down to this operation — sharing
 // the implementation keeps each cleaner down to declarative config.
 
-enum DirectorySweeper {
+nonisolated enum DirectorySweeper {
 
     /// Result of a sweep, handy for logging.
     struct Result {
@@ -110,7 +110,7 @@ enum DirectorySweeper {
 /// One discrete cleanup task that runs at app launch. Each implementation
 /// encodes a single rule ("sweep X older than Y") and nothing else —
 /// add a new cleaner by conforming, then registering in `LaunchCleanup.all`.
-protocol LaunchCleaner {
+nonisolated protocol LaunchCleaner: Sendable {
     /// Short name used for debug logging.
     var name: String { get }
     /// Do the work. Expected to run quickly (I/O only) and return. The
@@ -121,7 +121,7 @@ protocol LaunchCleaner {
 
 // MARK: - Registry
 
-enum LaunchCleanup {
+nonisolated enum LaunchCleanup {
 
     /// All cleaners that should run on launch. Order doesn't matter.
     /// Adding a new leak handler is a one-line addition here plus a new
@@ -159,7 +159,7 @@ enum LaunchCleanup {
 /// overwritten by design).
 ///
 /// 24-hour TTL so in-flight operations can't get clobbered.
-private struct TmpFileCleaner: LaunchCleaner {
+nonisolated private struct TmpFileCleaner: LaunchCleaner {
     let name = "TmpFileCleaner"
 
     /// One day — long enough to cover "copied yesterday, paste today"
@@ -195,7 +195,7 @@ private struct TmpFileCleaner: LaunchCleaner {
 /// share-sheet scratch files whose names follow the user-configured
 /// filename template (so they can't be pattern-matched reliably). The
 /// 5-minute TTL is far longer than any share/drag in practice.
-private struct ScratchDirectoryCleaner: LaunchCleaner {
+nonisolated private struct ScratchDirectoryCleaner: LaunchCleaner {
     let name = "ScratchDirectoryCleaner"
     private let ttl: TimeInterval = 5 * 60
 
@@ -219,7 +219,7 @@ private struct ScratchDirectoryCleaner: LaunchCleaner {
 
 /// Sweeps the legacy clipboard backing folder from builds that put file URLs on the pasteboard.
 /// The 7-day TTL matches the old retention so clipboard history entries don't break on update.
-private struct LegacyClipboardBackingDirectoryCleaner: LaunchCleaner {
+nonisolated private struct LegacyClipboardBackingDirectoryCleaner: LaunchCleaner {
     let name = "LegacyClipboardBackingDirectoryCleaner"
 
     func sweep() -> DirectorySweeper.Result {
@@ -244,7 +244,7 @@ private struct LegacyClipboardBackingDirectoryCleaner: LaunchCleaner {
 /// Sweeps the legacy `/tmp/macshot-clipboard/` folder used by older builds.
 /// Keep a 24h TTL so an update/restart does not immediately break a pasteboard
 /// item copied right before the app was relaunched.
-private struct LegacyClipboardTmpDirectoryCleaner: LaunchCleaner {
+nonisolated private struct LegacyClipboardTmpDirectoryCleaner: LaunchCleaner {
     let name = "LegacyClipboardTmpDirectoryCleaner"
     private let ttl: TimeInterval = 24 * 60 * 60
 

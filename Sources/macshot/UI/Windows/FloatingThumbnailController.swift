@@ -732,7 +732,7 @@ private class ThumbnailView: NSView {
         let isTrackpadLike: Bool
     }
 
-    deinit {
+    isolated deinit {
         removeScrollDismissMonitors()
     }
 

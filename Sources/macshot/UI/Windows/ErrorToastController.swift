@@ -111,7 +111,7 @@ class ErrorToastController {
             )
             window.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
-            self?.dismiss()
+            MainActor.assumeIsolated { self?.dismiss() }
         })
     }
 }

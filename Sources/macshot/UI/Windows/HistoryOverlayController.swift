@@ -81,8 +81,10 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
             win.animator().setFrame(endFrame, display: true)
             win.animator().alphaValue = 1.0
         }, completionHandler: {
-            win.makeKeyAndOrderFront(nil)
-            win.makeFirstResponder(view)
+            MainActor.assumeIsolated {
+                win.makeKeyAndOrderFront(nil)
+                win.makeFirstResponder(view)
+            }
         })
 
         view.loadEntries()
@@ -154,10 +156,12 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
             win.animator().setFrame(hiddenFrame, display: true)
             win.animator().alphaValue = 0.0
         }, completionHandler: { [weak self] in
-            win.orderOut(nil)
-            win.close()
-            self?.contentView = nil
-            self?.onDismiss?()
+            MainActor.assumeIsolated {
+                win.orderOut(nil)
+                win.close()
+                self?.contentView = nil
+                self?.onDismiss?()
+            }
         })
     }
 

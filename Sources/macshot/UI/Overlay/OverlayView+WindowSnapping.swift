@@ -2,19 +2,20 @@ import Cocoa
 
 extension OverlayView {
 
-    static let browserElementSnapEnabledKey = "browserElementSnapEnabled"
+    nonisolated static let browserElementSnapEnabledKey = "browserElementSnapEnabled"
     /// Off by default: it changes accessibility settings inside other apps
     /// for the length of the capture.
     nonisolated static var browserElementSnapEnabled: Bool {
         UserDefaults.standard.object(forKey: browserElementSnapEnabledKey) as? Bool ?? false
     }
-    private static let browserAccessibilityLock = NSLock()
-    private static var browserAccessibilitySessionToken = 0
-    private static var browserAccessibilityPreviousValues: [Int: BrowserAccessibilityValues] = [:]
+    // Snap queries run off the main thread. The lock guards these three.
+    private nonisolated static let browserAccessibilityLock = NSLock()
+    private nonisolated(unsafe) static var browserAccessibilitySessionToken = 0
+    private nonisolated(unsafe) static var browserAccessibilityPreviousValues: [Int: BrowserAccessibilityValues] = [:]
     /// Whether each app bundle (by path) is built on Chromium.
-    private static var chromiumAppBundles: [String: Bool] = [:]
+    private nonisolated(unsafe) static var chromiumAppBundles: [String: Bool] = [:]
 
-    private struct BrowserAccessibilityValues {
+    private nonisolated struct BrowserAccessibilityValues {
         let application: AXUIElement
         let manualAccessibility: CFTypeRef?
         let didEnableEnhancedUserInterface: Bool
@@ -35,13 +36,13 @@ extension OverlayView {
     }
 
     /// Window metadata used by both window and accessibility-element snapping.
-    struct WindowSnapResult {
+    nonisolated struct WindowSnapResult {
         let rect: NSRect
         let windowID: CGWindowID
         let ownerPID: Int
     }
 
-    private struct WindowSnapCandidate {
+    private nonisolated struct WindowSnapCandidate {
         let rect: NSRect
         let windowID: CGWindowID
         let owner: String
@@ -50,7 +51,7 @@ extension OverlayView {
         let area: CGFloat
     }
 
-    private static func isQuickLookWindow(_ info: [String: Any]) -> Bool {
+    private nonisolated static func isQuickLookWindow(_ info: [String: Any]) -> Bool {
         let owner = ((info[kCGWindowOwnerName as String] as? String) ?? "").lowercased()
         let name = ((info[kCGWindowName as String] as? String) ?? "").lowercased()
         return owner.contains("quicklook")
@@ -59,7 +60,7 @@ extension OverlayView {
             || name.contains("quick look")
     }
 
-    private static func isWindowSnapCandidate(_ info: [String: Any]) -> Bool {
+    private nonisolated static func isWindowSnapCandidate(_ info: [String: Any]) -> Bool {
         guard let layer = info[kCGWindowLayer as String] as? Int else { return false }
         if layer == 0 { return true }
 
@@ -70,7 +71,7 @@ extension OverlayView {
         return isQuickLookWindow(info)
     }
 
-    private static func isLikelyFinderQuickLookPreview(
+    private nonisolated static func isLikelyFinderQuickLookPreview(
         _ candidate: WindowSnapCandidate,
         frontmost: WindowSnapCandidate
     ) -> Bool {
@@ -91,7 +92,7 @@ extension OverlayView {
 
     /// Returns the frontmost visible window rect (in view coordinates) that contains `screenPoint`.
     /// `screenPoint` is in AppKit screen coordinates (origin bottom-left of main screen).
-    static func windowRectOnBackground(
+    nonisolated static func windowRectOnBackground(
         screenPoint: NSPoint,
         overlayWindowNumber: Int,
         windowOrigin: NSPoint,
@@ -174,7 +175,7 @@ extension OverlayView {
     /// Returns the accessibility element under the pointer, clipped to the
     /// visible window and converted into overlay-view coordinates. Apps that
     /// do not expose a usable element fall back to their window rect.
-    static func elementSnapResult(
+    nonisolated static func elementSnapResult(
         screenPoint: NSPoint,
         windowResult: WindowSnapResult,
         windowOrigin: NSPoint,
@@ -229,7 +230,7 @@ extension OverlayView {
             didPrepareBrowserAccessibility)
     }
 
-    private struct AccessibilityNodeInfo {
+    private nonisolated struct AccessibilityNodeInfo {
         let rect: NSRect?
         let isHidden: Bool
         let children: [AXUIElement]
@@ -238,7 +239,7 @@ extension OverlayView {
     /// Refine the direct AX hit by following only descendants whose frames
     /// contain the pointer. The limits keep custom or malformed AX trees from
     /// turning mouse movement into an unbounded traversal.
-    private static func deepestAccessibilityRect(
+    private nonisolated static func deepestAccessibilityRect(
         at axPoint: NSPoint,
         from root: AXUIElement
     ) -> NSRect? {
@@ -290,7 +291,7 @@ extension OverlayView {
     /// turns on `browserElementSnapEnabled`, and only for apps built on
     /// Chromium: other apps change behavior under enhanced UI too. Attempt
     /// them once per target PID per capture session.
-    private static func prepareBrowserAccessibilityIfNeeded(
+    private nonisolated static func prepareBrowserAccessibilityIfNeeded(
         application: AXUIElement,
         ownerPID: Int,
         sessionToken: Int
@@ -392,7 +393,7 @@ extension OverlayView {
         browserAccessibilityLock.unlock()
     }
 
-    private static func accessibilityAttributeValue(
+    private nonisolated static func accessibilityAttributeValue(
         _ attribute: CFString,
         of element: AXUIElement
     ) -> CFTypeRef? {
@@ -405,7 +406,7 @@ extension OverlayView {
 
     /// Fetch geometry and the common AX child collections in one IPC round trip.
     /// Some frameworks populate only one of these collections.
-    private static func accessibilityNodeInfo(
+    private nonisolated static func accessibilityNodeInfo(
         of element: AXUIElement,
         messagingTimeout: Float,
         maxChildren: Int
@@ -448,7 +449,7 @@ extension OverlayView {
         return AccessibilityNodeInfo(rect: rect, isHidden: isHidden, children: children)
     }
 
-    private static func accessibilityRect(positionValue: Any, sizeValue: Any) -> NSRect? {
+    private nonisolated static func accessibilityRect(positionValue: Any, sizeValue: Any) -> NSRect? {
         let positionRef = positionValue as CFTypeRef
         let sizeRef = sizeValue as CFTypeRef
         guard CFGetTypeID(positionRef) == AXValueGetTypeID(),

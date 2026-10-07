@@ -318,3 +318,21 @@ func fulfillment(of expectations: [TestExpectation], timeout: TimeInterval = 5) 
         Issue.record("Timed out waiting for \(expectation.description)")
     }
 }
+
+/// A value that callbacks on other threads read and change. The lock orders them.
+nonisolated final class LockedValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    var current: Value {
+        lock.withLock { value }
+    }
+
+    func update(_ body: (inout Value) -> Void) {
+        lock.withLock { body(&value) }
+    }
+}

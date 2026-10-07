@@ -13,7 +13,7 @@ import Cocoa
 /// (0…width) sits between pixel columns `b-1` and `b`; horizontal boundary `b`
 /// (0…height) sits between rows `b-1` and `b`. Boundary 0 and width/height are
 /// the image edges (no diff), so the usable range is 1…dim-1.
-struct BoundarySnapIndex {
+nonisolated struct BoundarySnapIndex {
     let width: Int
     let height: Int
     /// drawRect the screenshot was drawn into (overlay-space). Used to map
@@ -56,8 +56,8 @@ struct BoundarySnapIndex {
 
     /// Build the index from a screenshot CGImage drawn into `drawRect`.
     /// Returns nil for degenerate images. Safe to call off the main thread.
-    nonisolated static func build(from cgImage: CGImage, drawRect: NSRect,
-                                  bandRows: Int = defaultBandRows) -> BoundarySnapIndex? {
+    static func build(from cgImage: CGImage, drawRect: NSRect,
+                      bandRows: Int = defaultBandRows) -> BoundarySnapIndex? {
         let w = cgImage.width
         let h = cgImage.height
         guard w >= 2, h >= 2, drawRect.width > 0, drawRect.height > 0, bandRows >= 1 else { return nil }
@@ -119,7 +119,7 @@ struct BoundarySnapIndex {
     }
 
     @inline(__always)
-    private nonisolated static func storedDist(_ p: UnsafePointer<UInt8>, _ a: Int, _ b: Int) -> UInt8 {
+    private static func storedDist(_ p: UnsafePointer<UInt8>, _ a: Int, _ b: Int) -> UInt8 {
         let dr = Float(Int(p[a]) - Int(p[b]))
         let dg = Float(Int(p[a + 1]) - Int(p[b + 1]))
         let db = Float(Int(p[a + 2]) - Int(p[b + 2]))

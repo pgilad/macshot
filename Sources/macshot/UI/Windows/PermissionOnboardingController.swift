@@ -55,7 +55,7 @@ class PermissionOnboardingController: NSWindowController {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    deinit {
+    isolated deinit {
         pollTimer?.invalidate()
     }
 
@@ -243,7 +243,7 @@ class PermissionOnboardingController: NSWindowController {
         // Poll every 0.75s using CGPreflightScreenCaptureAccess() — this is a pure
         // TCC status query that never triggers the native system dialog.
         pollTimer = Timer.scheduledTimer(withTimeInterval: 0.75, repeats: true) { [weak self] _ in
-            self?.checkPermission()
+            MainActor.assumeIsolated { self?.checkPermission() }
         }
     }
 

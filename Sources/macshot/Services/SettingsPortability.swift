@@ -114,7 +114,7 @@ enum SettingsPortability {
     /// Portable keys currently present in defaults. Used by import to clear existing portable
     /// state ("replace portable" semantics).
     static func portableKeysPresentInDefaults() -> [String] {
-        UserDefaults.standard.dictionaryRepresentation().keys.filter(isPortable)
+        UserDefaults.standard.dictionaryRepresentation().keys.filter { isPortable($0) }
     }
 
     // MARK: - JSON value coding

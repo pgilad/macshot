@@ -1,5 +1,4 @@
 import Cocoa
-import Vision
 import CoreImage
 
 /// Editor window that intercepts Cmd+Q to close itself instead of quitting the app.
@@ -486,29 +485,26 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
     func overlayViewDidRequestOCR() {
         guard let image = overlayView?.captureSelectedRegion(),
               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            VisionOCR.performTextAndQRCodeRecognition(cgImage: cgImage) { [weak self] result in
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    // OCR & QR action: 0 = window + copy, 1 = window only, 2 = copy only
-                    let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
-                    let shouldCopy = ocrAction == 0 || ocrAction == 2
-                    let shouldShowWindow = ocrAction == 0 || ocrAction == 1
+        Task { [weak self] in
+            let result = await VisionOCR.recognizeTextAndQRCodes(in: cgImage)
+            guard let self = self else { return }
+            // OCR & QR action: 0 = window + copy, 1 = window only, 2 = copy only
+            let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
+            let shouldCopy = ocrAction == 0 || ocrAction == 2
+            let shouldShowWindow = ocrAction == 0 || ocrAction == 1
 
-                    if shouldCopy && !result.copyText.isEmpty {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(result.copyText, forType: .string)
-                    }
-                    if shouldShowWindow {
-                        self.ocrController?.close()
-                        let ocr = OCRResultController(text: result.text, image: image, qrCodes: result.qrCodes)
-                        ocr.onClose = { [weak self, weak ocr] in
-                            if self?.ocrController === ocr { self?.ocrController = nil }
-                        }
-                        self.ocrController = ocr
-                        ocr.show()
-                    }
+            if shouldCopy && !result.copyText.isEmpty {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(result.copyText, forType: .string)
+            }
+            if shouldShowWindow {
+                self.ocrController?.close()
+                let ocr = OCRResultController(text: result.text, image: image, qrCodes: result.qrCodes)
+                ocr.onClose = { [weak self, weak ocr] in
+                    if self?.ocrController === ocr { self?.ocrController = nil }
                 }
+                self.ocrController = ocr
+                ocr.show()
             }
         }
     }
@@ -559,27 +555,15 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
     func overlayViewDidRequestRemoveBackground() {
         guard let image = overlayView?.captureSelectedRegion(),
               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
-        let request = VNGenerateForegroundInstanceMaskRequest()
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try handler.perform([request])
-                guard let result = request.results?.first else { return }
-                let mask = try result.generateScaledMaskForImage(forInstances: result.allInstances, from: handler)
-                let orig = CIImage(cgImage: cgImage)
-                guard let filter = CIFilter(name: "CIBlendWithMask") else { return }
-                filter.setValue(orig, forKey: kCIInputImageKey)
-                filter.setValue(CIImage(cvPixelBuffer: mask), forKey: kCIInputMaskImageKey)
-                filter.setValue(CIImage(color: .clear).cropped(to: orig.extent), forKey: kCIInputBackgroundImageKey)
-                guard let out = filter.outputImage,
-                      let cg = CIContext().createCGImage(out, from: out.extent) else { return }
-                DispatchQueue.main.async {
-                    let finalImage = NSImage(cgImage: cg, size: image.size)
-                    ImageEncoder.copyToClipboard(finalImage)
-                    self.playCopySound()
-                    (NSApp.delegate as? AppDelegate)?.showFloatingThumbnail(image: finalImage)
-                }
-            } catch {}
+        Task {
+            guard let cutout = try? await BackgroundRemover.removeBackground(from: cgImage) else {
+                overlayView?.showOverlayError(BackgroundRemover.failureMessage)
+                return
+            }
+            let finalImage = NSImage(cgImage: cutout, size: image.size)
+            ImageEncoder.copyToClipboard(finalImage)
+            playCopySound()
+            (NSApp.delegate as? AppDelegate)?.showFloatingThumbnail(image: finalImage)
         }
     }
 

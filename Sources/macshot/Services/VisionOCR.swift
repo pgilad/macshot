@@ -28,9 +28,10 @@ struct OCRScanResult: Sendable {
 enum VisionOCR {
 
     /// All consumers share the same recovery path, including geometry-based tools.
+    /// The completion runs on a background queue.
     nonisolated static func performTextRecognition(
         cgImage: CGImage,
-        completionHandler: @escaping ([OCRTextObservation], Error?) -> Void
+        completionHandler: @escaping @Sendable ([OCRTextObservation], Error?) -> Void
     ) {
         OCRRecognitionSession(timeout: 10, startAttempt: { level, completion in
             startTextRecognition(cgImage: cgImage, recognitionLevel: level, completion: completion)
@@ -39,7 +40,7 @@ enum VisionOCR {
 
     nonisolated static func performTextAndQRCodeRecognition(
         cgImage: CGImage,
-        completionHandler: @escaping (OCRScanResult) -> Void
+        completionHandler: @escaping @Sendable (OCRScanResult) -> Void
     ) {
         performTextRecognition(cgImage: cgImage) { observations, _ in
             let text = observations.map(\.text).joined(separator: "\n")
@@ -48,13 +49,28 @@ enum VisionOCR {
         }
     }
 
+    /// The recognized lines; empty when recognition fails.
+    nonisolated static func recognizeText(in cgImage: CGImage) async -> [OCRTextObservation] {
+        await withCheckedContinuation { continuation in
+            performTextRecognition(cgImage: cgImage) { observations, _ in
+                continuation.resume(returning: observations)
+            }
+        }
+    }
+
+    nonisolated static func recognizeTextAndQRCodes(in cgImage: CGImage) async -> OCRScanResult {
+        await withCheckedContinuation { continuation in
+            performTextAndQRCodeRecognition(cgImage: cgImage) { continuation.resume(returning: $0) }
+        }
+    }
+
     /// Starts exactly one attempt. Cancellation is best effort: the session's
     /// deadline does not wait for Vision to acknowledge it or finish compiling.
     nonisolated static func startTextRecognition(
         cgImage: CGImage,
         recognitionLevel: VNRequestTextRecognitionLevel,
-        completion: @escaping (Result<[OCRTextObservation], Error>) -> Void
-    ) -> () -> Void {
+        completion: @escaping @Sendable (Result<[OCRTextObservation], Error>) -> Void
+    ) -> @Sendable () -> Void {
         let task = Task.detached(priority: .userInitiated) {
             do {
                 var request = RecognizeTextRequest()
@@ -102,7 +118,7 @@ enum VisionOCR {
 
 /// Normalized bottom-left geometry from either Vision API. Keep substring boxes
 /// for PII redaction, which must not lose precision during the API migration.
-struct OCRTextObservation: @unchecked Sendable {
+nonisolated struct OCRTextObservation: @unchecked Sendable {
     let text: String
     let boundingBox: CGRect
     nonisolated(unsafe) private let substringBounds: (Range<String.Index>) -> CGRect?
@@ -123,8 +139,9 @@ struct OCRTextObservation: @unchecked Sendable {
 /// the caller twice or replace the fast retry's result. A task group would wait
 /// for an uncooperative Vision task at scope exit, defeating the timeout.
 final class OCRRecognitionSession: @unchecked Sendable {
-    typealias AttemptCompletion = (Result<[OCRTextObservation], Error>) -> Void
-    typealias StartAttempt = (VNRequestTextRecognitionLevel, @escaping AttemptCompletion) -> () -> Void
+    typealias AttemptCompletion = @Sendable (Result<[OCRTextObservation], Error>) -> Void
+    typealias StartAttempt = @Sendable (VNRequestTextRecognitionLevel, @escaping AttemptCompletion) -> @Sendable () -> Void
+    typealias Completion = @Sendable ([OCRTextObservation], Error?) -> Void
 
     enum Failure: LocalizedError {
         case timedOut
@@ -133,14 +150,14 @@ final class OCRRecognitionSession: @unchecked Sendable {
 
     private let queue = DispatchQueue(label: "com.pgilad.macshot.ocr", qos: .userInitiated)
     private let timeout: TimeInterval
-    nonisolated(unsafe) private let startAttempt: StartAttempt
-    nonisolated(unsafe) private var completion: (([OCRTextObservation], Error?) -> Void)?
+    private let startAttempt: StartAttempt
+    nonisolated(unsafe) private var completion: Completion?
     nonisolated(unsafe) private var generation = 0
     nonisolated(unsafe) private var deadline: DispatchSourceTimer?
-    nonisolated(unsafe) private var cancelAttempt: (() -> Void)?
+    nonisolated(unsafe) private var cancelAttempt: (@Sendable () -> Void)?
 
     nonisolated init(timeout: TimeInterval, startAttempt: @escaping StartAttempt,
-         completion: @escaping ([OCRTextObservation], Error?) -> Void) {
+         completion: @escaping Completion) {
         self.timeout = timeout
         self.startAttempt = startAttempt
         self.completion = completion
