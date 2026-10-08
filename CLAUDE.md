@@ -19,6 +19,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 make test               # Swift Testing, one test at a time
 make self-test          # debug build only: editor, tools, text undo, save, history and Settings in real windows
 make readme-images      # render the editor with sample annotations (make snapshots) into docs/images
+make perf               # opt-in timings in a release build: scroll capture stitching up to the height limit
 make app                # release build, assembled and signed in build/macshot.app
 make install            # make app, then replace /Applications/macshot.app and start it
 make signing-identity   # once per Mac: a local certificate so permissions survive rebuilds
@@ -30,6 +31,7 @@ swift build             # debug build only
 - Resources are plain files in `Resources/`, copied into the bundle by `scripts/bundle.sh`. Load them with `NSImage(named:)`. There is no asset catalog and no SwiftPM resource bundle.
 - The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission and no window server dependency. `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
 - `make self-test` runs `macshot --self-test` from the debug binary. It drives the editor, every tool handler, a text session followed by ⌘Z, a save, a history round trip, every Settings tab and the About panel in real windows, with a temporary data folder, and puts the binary's UserDefaults domain back. It never captures the screen. The code is inside `#if DEBUG`, so release builds do not have it. Add a check there for behavior that needs the window server.
+- `Tests/macshotTests/PerformanceTests.swift` runs only when `MACSHOT_PERF=1` is set, which `make perf` does. It prints the times and fails only on a large slowdown. Put the before and after numbers of a performance change in the commit message, not in a comment.
 - CI (`.github/workflows/ci.yaml`) runs `make test`, `make self-test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
 
 ## Architecture
@@ -47,8 +49,9 @@ Sources/macshot/
 ├── AppDelegate.swift                   # Lifecycle, status item, hotkeys, capture orchestration, URL scheme
 ├── Capture/
 │   ├── ScreenCaptureManager.swift      # ScreenCaptureKit capture: displays, windows
-│   ├── ScrollCaptureController.swift   # Scroll capture session: frame grabs, Vision offsets, stitching
+│   ├── ScrollCaptureController.swift   # Scroll capture session: frame grabs, Vision offsets
 │   ├── ScrollFrameAnalyzer.swift       # Pure pixel comparison: frozen header + scrollbar detection
+│   ├── ScrollStitcher.swift            # Pure stitching: joins the frames into one image
 │   └── SafeNumerics.swift              # Clamped numeric conversions for persisted values
 ├── Model/
 │   ├── Annotation.swift                # Annotation data model + drawing for all tools
@@ -79,7 +82,7 @@ Sources/macshot/
 - macOS 26 rect screenshots (`SCScreenshotManager.captureScreenshot(rect:)`) first; displays it misses are captured through an `SCContentFilter` with fresh shareable content. `CGWindowListCreateImage` is unavailable at this target; do not try to reach it.
 - ScreenCaptureKit takes CoreGraphics display coordinates (top-left origin of the primary display); `NSScreen` frames are AppKit coordinates (bottom-left origin). Convert explicitly.
 - Window capture uses `SCContentFilter(desktopIndependentWindow:)`.
-- Scroll capture grabs frames with `SCScreenshotManager.captureImage` through a filter that excludes macshot's own windows, waits for two identical frames, measures the scroll offset with `VNTranslationalImageRegistrationRequest` and stitches incrementally.
+- Scroll capture grabs frames with `SCScreenshotManager.captureImage` through a filter that excludes macshot's own windows, waits for two identical frames, measures the scroll offset with `VNTranslationalImageRegistrationRequest` and stitches incrementally with `ScrollStitcher`.
 
 ### OverlayView — the main interaction surface
 
@@ -187,7 +190,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 - `Tests/macshotTests/TestSupport.swift`: `withDefaults` (isolated UserDefaults, sync and async), `ImageProbe` (scale-independent fixture images and pixel probes — never build fixtures with `lockFocus`), `TestKeyEvent` (synthesized `NSEvent`s), `Reflect`/`FieldDescriber`, and `TestExpectation` with `fulfillment(of:timeout:)` for callback-based APIs.
 - Swift Testing runs main-actor tests as main-actor jobs, so spinning the run loop does not let main-queue work run. Await instead (`fulfillment(of:)`, `Task.sleep`).
 - `#require` cannot call a mutating method or contain another `#require`; take the value first.
-- Logic worth testing that is buried in a permission-gated class should be extracted (see `ScrollFrameAnalyzer`).
+- Logic worth testing that is buried in a permission-gated class should be extracted (see `ScrollFrameAnalyzer` and `ScrollStitcher`).
 
 ## Releasing
 

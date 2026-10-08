@@ -105,18 +105,23 @@ enum ImageProbe {
     /// drawn through CGContext instead: same pixels on every machine.
     /// The context has AppKit's bottom-left origin.
     static func makeImage(width: Int, height: Int, draw: (CGContext) -> Void) -> NSImage {
+        guard let cgImage = makeCGImage(width: width, height: height, draw: draw) else {
+            return NSImage(size: NSSize(width: max(width, 0), height: max(height, 0)))
+        }
+        return NSImage(cgImage: cgImage, size: NSSize(width: width, height: height))
+    }
+
+    /// `makeImage` for code that takes a `CGImage`.
+    static func makeCGImage(width: Int, height: Int, draw: (CGContext) -> Void) -> CGImage? {
         guard width > 0, height > 0,
               let space = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(
                 data: nil, width: width, height: height,
                 bitsPerComponent: 8, bytesPerRow: width * 4, space: space,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else { return NSImage(size: NSSize(width: max(width, 0), height: max(height, 0))) }
+        else { return nil }
         draw(context)
-        guard let cgImage = context.makeImage() else {
-            return NSImage(size: NSSize(width: width, height: height))
-        }
-        return NSImage(cgImage: cgImage, size: NSSize(width: width, height: height))
+        return context.makeImage()
     }
 
     /// A deterministic test image: four solid quadrants, so scaling, cropping

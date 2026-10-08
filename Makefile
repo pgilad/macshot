@@ -13,7 +13,7 @@ SWIFT_FLAGS ?=
 TESTING_PLUGINS := $(shell xcode-select -p)/usr/lib/swift/host/plugins/testing
 TEST_FLAGS := $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
 
-.PHONY: build app dist install test self-test snapshots readme-images run clean signing-identity
+.PHONY: build app dist install test perf self-test snapshots readme-images run clean signing-identity
 
 build: ## Debug build
 	$(SWIFT) build $(SWIFT_FLAGS)
@@ -44,6 +44,9 @@ snapshots: build ## Render the editor with sample annotations to PNG files in bu
 readme-images: snapshots ## Update the README screenshots in docs/images
 	mkdir -p docs/images
 	cp build/snapshots/editor-light.png build/snapshots/editor-dark.png docs/images/
+
+perf: ## Scroll capture stitching timings up to the height limit, release build
+	MACSHOT_PERF=1 $(SWIFT) test -c release --no-parallel $(SWIFT_FLAGS) $(TEST_FLAGS) --filter PerformanceTests
 
 run: app ## Start the bundled build from build/
 	open "$(APP_DIR)"

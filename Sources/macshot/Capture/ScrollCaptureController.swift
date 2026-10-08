@@ -13,7 +13,7 @@ import Vision
 ///   = content has truly stopped rendering. Zero tolerance, no false positives.
 /// - **Timer-driven `captureAndCompare`** on a dedicated serial queue — consistent
 ///   timing, no main-thread contention.
-/// - **Incremental stitching** — new content is merged into `mergedImage` immediately
+/// - **Incremental stitching** — `ScrollStitcher` merges new content immediately
 ///   after each match, keeping memory bounded (no storing all raw strips).
 /// - **Vision-only offset detection** — `VNTranslationalImageRegistrationRequest`
 ///   for pixel-precise scroll offset measurement.
@@ -22,23 +22,27 @@ import Vision
 /// - **Programmatic scrolling** via `CGEventCreateScrollWheelEvent2`.
 /// - **Frozen header detection** — identifies sticky headers and excludes from stitching.
 /// - **Scrollbar exclusion** — auto-detects scrollbar width, excludes from comparisons.
-/// - **Max height: 30,000 pixels** (configurable via UserDefaults).
+/// - **Max height** — `defaultMaxHeight` pixels, or the `scrollMaxHeight` default.
 @MainActor
 final class ScrollCaptureController {
+
+    /// Auto-scroll stops once the stitched image is this tall, unless the
+    /// `scrollMaxHeight` default sets another height (0 means no limit).
+    nonisolated static let defaultMaxHeight = 30000
 
     // MARK: - Public state
 
     private(set) var stripCount: Int = 0
-    private(set) var stitchedImage: CGImage?
-    private(set) var stitchedPixelSize: CGSize = .zero
     private(set) var isActive: Bool = false
     private(set) var frozenTopHeight: CGFloat = 0
     private var isCancelled: Bool = false
 
+    var stitchedPixelSize: CGSize { stitcher?.pixelSize ?? .zero }
+
     /// Current estimated total height of the final image (points).
     var estimatedTotalHeight: CGFloat {
-        guard let merged = mergedImage else { return 0 }
-        return CGFloat(merged.height) / backingScale
+        guard let stitcher else { return 0 }
+        return CGFloat(stitcher.height) / backingScale
     }
 
     // MARK: - Callbacks
@@ -56,7 +60,7 @@ final class ScrollCaptureController {
 
     private var autoScrollEnabled: Bool = false
     private var autoScrollSpeed: Int = 3
-    private var maxScrollHeight: Int = 30000
+    private var maxScrollHeight: Int = ScrollCaptureController.defaultMaxHeight
     private var frozenDetectionEnabled: Bool = true
 
     // MARK: - Private
@@ -72,7 +76,7 @@ final class ScrollCaptureController {
     private var shotA: CGImage?          // previous frame
     private var shotB: CGImage?          // current frame
     private var lastComparedTIFF: Data?  // TIFF of last settled frame for byte comparison
-    private var mergedImage: CGImage?    // accumulated stitched result
+    private var stitcher: ScrollStitcher?  // accumulated stitched result
     private var headerHeight: Int = 0    // frozen header height in pixels
     private var headerDetectionDone: Bool = false
     private var headerDetectionSamples: Int = 0
@@ -134,7 +138,7 @@ final class ScrollCaptureController {
         let ud = UserDefaults.standard
         autoScrollEnabled = ud.object(forKey: "scrollAutoScrollEnabled") as? Bool ?? false
         autoScrollSpeed = ud.object(forKey: "scrollAutoScrollSpeed") as? Int ?? 3
-        maxScrollHeight = ud.object(forKey: "scrollMaxHeight") as? Int ?? 30000
+        maxScrollHeight = ud.object(forKey: "scrollMaxHeight") as? Int ?? Self.defaultMaxHeight
         frozenDetectionEnabled = ud.object(forKey: "scrollFrozenDetection") as? Bool ?? true
 
         // Convert AppKit coords to CG coords (top-left origin) for the CGWindowList lookups
@@ -166,7 +170,7 @@ final class ScrollCaptureController {
         shotA = nil
         shotB = nil
         lastComparedTIFF = nil
-        mergedImage = firstFrame
+        stitcher = ScrollStitcher(firstFrame: firstFrame)
         headerHeight = 0
         headerDetectionDone = false
         headerDetectionSamples = 0
@@ -179,8 +183,6 @@ final class ScrollCaptureController {
         frozenTopHeight = 0
         stripCount = 1
 
-        stitchedImage = firstFrame
-        stitchedPixelSize = CGSize(width: CGFloat(firstFrame.width), height: CGFloat(firstFrame.height))
         emitPreview()
         onStripAdded?(stripCount)
 
@@ -214,7 +216,7 @@ final class ScrollCaptureController {
 
         // Deliver final image
         let finalImage: NSImage?
-        if let cg = mergedImage {
+        if let cg = stitcher?.image {
             let ptSize = CGSize(width: CGFloat(cg.width) / backingScale,
                                 height: CGFloat(cg.height) / backingScale)
             finalImage = NSImage(cgImage: cg, size: ptSize)
@@ -436,7 +438,7 @@ final class ScrollCaptureController {
 
             // captureAndCompare: settle, capture, compare, stitch.
             // `isCapturing` serializes this against a manual settledCapture
-            // that may still be running — both mutate shotA/mergedImage/
+            // that may still be running — both mutate shotA/stitcher/
             // stripCount around their suspension points.
             if isCapturing {
                 try? await Task.sleep(nanoseconds: 20_000_000)
@@ -457,8 +459,8 @@ final class ScrollCaptureController {
             }
 
             // Check max height
-            if let merged = mergedImage, maxScrollHeight > 0 {
-                if merged.height >= maxScrollHeight {
+            if let stitcher, maxScrollHeight > 0 {
+                if stitcher.height >= maxScrollHeight {
                     stopSession()
                     return
                 }
@@ -514,7 +516,7 @@ final class ScrollCaptureController {
         }
 
         guard let currentFrame = settledCG else { return false }
-        guard let previousFrame = shotA ?? mergedImage?.cropping(to: CGRect(
+        guard let previousFrame = shotA ?? stitcher?.image.cropping(to: CGRect(
             x: 0, y: 0, width: currentFrame.width, height: currentFrame.height
         )) else {
             shotA = currentFrame
@@ -563,7 +565,7 @@ final class ScrollCaptureController {
         // rendering differences at the seam boundary.
         let safeOffset = max(1, offsetPx - 1)
 
-        // Incremental stitch: merge new content into mergedImage
+        // Incremental stitch: merge new content into the stitched image
         mergeNewContent(currentFrame: currentFrame, offsetPx: safeOffset)
 
         shotA = currentFrame
@@ -576,46 +578,16 @@ final class ScrollCaptureController {
         return true
     }
 
-    /// Merges the newly-scrolled content from `currentFrame` into `mergedImage`.
+    /// Merges the newly-scrolled content from `currentFrame` into the stitched image.
     /// Only the new rows (below the overlap region) are appended.
     private func mergeNewContent(currentFrame: CGImage, offsetPx: Int) {
-        guard let existing = mergedImage else {
-            mergedImage = currentFrame
+        guard stitcher != nil else {
+            stitcher = ScrollStitcher(firstFrame: currentFrame)
             return
         }
-
-        let w = currentFrame.width
-        let existingH = existing.height
-        let newRows = offsetPx  // pixels of new content
-        guard newRows > 0, newRows <= currentFrame.height else { return }
-
-        let totalH = existingH + newRows
-
-        let cs = existing.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
-        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        guard let ctx = CGContext(data: nil, width: w, height: totalH,
-                                  bitsPerComponent: 8, bytesPerRow: w * 4,
-                                  space: cs, bitmapInfo: bitmapInfo) else { return }
-
-        // Draw existing image at the top (CGContext: bottom-left origin, so top = highest y)
-        ctx.draw(existing, in: CGRect(x: 0, y: newRows, width: w, height: existingH))
-
-        if headerDetectionDone && headerHeight > 0 {
-            // Sticky header detected: only append the bottom newRows pixels.
-            let stripY = currentFrame.height - newRows
-            if let strip = currentFrame.cropping(to: CGRect(
-                x: 0, y: stripY, width: w, height: newRows)) {
-                ctx.draw(strip, in: CGRect(x: 0, y: 0, width: w, height: newRows))
-            }
-        } else {
-            // No header: draw full current frame with natural overlap.
-            ctx.draw(currentFrame, in: CGRect(x: 0, y: 0, width: w, height: currentFrame.height))
-        }
-
-        guard let merged = ctx.makeImage() else { return }
-        mergedImage = merged
-        stitchedImage = merged
-        stitchedPixelSize = CGSize(width: CGFloat(w), height: CGFloat(totalH))
+        // With a sticky header, only the bottom offsetPx rows are new content.
+        stitcher?.append(currentFrame, newRows: offsetPx,
+                         onlyNewRows: headerDetectionDone && headerHeight > 0)
     }
 
     private func stopAutoScroll() {
@@ -815,7 +787,7 @@ final class ScrollCaptureController {
     // MARK: - Preview
 
     private func emitPreview() {
-        guard let cg = mergedImage, let callback = onPreviewUpdated else { return }
+        guard let cg = stitcher?.image, let callback = onPreviewUpdated else { return }
         let ptSize = CGSize(width: CGFloat(cg.width) / backingScale,
                             height: CGFloat(cg.height) / backingScale)
         callback(NSImage(cgImage: cg, size: ptSize))
