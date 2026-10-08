@@ -18,6 +18,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 ```fish
 make test               # Swift Testing, one test at a time
 make self-test          # debug build only: editor, tools, text undo, save, history and Settings in real windows
+make readme-images      # render the editor with sample annotations (make snapshots) into docs/images
 make app                # release build, assembled and signed in build/macshot.app
 make install            # make app, then replace /Applications/macshot.app and start it
 make signing-identity   # once per Mac: a local certificate so permissions survive rebuilds
@@ -41,7 +42,8 @@ Menu bar agent app. No main window. A global hotkey (default ⇧⌘X) or the men
 Sources/macshot/
 ├── main.swift                          # Entry point
 ├── Diagnostics/
-│   └── SelfTest.swift                  # `--self-test` (debug builds only)
+│   ├── SelfTest.swift                  # `--self-test`, shared isolation and mouse input (debug builds only)
+│   └── SnapshotRenderer.swift          # `--render-snapshots <dir>` for the README images
 ├── AppDelegate.swift                   # Lifecycle, status item, hotkeys, capture orchestration, URL scheme
 ├── Capture/
 │   ├── ScreenCaptureManager.swift      # ScreenCaptureKit capture: displays, windows

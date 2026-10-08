@@ -13,6 +13,13 @@
   <a href="#privacy">Privacy</a>
 </p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png">
+    <img src="docs/images/editor-light.png" width="800" alt="The macshot editor with a sample capture: a red rectangle around a heading, numbered badges, a solid redaction over an email address, and an arrow from the text “Up 24%” to the tallest bar of a chart.">
+  </picture>
+</p>
+
 macshot freezes the screen, lets you select an area, window or display, and gives you annotation tools before you copy, save or pin the result. This fork of [sw33tLie/macshot](https://github.com/sw33tLie/macshot) keeps the screenshot tool and removes everything that records, uploads or connects to the network.
 
 ## Install

@@ -13,7 +13,8 @@ UserDefaults.standard.set(false, forKey: "NSViewUsesAutomaticLayerBackingStores"
 MainActor.assumeIsolated {
     let app = NSApplication.shared
     #if DEBUG
-    // Development checks: `macshot --self-test`. See Diagnostics.
+    // Development checks: `macshot --self-test`, `macshot --render-snapshots <dir>`.
+    // See Diagnostics.
     if Diagnostics.startIfRequested(CommandLine.arguments) {
         app.setActivationPolicy(.accessory)
         app.run()

@@ -13,7 +13,7 @@ SWIFT_FLAGS ?=
 TESTING_PLUGINS := $(shell xcode-select -p)/usr/lib/swift/host/plugins/testing
 TEST_FLAGS := $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
 
-.PHONY: build app dist install test self-test run clean signing-identity
+.PHONY: build app dist install test self-test snapshots readme-images run clean signing-identity
 
 build: ## Debug build
 	$(SWIFT) build $(SWIFT_FLAGS)
@@ -37,6 +37,13 @@ test: ## Unit tests, one at a time: they share UserDefaults and the pasteboard
 
 self-test: build ## Editor, tools, text undo, save, history and Settings in real windows
 	.build/debug/macshot --self-test
+
+snapshots: build ## Render the editor with sample annotations to PNG files in build/snapshots
+	.build/debug/macshot --render-snapshots build/snapshots
+
+readme-images: snapshots ## Update the README screenshots in docs/images
+	mkdir -p docs/images
+	cp build/snapshots/editor-light.png build/snapshots/editor-dark.png docs/images/
 
 run: app ## Start the bundled build from build/
 	open "$(APP_DIR)"

@@ -18,7 +18,36 @@ enum Diagnostics {
             Task { exit(await SelfTest().run() ? 0 : 1) }
             return true
         }
+        if let index = arguments.firstIndex(of: "--render-snapshots"), arguments.indices.contains(index + 1) {
+            let directory = URL(filePath: arguments[index + 1], directoryHint: .isDirectory)
+            Task { exit(await SnapshotRenderer.render(to: directory) ? 0 : 1) }
+            return true
+        }
         return false
+    }
+
+    /// Runs `body` with a temporary data folder and an empty UserDefaults domain, then
+    /// puts the debug binary's domain back as it was and deletes the folder. Returns nil
+    /// inside an app bundle, where the domain is the real app's.
+    static func isolated<T>(_ name: String, _ body: (URL) async -> T) async -> T? {
+        guard Bundle.main.bundleIdentifier == nil else {
+            print("FAIL run diagnostics from the debug binary (make self-test), not from an app bundle")
+            return nil
+        }
+        let directory = temporaryDirectory(name)
+        setenv("MACSHOT_DATA_DIR", directory.appending(path: "data").path, 1)
+        let domain = ProcessInfo.processInfo.processName
+        let savedDefaults = UserDefaults.standard.persistentDomain(forName: domain)
+        UserDefaults.standard.removePersistentDomain(forName: domain)
+        defer {
+            if let savedDefaults {
+                UserDefaults.standard.setPersistentDomain(savedDefaults, forName: domain)
+            } else {
+                UserDefaults.standard.removePersistentDomain(forName: domain)
+            }
+            try? FileManager.default.removeItem(at: directory)
+        }
+        return await body(directory)
     }
 
     /// A folder that the caller deletes.
@@ -59,25 +88,10 @@ final class SelfTest {
     private var failures = 0
 
     func run() async -> Bool {
-        // Inside the app bundle, the UserDefaults domain is the real app's.
-        guard Bundle.main.bundleIdentifier == nil else {
-            print("FAIL run the self-test from the debug binary (make self-test), not from an app bundle")
-            return false
-        }
-        let directory = Diagnostics.temporaryDirectory("selftest")
-        setenv("MACSHOT_DATA_DIR", directory.appending(path: "data").path, 1)
-        let domain = ProcessInfo.processInfo.processName
-        let savedDefaults = UserDefaults.standard.persistentDomain(forName: domain)
-        UserDefaults.standard.removePersistentDomain(forName: domain)
-        defer {
-            if let savedDefaults {
-                UserDefaults.standard.setPersistentDomain(savedDefaults, forName: domain)
-            } else {
-                UserDefaults.standard.removePersistentDomain(forName: domain)
-            }
-            try? FileManager.default.removeItem(at: directory)
-        }
+        await Diagnostics.isolated("selftest") { await run(in: $0) } ?? false
+    }
 
+    private func run(in directory: URL) async -> Bool {
         let image = Diagnostics.fixtureImage(width: 640, height: 400)
         await checkEditor(image: image)
         await checkSave(image: image, directory: directory)
@@ -94,15 +108,15 @@ final class SelfTest {
 
     private func checkEditor(image: NSImage) async {
         DetachedEditorWindowController.open(image: image)
-        await settle()
-        guard let window = NSApp.windows.first(where: { $0.isVisible && Self.editorView(in: $0) != nil }),
-              let editor = Self.editorView(in: window) else {
+        await DiagnosticInput.settle()
+        guard let window = NSApp.windows.first(where: { $0.isVisible && DiagnosticInput.editorView(in: $0) != nil }),
+              let editor = DiagnosticInput.editorView(in: window) else {
             check(false, "the editor opens in a window")
             return
         }
         check(true, "the editor opens in a window")
         check(NSApp.activationPolicy() == .regular, "an open editor makes macshot a regular app")
-        let strips = Self.descendants(of: window.contentView, ofType: ToolbarStripView.self)
+        let strips = DiagnosticInput.descendants(of: window.contentView, ofType: ToolbarStripView.self)
         check(!strips.isEmpty && strips.allSatisfy { !$0.isDescendant(of: editor) },
               "the editor's toolbars are in the window, outside the canvas")
 
@@ -113,7 +127,7 @@ final class SelfTest {
             let area = editor.selectionRect
             let start = NSPoint(x: area.minX + area.width * 0.2, y: area.minY + area.height * 0.25)
             let end = NSPoint(x: area.minX + area.width * 0.6, y: area.minY + area.height * 0.7)
-            drag(in: editor, from: start, to: end)
+            DiagnosticInput.drag(in: editor, from: start, to: end)
             check(editor.annotations.count == 1, "\(tool) draws an annotation from mouse events")
         }
         editor.cachedCompositedImage = nil
@@ -123,8 +137,8 @@ final class SelfTest {
         await checkTextAndUndo(in: editor, window: window)
 
         window.close()
-        await settle()
-        check(Self.editorView(in: window) == nil, "closing the editor releases its canvas")
+        await DiagnosticInput.settle()
+        check(DiagnosticInput.editorView(in: window) == nil, "closing the editor releases its canvas")
     }
 
     /// A disposable text view that registers undo on the window's undo manager leaves
@@ -135,7 +149,7 @@ final class SelfTest {
         editor.selectedAnnotations = []
         editor.currentTool = .text
         let area = editor.selectionRect
-        click(in: editor, at: NSPoint(x: area.minX + area.width * 0.3, y: area.midY))
+        DiagnosticInput.click(in: editor, at: NSPoint(x: area.minX + area.width * 0.3, y: area.midY))
         guard let textView = editor.textEditor.textView else {
             check(false, "a click with the text tool starts a text session")
             return
@@ -146,7 +160,7 @@ final class SelfTest {
         editor.commitTextFieldIfNeeded()
         check(editor.annotations.contains { $0.tool == .text && ($0.attributedText?.string ?? $0.text) == "self-test" },
               "typed text becomes a text annotation")
-        await settle()
+        await DiagnosticInput.settle()
         var steps = 0
         while let undoManager = window.undoManager, undoManager.canUndo, steps < 20 {
             undoManager.undo()
@@ -187,7 +201,7 @@ final class SelfTest {
     private func checkSettings() async {
         let settings = SettingsWindowController()
         settings.showWindow()
-        await settle()
+        await DiagnosticInput.settle()
         guard let window = settings.window, let items = window.toolbar?.items, !items.isEmpty else {
             check(false, "Settings opens with its tabs")
             return
@@ -198,12 +212,12 @@ final class SelfTest {
             check(window.title.hasSuffix(item.label), "Settings shows the \(item.label) tab")
         }
         window.close()
-        await settle()
+        await DiagnosticInput.settle()
     }
 
     private func checkAboutPanel() async {
         NSApp.orderFrontStandardAboutPanel(options: [:])
-        await settle()
+        await DiagnosticInput.settle()
         let about = NSApp.windows.first { $0 is NSPanel && $0.isVisible && $0.level == .normal }
         check(about != nil, "the About panel opens")
         about?.close()
@@ -230,13 +244,16 @@ final class SelfTest {
             print("FAIL \(name)")
         }
     }
+}
 
+/// Mouse input and window lookups for the diagnostics.
+enum DiagnosticInput {
     /// Lets queued main-queue work and window updates run.
-    private func settle() async {
+    static func settle() async {
         try? await Task.sleep(for: .milliseconds(150))
     }
 
-    private func drag(in view: NSView, from start: NSPoint, to end: NSPoint) {
+    static func drag(in view: NSView, from start: NSPoint, to end: NSPoint) {
         let middle = NSPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2)
         send(.leftMouseDown, at: start, to: view)?.mouseDown()
         send(.leftMouseDragged, at: middle, to: view)?.mouseDragged()
@@ -244,7 +261,7 @@ final class SelfTest {
         send(.leftMouseUp, at: end, to: view)?.mouseUp()
     }
 
-    private func click(in view: NSView, at point: NSPoint) {
+    static func click(in view: NSView, at point: NSPoint) {
         send(.leftMouseDown, at: point, to: view)?.mouseDown()
         send(.leftMouseUp, at: point, to: view)?.mouseUp()
     }
@@ -258,7 +275,7 @@ final class SelfTest {
     }
 
     /// An event at `point` in `view`'s coordinates.
-    private func send(_ type: NSEvent.EventType, at point: NSPoint, to view: NSView) -> Delivery? {
+    private static func send(_ type: NSEvent.EventType, at point: NSPoint, to view: NSView) -> Delivery? {
         guard let window = view.window,
               let event = NSEvent.mouseEvent(
                 with: type, location: view.convert(point, to: nil), modifierFlags: [],
@@ -267,11 +284,11 @@ final class SelfTest {
         return Delivery(view: view, event: event)
     }
 
-    private static func editorView(in window: NSWindow) -> EditorView? {
+    static func editorView(in window: NSWindow) -> EditorView? {
         descendants(of: window.contentView, ofType: EditorView.self).first
     }
 
-    private static func descendants<T: NSView>(of view: NSView?, ofType type: T.Type) -> [T] {
+    static func descendants<T: NSView>(of view: NSView?, ofType type: T.Type) -> [T] {
         guard let view else { return [] }
         return view.subviews.flatMap { subview -> [T] in
             let match: [T] = (subview as? T).map { [$0] } ?? []
