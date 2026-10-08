@@ -425,7 +425,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         let urlSchemeCheckbox = NSButton(checkboxWithTitle: "Enable macshot:// URL scheme", target: self, action: #selector(urlSchemeChanged(_:)))
-        urlSchemeCheckbox.state = UserDefaults.standard.bool(forKey: "urlSchemeEnabled") ? .on : .off
+        urlSchemeCheckbox.state = Preferences.urlSchemeEnabled ? .on : .off
 
         let urlSchemeInfoIcon = HoverPopoverIconView(
             image: NSImage(systemSymbolName: "info.circle", accessibilityDescription: "URL scheme info"),
@@ -775,7 +775,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.addArrangedSubview(indented(labeledRow("  Position:", controls: [thumbnailCornerPopup!])))
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        let sizeSlider = NSSlider(value: UserDefaults.standard.object(forKey: "thumbnailScale") as? Double ?? 1.0,
+        let sizeSlider = NSSlider(value: Preferences.thumbnailScale,
                                    minValue: 0.5, maxValue: 2.0, target: self, action: #selector(thumbnailScaleChanged(_:)))
         sizeSlider.controlSize = .small
         sizeSlider.widthAnchor.constraint(equalToConstant: 120).isActive = true
@@ -1578,7 +1578,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
 
     @objc private func showToolShortcutsInTooltipsChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "showToolShortcutsInTooltips")
+        Preferences.showToolShortcutsInTooltips = sender.state == .on
     }
 
     private func stopToolShortcutRecording() {
@@ -1956,34 +1956,34 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         copyPathAfterSaveCheckbox.state = ImageSaveService.copyPathAfterSave ? .on : .off
 
         // Migrate legacy bool to new int setting
-        if UserDefaults.standard.object(forKey: "ocrAction") == nil {
+        if UserDefaults.standard.object(forKey: Preferences.Key.ocrAction) == nil {
             let legacyAutoCopy = UserDefaults.standard.object(forKey: "autoCopyOCRText") as? Bool ?? true
-            UserDefaults.standard.set(legacyAutoCopy ? 0 : 1, forKey: "ocrAction")
+            Preferences.ocrAction = legacyAutoCopy ? 0 : 1
         }
-        ocrActionPopup.selectItem(at: UserDefaults.standard.integer(forKey: "ocrAction"))
+        ocrActionPopup.selectItem(at: Preferences.ocrAction)
         captureMenuOrder = CaptureMenuItemID.orderedItems()
         rebuildCaptureMenuOrderRows()
 
-        let copySound = UserDefaults.standard.object(forKey: "playCopySound") as? Bool ?? true
+        let copySound = Preferences.playCopySound
         copySoundCheckbox.state = copySound ? .on : .off
 
         // rememberSelectionCheckbox removed
 
-        let rememberTool = UserDefaults.standard.object(forKey: "rememberLastTool") as? Bool ?? true
+        let rememberTool = Preferences.rememberLastTool
         rememberToolCheckbox.state = rememberTool ? .on : .off
 
-        let thumbnail = UserDefaults.standard.object(forKey: "showFloatingThumbnail") as? Bool ?? true
+        let thumbnail = Preferences.showFloatingThumbnail
         thumbnailCheckbox.state = thumbnail ? .on : .off
-        thumbnailLetterboxCheckbox.state = UserDefaults.standard.bool(forKey: "thumbnailLetterbox") ? .on : .off
+        thumbnailLetterboxCheckbox.state = Preferences.thumbnailLetterbox ? .on : .off
 
-        let autoDismiss = UserDefaults.standard.object(forKey: "thumbnailAutoDismiss") as? Int ?? 5
+        let autoDismiss = Preferences.thumbnailAutoDismiss
         thumbnailAutoDismissField.integerValue = autoDismiss
         thumbnailAutoDismissStepper.integerValue = autoDismiss
 
-        let stacking = UserDefaults.standard.object(forKey: "thumbnailStacking") as? Bool ?? true
+        let stacking = Preferences.thumbnailStacking
         thumbnailStackingPopup.selectItem(at: stacking ? 0 : 1)
 
-        let thumbnailCorner = UserDefaults.standard.string(forKey: "thumbnailCorner") ?? "bottomRight"
+        let thumbnailCorner = Preferences.thumbnailCorner
         switch thumbnailCorner {
         case "bottomLeft": thumbnailCornerPopup.selectItem(at: 1)
         case "topRight": thumbnailCornerPopup.selectItem(at: 2)
@@ -1993,24 +1993,24 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         refreshLaunchAtLogin()
 
-        hideMenuBarIconCheckbox.state = UserDefaults.standard.bool(forKey: "hideMenuBarIcon") ? .on : .off
+        hideMenuBarIconCheckbox.state = Preferences.hideMenuBarIcon ? .on : .off
 
         let iconMode = UserDefaults.standard.string(forKey: AppDelegate.statusBarIconModeKey) ?? "default"
         menuBarIconModePopup.selectItem(at: iconMode == "symbol" ? 1 : 0)
         menuBarIconSymbolField.stringValue = UserDefaults.standard.string(forKey: AppDelegate.statusBarIconSymbolNameKey) ?? ""
         updateMenuBarIconControlsEnabled()
 
-        let snapGuides = UserDefaults.standard.object(forKey: "snapGuidesEnabled") as? Bool ?? true
+        let snapGuides = Preferences.snapGuidesEnabled
         snapGuidesCheckbox.state = snapGuides ? .on : .off
-        let boundarySnap = UserDefaults.standard.object(forKey: "boundarySnapEnabled") as? Bool ?? true
+        let boundarySnap = Preferences.boundarySnapEnabled
         boundarySnapCheckbox.state = boundarySnap ? .on : .off
         browserElementSnapCheckbox.state = OverlayView.browserElementSnapEnabled ? .on : .off
-        showToolShortcutsInTooltipsCheckbox.state = UserDefaults.standard.bool(forKey: "showToolShortcutsInTooltips") ? .on : .off
+        showToolShortcutsInTooltipsCheckbox.state = Preferences.showToolShortcutsInTooltips ? .on : .off
 
-        captureCursorCheckbox.state = UserDefaults.standard.bool(forKey: "captureCursor") ? .on : .off
-        doubleClickToCopyCheckbox.state = (UserDefaults.standard.object(forKey: "doubleClickToCopy") as? Bool ?? true) ? .on : .off
-        hideCaptureInstructionsCheckbox.state = UserDefaults.standard.bool(forKey: "hideCaptureInstructions") ? .on : .off
-        disableSelectionShadowCheckbox.state = UserDefaults.standard.bool(forKey: "disableSelectionOutsideShadow") ? .on : .off
+        captureCursorCheckbox.state = Preferences.captureCursor ? .on : .off
+        doubleClickToCopyCheckbox.state = Preferences.doubleClickToCopy ? .on : .off
+        hideCaptureInstructionsCheckbox.state = Preferences.hideCaptureInstructions ? .on : .off
+        disableSelectionShadowCheckbox.state = Preferences.disableSelectionOutsideShadow ? .on : .off
         filenameTemplateField.stringValue = UserDefaults.standard.string(forKey: FilenameFormatter.userDefaultsKey) ?? FilenameFormatter.defaultTemplate
         updateFilenamePreview()
 
@@ -2018,10 +2018,10 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         iconColorWell.color = ToolbarLayout.iconColor
         bgColorWell.color = ToolbarLayout.bgColor
 
-        let historySize = UserDefaults.standard.object(forKey: "historySize") as? Int ?? 10
+        let historySize = Preferences.historySize
         historySizeField.integerValue = historySize
         historySizeStepper.integerValue = historySize
-        historyUnlimitedCheckbox.state = UserDefaults.standard.bool(forKey: "historyUnlimited") ? .on : .off
+        historyUnlimitedCheckbox.state = Preferences.historyUnlimited ? .on : .off
         updateHistoryControlsEnabled()
 
         // Migrate old bool setting to new int: 0=save, 1=copy, 2=both
@@ -2037,8 +2037,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let quickMode = QuickCaptureMode.current
         quickModePopup.select(
             quickModePopup.itemArray.first { $0.representedObject as? Int == quickMode.rawValue })
-        quickCaptureOpenEditorCheckbox.state = UserDefaults.standard.bool(forKey: "quickCaptureOpenEditor") ? .on : .off
-        closeEditorAfterCopyCheckbox.state = UserDefaults.standard.bool(forKey: "closeEditorAfterCopy") ? .on : .off
+        quickCaptureOpenEditorCheckbox.state = Preferences.quickCaptureOpenEditor ? .on : .off
+        closeEditorAfterCopyCheckbox.state = Preferences.closeEditorAfterCopy ? .on : .off
 
         selectImageFormat(ImageEncoder.format)
         clipboardFormatCheckbox.state = ImageEncoder.clipboardIncludesImageFormat ? .on : .off
@@ -2109,7 +2109,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
 
     @objc private func ocrActionChanged(_ sender: NSPopUpButton) {
-        UserDefaults.standard.set(sender.indexOfSelectedItem, forKey: "ocrAction")
+        Preferences.ocrAction = sender.indexOfSelectedItem
     }
     @objc private func saveActionChanged(_ sender: NSPopUpButton) {
         guard let raw = sender.selectedItem?.representedObject as? Int,
@@ -2120,28 +2120,28 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         ImageSaveService.copyPathAfterSave = sender.state == .on
     }
     @objc private func copySoundChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "playCopySound")
+        Preferences.playCopySound = sender.state == .on
     }
     @objc private func rememberToolChanged(_ sender: NSButton) {
         let enabled = sender.state == .on
-        UserDefaults.standard.set(enabled, forKey: "rememberLastTool")
+        Preferences.rememberLastTool = enabled
         if !enabled {
             OverlayView.resetRememberedTool()
         }
     }
     @objc private func thumbnailChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "showFloatingThumbnail")
+        Preferences.showFloatingThumbnail = sender.state == .on
     }
     @objc private func thumbnailAutoDismissChanged(_ sender: NSStepper) {
         thumbnailAutoDismissField.integerValue = sender.integerValue
-        UserDefaults.standard.set(sender.integerValue, forKey: "thumbnailAutoDismiss")
+        Preferences.thumbnailAutoDismiss = sender.integerValue
     }
     @objc private func thumbnailScaleChanged(_ sender: NSSlider) {
-        UserDefaults.standard.set(sender.doubleValue, forKey: "thumbnailScale")
+        Preferences.thumbnailScale = sender.doubleValue
         thumbnailScaleLabel?.stringValue = scalePercentString(sender.doubleValue)
     }
     @objc private func thumbnailLetterboxChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "thumbnailLetterbox")
+        Preferences.thumbnailLetterbox = sender.state == .on
     }
 
     private func scalePercentString(_ scale: Double) -> String {
@@ -2149,11 +2149,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
 
     @objc private func thumbnailStackingChanged(_ sender: NSPopUpButton) {
-        UserDefaults.standard.set(sender.indexOfSelectedItem == 0, forKey: "thumbnailStacking")
+        Preferences.thumbnailStacking = sender.indexOfSelectedItem == 0
     }
     @objc private func thumbnailCornerChanged(_ sender: NSPopUpButton) {
         let values = ["bottomRight", "bottomLeft", "topRight", "topLeft"]
-        UserDefaults.standard.set(values[sender.indexOfSelectedItem], forKey: "thumbnailCorner")
+        Preferences.thumbnailCorner = values[sender.indexOfSelectedItem]
     }
     @objc private func quickModeChanged(_ sender: NSPopUpButton) {
         guard let rawValue = sender.selectedItem?.representedObject as? Int,
@@ -2161,10 +2161,10 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         UserDefaults.standard.set(rawValue, forKey: QuickCaptureMode.userDefaultsKey)
     }
     @objc private func quickCaptureOpenEditorChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "quickCaptureOpenEditor")
+        Preferences.quickCaptureOpenEditor = sender.state == .on
     }
     @objc private func closeEditorAfterCopyChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "closeEditorAfterCopy")
+        Preferences.closeEditorAfterCopy = sender.state == .on
     }
     @objc private func openGitHub() {
         if let url = URL(string: "https://github.com/pgilad/macshot") { NSWorkspace.shared.open(url) }
@@ -2174,7 +2174,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
               let format = ImageEncoder.Format(rawValue: raw),
               ImageEncoder.isFormatAvailable(format)
         else { return }
-        UserDefaults.standard.set(raw, forKey: "imageFormat")
+        Preferences.imageFormat = raw
         updateQualityVisibility()
     }
     @objc private func qualityChanged(_ sender: NSSlider) {
@@ -2182,15 +2182,15 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         UserDefaults.standard.set(Double(sender.integerValue) / 100.0, forKey: "imageQuality")
     }
     @objc private func clipboardFormatChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "clipboardIncludesImageFormat")
+        Preferences.clipboardIncludesImageFormat = sender.state == .on
     }
     @objc private func downscaleRetinaChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "downscaleRetina")
+        Preferences.downscaleRetina = sender.state == .on
     }
     @objc private func historySizeChanged(_ sender: NSStepper) {
         historySizeField.integerValue = sender.integerValue
-        UserDefaults.standard.set(sender.integerValue, forKey: "historySize")
-        UserDefaults.standard.set(false, forKey: "historyUnlimited")
+        Preferences.historySize = sender.integerValue
+        Preferences.historyUnlimited = false
         historyUnlimitedCheckbox.state = .off
         updateHistoryControlsEnabled()
         ScreenshotHistory.shared.pruneToMax()
@@ -2198,19 +2198,19 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     @objc private func historyUnlimitedChanged(_ sender: NSButton) {
         let unlimited = sender.state == .on
-        UserDefaults.standard.set(unlimited, forKey: "historyUnlimited")
+        Preferences.historyUnlimited = unlimited
         updateHistoryControlsEnabled()
     }
 
     @objc private func historyOrderByLastEditChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "historyOrderByLastEdit")
+        Preferences.historyOrderByLastEdit = sender.state == .on
         // Re-sort existing entries to reflect the new preference immediately and
         // persist the new order so it survives a restart.
         ScreenshotHistory.shared.applyHistoryOrderPreference(persist: true)
     }
 
     private func updateHistoryControlsEnabled() {
-        let unlimited = UserDefaults.standard.bool(forKey: "historyUnlimited")
+        let unlimited = Preferences.historyUnlimited
         historySizeField.alphaValue = unlimited ? 0.35 : 1.0
         historySizeStepper.isEnabled = !unlimited
     }
@@ -2352,10 +2352,10 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         NotificationCenter.default.post(name: .toolbarColorsDidChange, object: nil)
     }
     @objc private func snapGuidesChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "snapGuidesEnabled")
+        Preferences.snapGuidesEnabled = sender.state == .on
     }
     @objc private func boundarySnapChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "boundarySnapEnabled")
+        Preferences.boundarySnapEnabled = sender.state == .on
     }
     @objc private func browserElementSnapChanged(_ sender: NSButton) {
         UserDefaults.standard.set(
@@ -2363,16 +2363,16 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             forKey: OverlayView.browserElementSnapEnabledKey)
     }
     @objc private func captureCursorChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "captureCursor")
+        Preferences.captureCursor = sender.state == .on
     }
     @objc private func doubleClickToCopyChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "doubleClickToCopy")
+        Preferences.doubleClickToCopy = sender.state == .on
     }
     @objc private func hideCaptureInstructionsChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "hideCaptureInstructions")
+        Preferences.hideCaptureInstructions = sender.state == .on
     }
     @objc private func disableSelectionShadowChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "disableSelectionOutsideShadow")
+        Preferences.disableSelectionOutsideShadow = sender.state == .on
     }
     @objc private func filenameTemplateCommitted(_ sender: NSTextField) {
         let trimmed = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2435,7 +2435,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
 
     @objc private func urlSchemeChanged(_ sender: NSButton) {
-        UserDefaults.standard.set(sender.state == .on, forKey: "urlSchemeEnabled")
+        Preferences.urlSchemeEnabled = sender.state == .on
     }
 
     fileprivate var urlSchemeInfoPopover: NSPopover?
@@ -2526,7 +2526,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     @objc private func hideMenuBarIconChanged(_ sender: NSButton) {
         let hidden = sender.state == .on
-        UserDefaults.standard.set(hidden, forKey: "hideMenuBarIcon")
+        Preferences.hideMenuBarIcon = hidden
         (NSApp.delegate as? AppDelegate)?.setMenuBarIconVisible(!hidden)
     }
 

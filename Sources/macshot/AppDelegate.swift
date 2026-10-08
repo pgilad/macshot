@@ -190,7 +190,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(keyboardInputSourceDidChange),
             name: Notification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
             object: nil)
-        if UserDefaults.standard.bool(forKey: "hideMenuBarIcon") {
+        if Preferences.hideMenuBarIcon {
             setMenuBarIconVisible(false)
         }
         registerHotkey()
@@ -344,8 +344,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         // Re-launching macshot while it's running: show the menu bar icon
-        if UserDefaults.standard.bool(forKey: "hideMenuBarIcon") {
-            UserDefaults.standard.set(false, forKey: "hideMenuBarIcon")
+        if Preferences.hideMenuBarIcon {
+            Preferences.hideMenuBarIcon = false
             setMenuBarIconVisible(true)
         }
         // Only open settings if no windows are visible (e.g. pure menu-bar state).
@@ -559,7 +559,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Menu bar icon visibility + appearance.
-        setMenuBarIconVisible(!UserDefaults.standard.bool(forKey: "hideMenuBarIcon"))
+        setMenuBarIconVisible(!Preferences.hideMenuBarIcon)
         refreshStatusBarIcon()
         rebuildStatusBarMenu()
     }
@@ -882,7 +882,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // When "remember last tool" is off, clear persisted effects/beautify
         // so new OverlayView instances start clean.
-        let rememberTool = UserDefaults.standard.object(forKey: "rememberLastTool") as? Bool ?? true
+        let rememberTool = Preferences.rememberLastTool
         if !rememberTool {
             OverlayView.resetRememberedTool()
             UserDefaults.standard.removeObject(forKey: "effectsPreset")
@@ -1154,8 +1154,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 
     @objc private func handleShowAndOpenPrefs() {
-        if UserDefaults.standard.bool(forKey: "hideMenuBarIcon") {
-            UserDefaults.standard.set(false, forKey: "hideMenuBarIcon")
+        if Preferences.hideMenuBarIcon {
+            Preferences.hideMenuBarIcon = false
             setMenuBarIconVisible(true)
         }
         openSettings()
@@ -1269,10 +1269,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showFloatingThumbnail(image: NSImage, annotationData: CaptureAnnotationData? = nil, historyEntryID: String? = nil) {
-        let enabled = UserDefaults.standard.object(forKey: "showFloatingThumbnail") as? Bool ?? true
+        let enabled = Preferences.showFloatingThumbnail
         guard enabled else { return }
 
-        let stacking = UserDefaults.standard.object(forKey: "thumbnailStacking") as? Bool ?? true
+        let stacking = Preferences.thumbnailStacking
         if !stacking {
             // Replace mode: dismiss all existing thumbnails
             thumbnailControllers.forEach { $0.dismiss() }
@@ -1461,7 +1461,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func thumbnailCorner() -> FloatingThumbnailCorner {
-        let rawValue = UserDefaults.standard.string(forKey: "thumbnailCorner") ?? FloatingThumbnailCorner.bottomRight.rawValue
+        let rawValue = Preferences.thumbnailCorner
         return FloatingThumbnailCorner(rawValue: rawValue) ?? .bottomRight
     }
 
@@ -1482,7 +1482,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func playCopySound() {
-        let soundEnabled = UserDefaults.standard.object(forKey: "playCopySound") as? Bool ?? true
+        let soundEnabled = Preferences.playCopySound
         guard soundEnabled else { return }
         Self.captureSound?.stop()
         Self.captureSound?.play()
@@ -1494,7 +1494,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task { [weak self] in
             let result = await VisionOCR.recognizeTextAndQRCodes(in: cgImage)
             guard let self else { return }
-            let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
+            let ocrAction = Preferences.ocrAction
             let shouldCopy = ocrAction == 0 || ocrAction == 2
             let shouldShowWindow = ocrAction == 0 || ocrAction == 1
 
@@ -1683,7 +1683,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         for url in urls {
             if url.scheme == "macshot" {
                 // Any app or web page can open a macshot:// URL, so the scheme is opt-in.
-                guard UserDefaults.standard.bool(forKey: "urlSchemeEnabled") else { continue }
+                guard Preferences.urlSchemeEnabled else { continue }
                 if Self.screenCaptureURLActions.contains(url.host ?? "") {
                     if !isReadyForScreenCaptureURLs,
                        PermissionOnboardingController.hasScreenRecordingPermission() {
@@ -1778,7 +1778,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
             }
 
             // "Also open in Editor" preference — open with history entry ID so Done saves back
-            if UserDefaults.standard.bool(forKey: "quickCaptureOpenEditor") {
+            if Preferences.quickCaptureOpenEditor {
                 if let data = annotationData {
                     DetachedEditorWindowController.open(
                         image: data.rawImage,
@@ -1873,7 +1873,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
 
     func overlayDidRequestOCR(_ controller: OverlayWindowController, result: OCRScanResult, image: NSImage?) {
         // OCR & QR action: 0 = window + copy (default), 1 = window only, 2 = copy only
-        let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
+        let ocrAction = Preferences.ocrAction
         let shouldCopy = ocrAction == 0 || ocrAction == 2
         let shouldShowWindow = ocrAction == 0 || ocrAction == 1
         dismissOverlays(refocusPreviousApp: !shouldShowWindow)
@@ -2125,7 +2125,7 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         playCopySound()
         showFloatingThumbnail(image: image)
 
-        if UserDefaults.standard.bool(forKey: "quickCaptureOpenEditor") {
+        if Preferences.quickCaptureOpenEditor {
             DetachedEditorWindowController.open(image: image, historyEntryID: entryID, disableBeautify: true)
         }
     }
@@ -2216,7 +2216,7 @@ extension AppDelegate: NSMenuDelegate {
         ImageEncoder.copyToClipboard(image)
         showFloatingThumbnail(image: image, historyEntryID: entry.id)
 
-        let soundEnabled = UserDefaults.standard.object(forKey: "playCopySound") as? Bool ?? true
+        let soundEnabled = Preferences.playCopySound
         if soundEnabled {
             Self.captureSound?.stop()
             Self.captureSound?.play()

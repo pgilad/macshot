@@ -38,7 +38,7 @@ extension OverlayView {
 
         // Helper text (capture instructions). Suppressed when the user has
         // enabled "Hide capture instructions" in Settings (issue #226).
-        if UserDefaults.standard.bool(forKey: "hideCaptureInstructions") {
+        if Preferences.hideCaptureInstructions {
             hidePreSelectionPresetButton()
         } else {
             if state == .idle {

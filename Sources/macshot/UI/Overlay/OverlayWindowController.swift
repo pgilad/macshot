@@ -418,7 +418,7 @@ class OverlayWindowController {
     }
 
     private func playCopySound() {
-        let soundEnabled = UserDefaults.standard.object(forKey: "playCopySound") as? Bool ?? true
+        let soundEnabled = Preferences.playCopySound
         guard soundEnabled else { return }
         AppDelegate.captureSound?.stop()
         AppDelegate.captureSound?.play()

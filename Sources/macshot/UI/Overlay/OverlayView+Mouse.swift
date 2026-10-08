@@ -1286,7 +1286,7 @@ extension OverlayView {
     }
 
     private var isDoubleClickToCopyEnabled: Bool {
-        UserDefaults.standard.object(forKey: "doubleClickToCopy") as? Bool ?? true
+        Preferences.doubleClickToCopy
     }
 
     private func hasPendingTextToolDoubleClickCopy(for event: NSEvent) -> Bool {

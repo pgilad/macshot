@@ -53,11 +53,11 @@ final class ScreenshotHistory {
     }
 
     var maxEntries: Int {
-        if UserDefaults.standard.bool(forKey: "historyUnlimited") { return Int.max }
-        return max(0, UserDefaults.standard.object(forKey: "historySize") as? Int ?? 10)
+        if Preferences.historyUnlimited { return Int.max }
+        return max(0, Preferences.historySize)
     }
     static var orderByLastEdit: Bool {
-        UserDefaults.standard.object(forKey: "historyOrderByLastEdit") as? Bool ?? true
+        Preferences.historyOrderByLastEdit
     }
 
     init(directory: URL? = nil, cleanupQueue: DispatchQueue = .global(qos: .utility),

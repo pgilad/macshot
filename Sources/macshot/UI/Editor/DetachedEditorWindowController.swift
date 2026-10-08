@@ -449,7 +449,7 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
         ImageEncoder.copyToClipboard(save.image)
         playCopySound()
         autoSaveToHistoryIfNeeded(save)
-        if UserDefaults.standard.bool(forKey: "closeEditorAfterCopy") {
+        if Preferences.closeEditorAfterCopy {
             window?.close()
         }
         (NSApp.delegate as? AppDelegate)?.showFloatingThumbnail(image: save.image, annotationData: save.annotationData, historyEntryID: historyEntryID)
@@ -488,7 +488,7 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
             let result = await VisionOCR.recognizeTextAndQRCodes(in: cgImage)
             guard let self = self else { return }
             // OCR & QR action: 0 = window + copy, 1 = window only, 2 = copy only
-            let ocrAction = UserDefaults.standard.integer(forKey: "ocrAction")
+            let ocrAction = Preferences.ocrAction
             let shouldCopy = ocrAction == 0 || ocrAction == 2
             let shouldShowWindow = ocrAction == 0 || ocrAction == 1
 
@@ -631,7 +631,7 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
     }
 
     private func playCopySound() {
-        let enabled = UserDefaults.standard.object(forKey: "playCopySound") as? Bool ?? true
+        let enabled = Preferences.playCopySound
         guard enabled else { return }
         AppDelegate.captureSound?.stop()
         AppDelegate.captureSound?.play()

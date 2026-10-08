@@ -258,7 +258,7 @@ class OverlayView: NSView {
         return .arrow
     }()
     private static var shouldRememberLastTool: Bool {
-        UserDefaults.standard.object(forKey: "rememberLastTool") as? Bool ?? true
+        Preferences.rememberLastTool
     }
     private static var initialTool: AnnotationTool {
         shouldRememberLastTool ? lastUsedTool : .arrow
@@ -643,13 +643,13 @@ class OverlayView: NSView {
     var snapGuideY: CGFloat? = nil  // horizontal guide line Y
     let snapThreshold: CGFloat = 5
     var snapGuidesEnabled: Bool {
-        UserDefaults.standard.object(forKey: "snapGuidesEnabled") as? Bool ?? true
+        Preferences.snapGuidesEnabled
     }
     var selectionOutsideShadowDisabled: Bool {
-        UserDefaults.standard.bool(forKey: "disableSelectionOutsideShadow")
+        Preferences.disableSelectionOutsideShadow
     }
     var tooltipShortcutDisplayEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "showToolShortcutsInTooltips")
+        Preferences.showToolShortcutsInTooltips
     }
 
     var cachedCompositedImage: NSImage? = nil {  // invalidated when annotations change
@@ -883,7 +883,7 @@ class OverlayView: NSView {
     // edges in the captured image (UI lines, window borders, etc.). On by
     // default. Hold Option while dragging to bypass.
     var boundarySnapEnabled: Bool {
-        UserDefaults.standard.object(forKey: "boundarySnapEnabled") as? Bool ?? true
+        Preferences.boundarySnapEnabled
     }
     var boundarySnapIndex: BoundarySnapIndex?
     var boundarySnapBuildGeneration = 0

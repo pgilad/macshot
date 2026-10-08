@@ -47,7 +47,7 @@ enum ImageEncoder {
     }
 
     static var format: Format {
-        if let raw = UserDefaults.standard.string(forKey: "imageFormat"),
+        if let raw = Preferences.imageFormat,
            let fmt = Format(rawValue: raw),
            isFormatAvailable(fmt) {
             return fmt
@@ -65,7 +65,7 @@ enum ImageEncoder {
 
     /// Whether to downscale Retina (2x) screenshots to standard (1x) resolution.
     static var downscaleRetina: Bool {
-        UserDefaults.standard.bool(forKey: "downscaleRetina")
+        Preferences.downscaleRetina
     }
 
     static var fileExtension: String { format.fileExtension }
@@ -155,7 +155,7 @@ enum ImageEncoder {
     /// No file URL: it points into our sandbox, which Teams/RDP/web apps prefer but can't read (#309, #393).
     /// Opt-in: also offer the configured format (e.g. AVIF) to apps that read it (#373).
     static var clipboardIncludesImageFormat: Bool {
-        UserDefaults.standard.bool(forKey: "clipboardIncludesImageFormat")
+        Preferences.clipboardIncludesImageFormat
     }
 
     static func copyToClipboard(_ image: NSImage) {

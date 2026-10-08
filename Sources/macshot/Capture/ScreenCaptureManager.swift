@@ -54,7 +54,7 @@ class ScreenCaptureManager {
         priorityScreen: NSScreen? = nil,
         onCapture: ((ScreenCapture) -> Void)? = nil
     ) async -> [ScreenCapture] {
-        let showsCursor = UserDefaults.standard.bool(forKey: "captureCursor")
+        let showsCursor = Preferences.captureCursor
         var captures = await captureScreensWithRect(
             showsCursor: showsCursor,
             priorityScreen: priorityScreen,

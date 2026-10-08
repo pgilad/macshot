@@ -222,7 +222,7 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
     }
 
     static func currentThumbnailSize() -> NSSize {
-        let scale = CGFloat(UserDefaults.standard.object(forKey: "thumbnailScale") as? Double ?? 1.0)
+        let scale = CGFloat(Preferences.thumbnailScale)
         return NSSize(width: round(240 * scale), height: round(160 * scale))
     }
 
@@ -313,7 +313,7 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
         dismissTask?.cancel()
         dismissTask = nil
         guard shareDelegate == nil else { return }
-        let seconds = UserDefaults.standard.object(forKey: "thumbnailAutoDismiss") as? Int ?? 5
+        let seconds = Preferences.thumbnailAutoDismiss
         guard seconds > 0 else { return }
         let task = DispatchWorkItem { [weak self] in self?.animateOut() }
         dismissTask = task
@@ -701,7 +701,7 @@ private class ThumbnailView: NSView {
 
     private var image: NSImage
     private let thumbSize: NSSize
-    private let fitsImageInPreview = UserDefaults.standard.bool(forKey: "thumbnailLetterbox")
+    private let fitsImageInPreview = Preferences.thumbnailLetterbox
     private var dragStartScreenPoint: NSPoint?
     private var dragMode: DragMode = .idle
     private var dismissDragOffset: CGFloat = 0
