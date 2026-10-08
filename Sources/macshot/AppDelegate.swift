@@ -719,6 +719,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// The app that was active before the overlay appeared — re-activated on dismiss.
     /// The app that was active before macshot showed its overlay.
     private var previousApp: NSRunningApplication?
+    /// Set after the first Accessibility request of this launch
+    /// (see `requestAccessibilityPermission(reason:)`).
+    private var didPromptForAccessibility = false
 
     /// Titled macshot windows (editors, preferences, etc.) that were
     /// visible when capture started. We `orderOut` them so `NSApp.activate`
@@ -1855,13 +1858,20 @@ extension AppDelegate: OverlayWindowControllerDelegate {
         }
     }
 
-    /// Asks macOS to prompt for Accessibility, then explains why macshot needs it.
+    /// Asks for Accessibility with one dialog. The first request of a launch shows the
+    /// system prompt, which adds macshot to the list in System Settings and can open it.
+    /// Later requests show macshot's alert, which says why macshot needs the permission.
+    /// Before, each request showed both dialogs.
     /// `reason` completes "macshot needs the Accessibility permission …".
     private func requestAccessibilityPermission(reason: String) {
-        // The value of kAXTrustedCheckOptionPrompt. The imported C global is
-        // mutable shared state to Swift 6.
-        let opts = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        AXIsProcessTrustedWithOptions(opts)
+        guard didPromptForAccessibility else {
+            didPromptForAccessibility = true
+            // The value of kAXTrustedCheckOptionPrompt. The imported C global is
+            // mutable shared state to Swift 6.
+            let opts = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+            AXIsProcessTrustedWithOptions(opts)
+            return
+        }
         let name = Permissions.accessibilityName
         let alert = NSAlert()
         alert.messageText = "Permission Required"
