@@ -194,3 +194,40 @@ final class AutoRedactorPatternTests {
         #expect(!AutoRedactor.containsSensitiveText("nothing to see here"))
     }
 }
+
+/// Auto-redact covers text and faces that the user wants unreadable, so it uses the censor
+/// tool's mode, and the same safe default when the user never picked one.
+@MainActor
+final class AutoRedactorCensorModeTests {
+
+    private func redactOneBox() async -> [Annotation] {
+        let image = ImageProbe.quadrantImage(width: 200, height: 100)
+        let rect = NSRect(x: 0, y: 0, width: 200, height: 100)
+        let done = TestExpectation(description: "auto-redact completion")
+        var result: [Annotation] = []
+        AutoRedactor.redact(
+            screenshot: image, selectionRect: rect, captureDrawRect: rect, redactTool: .pixelate,
+            color: .black, sourceImage: image, sourceImageBounds: rect, padding: 0,
+            completion: { annotations in
+                result = annotations
+                done.fulfill()
+            },
+            findBoxes: { _ in [CGRect(x: 0.1, y: 0.1, width: 0.3, height: 0.3)] })
+        await fulfillment(of: [done])
+        return result
+    }
+
+    @Test func testAutoRedactIsSolidWhenTheUserNeverPickedAMode() async {
+        await withDefaults(["censorMode": nil]) {
+            let annotations = await redactOneBox()
+            #expect(annotations.map(\.censorMode) == [.solid], "pixelated text can sometimes be read back")
+        }
+    }
+
+    @Test func testAutoRedactUsesTheModeTheUserPicked() async {
+        await withDefaults(["censorMode": CensorMode.blur.rawValue]) {
+            let annotations = await redactOneBox()
+            #expect(annotations.map(\.censorMode) == [.blur])
+        }
+    }
+}

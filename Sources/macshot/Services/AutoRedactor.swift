@@ -161,8 +161,9 @@ enum AutoRedactor {
     /// undo group of redactions. `findBoxes` returns normalized Vision boxes
     /// (0…1, origin bottom-left of the selection). The Vision work runs off
     /// the main thread; the annotations are made on the main actor, which owns
-    /// them. `completion` always runs on the main actor.
-    private static func redact(
+    /// them. `completion` always runs on the main actor. Internal so that tests can pass
+    /// `findBoxes`.
+    static func redact(
         screenshot: NSImage,
         selectionRect: NSRect,
         captureDrawRect: NSRect,
@@ -176,7 +177,9 @@ enum AutoRedactor {
     ) {
         let cgImage = cropToCGImage(screenshot: screenshot, selectionRect: selectionRect, captureDrawRect: captureDrawRect)
         guard let cgImage = cgImage else { completion([]); return }
-        let censorMode = CensorMode(rawValue: UserDefaults.standard.integer(forKey: "censorMode")) ?? .pixelate
+        // The same default as the censor tool: solid, because pixelated or blurred text
+        // can sometimes be read back.
+        let censorMode = CensorMode.current
 
         Task {
             let boxes = await findBoxes(cgImage)
