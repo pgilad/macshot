@@ -1856,23 +1856,22 @@ extension AppDelegate: OverlayWindowControllerDelegate {
     }
 
     /// Asks macOS to prompt for Accessibility, then explains why macshot needs it.
-    /// `reason` completes "macshot needs Accessibility permission …".
+    /// `reason` completes "macshot needs the Accessibility permission …".
     private func requestAccessibilityPermission(reason: String) {
         // The value of kAXTrustedCheckOptionPrompt. The imported C global is
         // mutable shared state to Swift 6.
         let opts = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         AXIsProcessTrustedWithOptions(opts)
+        let name = Permissions.accessibilityName
         let alert = NSAlert()
-        alert.messageText = "Accessibility Access Required"
-        alert.informativeText = "macshot needs Accessibility permission \(reason). Please grant access in System Settings, then try again."
+        alert.messageText = "Permission Required"
+        alert.informativeText = "macshot needs the \(name) permission \(reason). In System Settings › Privacy & Security › \(name), turn on macshot, then try again."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Open Settings")
         alert.addButton(withTitle: "Cancel")
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
+            Permissions.openAccessibilitySettings()
         }
     }
 

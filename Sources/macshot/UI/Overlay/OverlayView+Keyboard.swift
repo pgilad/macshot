@@ -222,7 +222,7 @@ extension OverlayView {
                 overlayDelegate?.overlayViewDidChangeSnapMode()
                 // Element mode stays selected so it works on the next capture once granted.
                 if snapMode == .element && !AXIsProcessTrusted() {
-                    showOverlayError("Accessibility Access Required")
+                    showOverlayError("\(Permissions.accessibilityName) permission required")
                     overlayDelegate?.overlayViewDidRequestAccessibilityPermission()
                     return
                 }

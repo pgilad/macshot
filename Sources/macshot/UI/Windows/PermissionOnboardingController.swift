@@ -144,7 +144,7 @@ class PermissionOnboardingController: NSWindowController {
         self.checkmark = check
 
         // Primary button
-        let openBtn = NSButton(title: "Open Screen Recording Settings", target: self, action: #selector(openSettings))
+        let openBtn = NSButton(title: "Open System Settings", target: self, action: #selector(openSettings))
         openBtn.bezelStyle = .rounded
         openBtn.controlSize = .large
         openBtn.keyEquivalent = "\r"
@@ -292,11 +292,9 @@ class PermissionOnboardingController: NSWindowController {
         // macOS will add macshot to the list automatically when it first
         // attempts a capture — no CGRequestScreenCaptureAccess() call needed
         // (that API shows the redundant native dialog we want to avoid).
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-            NSWorkspace.shared.open(url)
-        }
+        Permissions.openScreenRecordingSettings()
 
-        statusLabel?.stringValue = "Enable macshot, then try taking a screenshot"
+        statusLabel?.stringValue = "In \(Permissions.screenRecordingName), turn on macshot, then take a screenshot"
     }
 
     @objc private func continueClicked() {

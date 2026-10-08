@@ -26,7 +26,7 @@ make signing-identity   # once per Mac
 make install            # build, sign, copy to /Applications and start
 ```
 
-`make signing-identity` creates a local code-signing certificate, so macOS keeps the Screen Recording permission after each rebuild. On first start, grant **Screen Recording**. Scroll capture's auto-scroll and element snapping also ask for **Accessibility**.
+`make signing-identity` creates a local code-signing certificate, so macOS keeps the Screen Recording permission after each rebuild. On first start, grant **Screen Recording** (in System Settings: **Screen & System Audio Recording**). Scroll capture's auto-scroll and element snapping also ask for **Accessibility** (on macOS 27: **Device Control and Data Access**).
 
 To update, run `git pull` and `make install`.
 
