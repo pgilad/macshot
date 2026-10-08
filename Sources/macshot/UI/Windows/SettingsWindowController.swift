@@ -1202,7 +1202,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         stack.setCustomSpacing(8, after: stack.arrangedSubviews.last!)
 
-        let note = NSTextField(wrappingLabelWithString: "Click \"Set\" and press a key combination with at least one modifier (⌘, ⌥, ⌃, ⇧) to set a shortcut.")
+        let note = NSTextField(wrappingLabelWithString: "Click \"Set\" and press a key combination with ⌘, ⌥ or ⌃ (⇧ can be added), or a function key. These shortcuts work in every app, so ⇧ alone is not enough.")
         note.font = NSFont.systemFont(ofSize: 10)
         note.textColor = .secondaryLabelColor
         stack.addArrangedSubview(indented(note))
