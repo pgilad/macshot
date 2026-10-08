@@ -972,8 +972,9 @@ class OverlayWindow: NSPanel {
     override var canBecomeMain: Bool { true }
 }
 
-/// Retained delegate for NSSharingServicePicker — dismisses overlay only when user picks a service.
-private class SharePickerDelegate: NSObject, NSSharingServicePickerDelegate {
+/// Retained delegate for NSSharingServicePicker: tells the owner whether the user picked a
+/// service or closed the picker.
+final class SharePickerDelegate: NSObject, NSSharingServicePickerDelegate {
     let onPick: () -> Void
     let onDismiss: () -> Void
     init(onPick: @escaping () -> Void, onDismiss: @escaping () -> Void) {

@@ -18,6 +18,10 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
     // Quick Look state
     private var quickLookEntryIndex: Int = -1
 
+    // Share picker state. The picker keeps its delegate weakly.
+    private var contextMenuAnchor: (rect: NSRect, view: NSView)?
+    private var shareDelegate: SharePickerDelegate?
+
     private static let panelHeight: CGFloat = 240
     private static let animationDuration: TimeInterval = 0.12
 
@@ -280,12 +284,33 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
         )
     }
 
-    func shareEntry(index: Int, service: NSSharingService) {
+    func shareEntry(index: Int, anchor: NSRect, in view: NSView) {
         let entries = ScreenshotHistory.shared.entries
         guard index >= 0, index < entries.count else { return }
         let fileURL = ScreenshotHistory.shared.fileURL(for: entries[index])
-        dismiss(immediate: true)
-        service.perform(withItems: [fileURL])
+
+        // The share picker opens below the panel's level. Lower the windows while it is open.
+        let savedBackdropLevel = backdropWindow?.level
+        let savedPanelLevel = panel?.level
+        backdropWindow?.level = .floating
+        panel?.level = .floating
+
+        let picker = NSSharingServicePicker(items: [fileURL])
+        let delegate = SharePickerDelegate(
+            onPick: { [weak self] in
+                self?.shareDelegate = nil
+                self?.dismiss(immediate: true)
+            },
+            onDismiss: { [weak self] in
+                guard let self else { return }
+                self.shareDelegate = nil
+                if let savedBackdropLevel { self.backdropWindow?.level = savedBackdropLevel }
+                if let savedPanelLevel { self.panel?.level = savedPanelLevel }
+            }
+        )
+        shareDelegate = delegate
+        picker.delegate = delegate
+        picker.show(relativeTo: anchor, of: view, preferredEdge: .minY)
     }
 
     // MARK: - Context Menu
@@ -336,9 +361,10 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
         openWith.submenu?.items.forEach { $0.tag = globalIndex }
         menu.addItem(openWith)
 
-        let share = ImageContextMenu.shareItem(fileURL: fileURL, target: self, action: #selector(contextShare(_:)))
-        share.submenu?.items.forEach { $0.tag = globalIndex }
+        let share = ImageContextMenu.shareItem(target: self, action: #selector(contextShare(_:)))
+        share.tag = globalIndex
         menu.addItem(share)
+        contextMenuAnchor = (NSRect(x: point.x - 1, y: point.y - 1, width: 2, height: 2), view)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -367,8 +393,8 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
         openEntry(index: sender.tag, with: appURL)
     }
     @objc private func contextShare(_ sender: NSMenuItem) {
-        guard let service = sender.representedObject as? NSSharingService else { return }
-        shareEntry(index: sender.tag, service: service)
+        guard let (rect, view) = contextMenuAnchor else { return }
+        shareEntry(index: sender.tag, anchor: rect, in: view)
     }
 
     // MARK: - QLPreviewPanelDataSource

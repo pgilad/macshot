@@ -127,26 +127,10 @@ enum ImageContextMenu {
         return root
     }
 
-    static func shareItem(fileURL: URL, target: AnyObject, action: Selector) -> NSMenuItem {
-        let root = item(title: "Share", symbolName: "square.and.arrow.up", action: nil, target: nil)
-        let submenu = NSMenu()
-        let services = NSSharingService.sharingServices(forItems: [fileURL])
-        if services.isEmpty {
-            let empty = NSMenuItem(title: "No Share Services", action: nil, keyEquivalent: "")
-            empty.isEnabled = false
-            submenu.addItem(empty)
-        } else {
-            for service in services {
-                let serviceItem = NSMenuItem(title: service.title, action: action, keyEquivalent: "")
-                serviceItem.target = target
-                serviceItem.representedObject = service
-                serviceItem.image = service.image
-                serviceItem.image?.size = NSSize(width: 16, height: 16)
-                submenu.addItem(serviceItem)
-            }
-        }
-        root.submenu = submenu
-        return root
+    /// "Share…" opens the system share picker, as in Finder. The caller shows the picker
+    /// next to its own view.
+    static func shareItem(target: AnyObject, action: Selector) -> NSMenuItem {
+        item(title: "Share…", symbolName: "square.and.arrow.up", action: action, target: target)
     }
 
     private static func orderedApplicationURLs(for fileURL: URL) -> [URL] {
@@ -214,6 +198,8 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
     private var isInteractiveDismissActive = false
     private var isScrollDismissHostActive = false
     private var quickLookURL: URL?
+    /// Set while the share picker is open. The picker keeps its delegate weakly.
+    private var shareDelegate: SharePickerDelegate?
     var onDismiss: (() -> Void)?
 
     // Action callbacks
@@ -324,6 +310,7 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
     private func scheduleAutoDismiss() {
         dismissTask?.cancel()
         dismissTask = nil
+        guard shareDelegate == nil else { return }
         let seconds = UserDefaults.standard.object(forKey: "thumbnailAutoDismiss") as? Int ?? 5
         guard seconds > 0 else { return }
         let task = DispatchWorkItem { [weak self] in self?.animateOut() }
@@ -399,7 +386,7 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
         if let fileURL = makeCurrentImageFileURL() {
             menu.addItem(NSMenuItem.separator())
             menu.addItem(ImageContextMenu.openWithItem(fileURL: fileURL, target: self, action: #selector(contextOpenWith(_:))))
-            menu.addItem(ImageContextMenu.shareItem(fileURL: fileURL, target: self, action: #selector(contextShare(_:))))
+            menu.addItem(ImageContextMenu.shareItem(target: self, action: #selector(contextShare)))
         }
 
         menu.addItem(NSMenuItem.separator())
@@ -450,10 +437,23 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
         )
     }
 
-    @objc private func contextShare(_ sender: NSMenuItem) {
-        guard let service = sender.representedObject as? NSSharingService,
-              let fileURL = makeCurrentImageFileURL() else { return }
-        service.perform(withItems: [fileURL])
+    @objc private func contextShare() {
+        guard let view = thumbnailView, let fileURL = makeCurrentImageFileURL() else { return }
+        // The thumbnail stays while the picker is open, even when the pointer leaves it.
+        pauseAutoDismiss()
+        let picker = NSSharingServicePicker(items: [fileURL])
+        let delegate = SharePickerDelegate(
+            onPick: { [weak self] in self?.endShare() },
+            onDismiss: { [weak self] in self?.endShare() }
+        )
+        shareDelegate = delegate
+        picker.delegate = delegate
+        picker.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
+    }
+
+    private func endShare() {
+        shareDelegate = nil
+        scheduleAutoDismiss()
     }
 
     func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int { quickLookURL == nil ? 0 : 1 }
