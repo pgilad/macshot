@@ -203,9 +203,8 @@ class DetachedEditorWindowController: NSObject, NSWindowDelegate {
         captureCleanBaseline(view)
 
         win.contentView = container
-        win.makeKeyAndOrderFront(nil)
+        NSApp.showInFront(win)
         win.makeFirstResponder(view)
-        NSApp.activate(ignoringOtherApps: true)
 
         // Fit-to-window for large images: compute the magnification that makes
         // the image just fit the visible scroll viewport, capped at 1.0 so we
@@ -595,13 +594,12 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
                 self.addCaptureHandler = nil
             }
             handler.onCancel = { [weak self] in
-                self?.window?.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
+                if let window = self?.window { NSApp.showInFront(window) }
                 self?.addCaptureHandler = nil
             }
             self.addCaptureHandler = handler
 
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
             for capture in captures {
                 let controller = OverlayWindowController(capture: capture)
                 controller.overlayDelegate = handler
@@ -628,8 +626,7 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
             }
         }
 
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if let window { NSApp.showInFront(window) }
         window?.makeFirstResponder(view)
     }
 

@@ -231,8 +231,7 @@ class PermissionOnboardingController: NSWindowController {
         continueButton?.isHidden = true
 
         window?.center()
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if let window { NSApp.showInFront(window) }
         startPolling()
     }
 

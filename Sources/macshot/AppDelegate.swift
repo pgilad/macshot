@@ -394,8 +394,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func activateWindowFromDockMenu(_ sender: NSMenuItem) {
         guard let window = sender.representedObject as? NSWindow else { return }
         if window.isMiniaturized { window.deminiaturize(nil) }
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.showInFront(window)
     }
 
     /// One-shot migration from the legacy `useWindowTitleInFilename` checkbox
@@ -919,8 +918,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let countdownView = CountdownView(frame: NSRect(origin: .zero, size: size))
         countdownView.remaining = seconds
         window.contentView = countdownView
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        NSApp.showInFront(window)
         delayCountdownWindow = window
 
         // Listen for Escape to cancel countdown — use both local and global monitors
@@ -1373,9 +1371,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.message = "Choose a folder to save \(images.count) screenshot\(images.count == 1 ? "" : "s")"
         panel.level = .floating
 
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         DispatchQueue.main.async { [weak self] in
-            panel.begin { [weak self] response in
+            NSApp.beginInFront(panel) { [weak self] response in
                 guard response == .OK, let dirURL = panel.url else { return }
                 let rawTemplate = UserDefaults.standard.string(forKey: FilenameFormatter.userDefaultsKey) ?? FilenameFormatter.defaultTemplate
                 // Ensure batch writes don't collide when the template lacks {index}.
@@ -1602,8 +1600,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.allowedContentTypes = [.png, .jpeg, .tiff, .bmp, .gif, .heic, .webP, .image]
         panel.message = "Choose an image to open in macshot editor"
 
-        NSApp.activate(ignoringOtherApps: true)
-        panel.begin { response in
+        NSApp.beginInFront(panel) { response in
             guard response == .OK else { return }
             for url in panel.urls {
                 self.openImageFile(url: url)

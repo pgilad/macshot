@@ -171,6 +171,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
   - `dismissOverlays(refocusPreviousApp: false)` only when a floating panel is created right after (pin, OCR window). Save `previousApp` first, create the panel, then activate the saved app.
   - Every window close (editor, OCR, settings) calls `returnFocusIfNeeded()`.
   - Floating panels set `hidesOnDeactivate = false`. Pin windows use `orderFrontRegardless()`.
+  - Show a titled window with `NSApp.showInFront(_:)`, and a save or open panel that is not a sheet with `NSApp.beginInFront(_:completionHandler:)`. `activate()` is only a request: without `orderFrontRegardless()`, a window can open behind the app that the user works in.
 
 ## Tests
 

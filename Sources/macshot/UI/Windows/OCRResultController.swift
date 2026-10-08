@@ -265,8 +265,7 @@ class OCRResultController: NSObject {
     // MARK: - Show / Close
 
     func show() {
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if let window { NSApp.showInFront(window) }
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let tv = self.textView else { return }
             self.window?.makeFirstResponder(tv)

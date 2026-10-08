@@ -326,15 +326,17 @@ enum ImageSaveService {
         completionHandler: @escaping (NSApplication.ModalResponse) -> Void
     ) {
         if activateApp {
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
 
         DispatchQueue.main.async {
-            if activateApp {
-                NSApp.activate(ignoringOtherApps: true)
-            }
             if let sheetWindow {
+                if activateApp {
+                    NSApp.activate()
+                }
                 panel.beginSheetModal(for: sheetWindow, completionHandler: completionHandler)
+            } else if activateApp {
+                NSApp.beginInFront(panel, completionHandler: completionHandler)
             } else {
                 panel.begin(completionHandler: completionHandler)
             }

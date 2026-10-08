@@ -2548,9 +2548,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     func showWindow() {
         loadSettings()
         window?.center()
-        window?.makeKeyAndOrderFront(nil)
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        if let window { NSApp.showInFront(window) }
     }
 
     func windowWillClose(_ notification: Notification) {
