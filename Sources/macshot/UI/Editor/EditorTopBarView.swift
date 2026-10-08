@@ -15,6 +15,8 @@ class EditorTopBarView: NSView {
         wantsLayer = true
         autoresizingMask = [.width, .minYMargin]  // pin to top, stretch width
         layer?.backgroundColor = ToolbarLayout.bgColor.cgColor
+        // The bar is always dark, so its controls draw for a dark background in light mode too.
+        appearance = NSAppearance(named: .darkAqua)
 
         sizeLabel = makeLabel("")
         sizeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
