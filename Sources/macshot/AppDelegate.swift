@@ -441,7 +441,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(appMenuItem)
 
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About macshot", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let aboutItem = appMenu.addItem(withTitle: "About macshot", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
         appMenu.addItem(NSMenuItem.separator())
         // ⌘, opens Settings from any macshot window, not only from the menu bar menu.
         let settingsItem = appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
@@ -480,6 +481,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         editMenuItem.submenu = editMenu
 
         NSApp.mainMenu = mainMenu
+    }
+
+    /// The standard About panel, with the commit that the app was built from.
+    @objc private func showAbout() {
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+        if let commit = BuildInfo.commit {
+            let style = NSMutableParagraphStyle()
+            style.alignment = .center
+            options[.credits] = NSAttributedString(string: "Built from commit \(commit)", attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .paragraphStyle: style,
+            ])
+        }
+        NSApp.orderFrontStandardAboutPanel(options: options)
     }
 
     // MARK: - Status Bar

@@ -1717,9 +1717,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stack.addArrangedSubview(name)
 
         // Version
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
-        let versionLabel = NSTextField(labelWithString: String(format: "Version %@ (%@)", version, build))
+        let versionLabel = NSTextField(labelWithString: "Version \(BuildInfo.description)")
         versionLabel.font = NSFont.systemFont(ofSize: 12)
         versionLabel.textColor = .secondaryLabelColor
         stack.addArrangedSubview(versionLabel)
@@ -1758,9 +1756,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func copyScreenInfo() {
         Task { @MainActor in
             var lines: [String] = []
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
-            lines.append("macshot \(version) (\(build))")
+            lines.append("macshot \(BuildInfo.description)")
             lines.append("macOS \(ProcessInfo.processInfo.operatingSystemVersionString)")
             lines.append("")
             lines.append("=== NSScreen Info ===")
