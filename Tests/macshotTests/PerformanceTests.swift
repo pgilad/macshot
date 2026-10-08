@@ -18,6 +18,8 @@ struct PerformanceTests {
     /// The controller ignores a shift below a tenth of the frame height, so
     /// this is the smallest strip it stitches: the most steps to the limit.
     static let newRows = frameHeight / 10
+    /// The preview width that the controller asks for at 2x.
+    static let previewWidth = Int(ScrollCapturePreviewPanel.previewWidth) * 2
 
     @Test func stitchingToTheHeightLimit() throws {
         let limit = ScrollCaptureController.defaultMaxHeight
@@ -26,18 +28,18 @@ struct PerformanceTests {
 
         // A frozen header first: only the new rows are drawn. Then whole frames.
         for onlyNewRows in [true, false] {
-            var stitcher = ScrollStitcher(firstFrame: try Self.frame(pixels))
+            let stitcher = ScrollStitcher(firstFrame: try Self.frame(pixels), previewWidth: Self.previewWidth)
             var steps: [Duration] = []
             while stitcher.height < limit {
                 let frame = try Self.frame(pixels)
                 let start = clock.now
                 stitcher.append(frame, newRows: Self.newRows, onlyNewRows: onlyNewRows)
-                // The controller shows the stitched image in the preview after each strip.
-                _ = stitcher.image
+                // The controller updates the preview after each strip.
+                _ = stitcher.makePreview()
                 steps.append(clock.now - start)
             }
             let finalStart = clock.now
-            let image = stitcher.image
+            let image = try #require(stitcher.makeImage())
             let finalTime = clock.now - finalStart
             #expect(image.height == stitcher.height)
 
@@ -52,8 +54,8 @@ struct PerformanceTests {
                 slowest \(Self.ms(slowest)), final image \(Self.ms(finalTime)), \
                 peak memory so far \(Self.peakResidentMegabytes()) MB
                 """)
-            #expect(total < .seconds(20), "total \(Self.ms(total))")
-            #expect(nearLimit < .milliseconds(160), "near the limit \(Self.ms(nearLimit))")
+            #expect(total < .seconds(3), "total \(Self.ms(total))")
+            #expect(nearLimit < .milliseconds(15), "near the limit \(Self.ms(nearLimit))")
         }
     }
 

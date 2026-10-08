@@ -9,7 +9,8 @@ class ScrollCapturePreviewPanel: NSPanel {
     private let captureRect: NSRect
     private let targetScreen: NSScreen
     private let side: Side  // which side of the capture rect the preview appears on
-    private let previewWidth: CGFloat = 200
+    /// `ScrollCaptureController` sizes the preview image to this width.
+    static let previewWidth: CGFloat = 200
     private let margin: CGFloat = 12
     private let minHeight: CGFloat = 100
     /// Half of the selection border stroke width (2.5pt during scroll capture).
@@ -25,7 +26,7 @@ class ScrollCapturePreviewPanel: NSPanel {
         // Determine which side has more space
         let spaceLeft = captureRect.minX - screen.frame.minX
         let spaceRight = screen.frame.maxX - captureRect.maxX
-        let needed = previewWidth + margin * 2
+        let needed = Self.previewWidth + margin * 2
 
         if spaceRight >= needed {
             side = .right
@@ -39,11 +40,11 @@ class ScrollCapturePreviewPanel: NSPanel {
         let x: CGFloat
         switch side {
         case .right: x = captureRect.maxX + margin
-        case .left:  x = captureRect.minX - margin - previewWidth
+        case .left:  x = captureRect.minX - margin - Self.previewWidth
         }
         let initialHeight = minHeight
         let y = captureRect.minY - selectionBorderOutset
-        let frame = NSRect(x: x, y: y, width: previewWidth, height: initialHeight)
+        let frame = NSRect(x: x, y: y, width: Self.previewWidth, height: initialHeight)
 
         super.init(contentRect: frame,
                    styleMask: [.borderless, .nonactivatingPanel],
@@ -81,7 +82,7 @@ class ScrollCapturePreviewPanel: NSPanel {
         let x: CGFloat
         switch side {
         case .right: x = captureRect.maxX + margin
-        case .left:  x = captureRect.minX - margin - previewWidth
+        case .left:  x = captureRect.minX - margin - Self.previewWidth
         }
 
         // Anchor the bottom of the preview at the bottom of the capture rect,
@@ -92,7 +93,7 @@ class ScrollCapturePreviewPanel: NSPanel {
 
         // Desired height based on image aspect ratio
         let imageAspect = image.size.height / max(1, image.size.width)
-        let contentWidth = previewWidth - 8
+        let contentWidth = Self.previewWidth - 8
         let desiredHeight = contentWidth * imageAspect + 8
 
         // Clamp to available space — image scales down proportionally inside the view
@@ -103,7 +104,7 @@ class ScrollCapturePreviewPanel: NSPanel {
             ? anchorBottom
             : ceilingY - panelHeight
 
-        let newFrame = NSRect(x: x, y: panelBottom, width: previewWidth, height: panelHeight)
+        let newFrame = NSRect(x: x, y: panelBottom, width: Self.previewWidth, height: panelHeight)
         setFrame(newFrame, display: true, animate: false)
     }
 }

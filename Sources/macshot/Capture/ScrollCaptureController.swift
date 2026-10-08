@@ -69,6 +69,12 @@ final class ScrollCaptureController {
     private let screen: NSScreen
     private let backingScale: CGFloat
 
+    /// The preview panel shows the stitched image no wider than its own width,
+    /// so a preview this many pixels wide looks the same there as the full image.
+    private var previewPixelWidth: Int {
+        Int((ScrollCapturePreviewPanel.previewWidth * backingScale).rounded(.up))
+    }
+
     // Dedicated serial queue for capture-and-compare (off main thread)
     private let captureQueue = DispatchQueue(label: "macshot.scrollcapture", qos: .userInitiated)
 
@@ -170,7 +176,7 @@ final class ScrollCaptureController {
         shotA = nil
         shotB = nil
         lastComparedTIFF = nil
-        stitcher = ScrollStitcher(firstFrame: firstFrame)
+        stitcher = ScrollStitcher(firstFrame: firstFrame, previewWidth: previewPixelWidth)
         headerHeight = 0
         headerDetectionDone = false
         headerDetectionSamples = 0
@@ -216,7 +222,7 @@ final class ScrollCaptureController {
 
         // Deliver final image
         let finalImage: NSImage?
-        if let cg = stitcher?.image {
+        if let cg = stitcher?.makeImage() {
             let ptSize = CGSize(width: CGFloat(cg.width) / backingScale,
                                 height: CGFloat(cg.height) / backingScale)
             finalImage = NSImage(cgImage: cg, size: ptSize)
@@ -516,7 +522,8 @@ final class ScrollCaptureController {
         }
 
         guard let currentFrame = settledCG else { return false }
-        guard let previousFrame = shotA ?? stitcher?.image.cropping(to: CGRect(
+        // Without shotA nothing was appended yet, so this is the first frame, not a copy.
+        guard let previousFrame = shotA ?? stitcher?.makeImage()?.cropping(to: CGRect(
             x: 0, y: 0, width: currentFrame.width, height: currentFrame.height
         )) else {
             shotA = currentFrame
@@ -582,7 +589,7 @@ final class ScrollCaptureController {
     /// Only the new rows (below the overlap region) are appended.
     private func mergeNewContent(currentFrame: CGImage, offsetPx: Int) {
         guard stitcher != nil else {
-            stitcher = ScrollStitcher(firstFrame: currentFrame)
+            stitcher = ScrollStitcher(firstFrame: currentFrame, previewWidth: previewPixelWidth)
             return
         }
         // With a sticky header, only the bottom offsetPx rows are new content.
@@ -787,9 +794,10 @@ final class ScrollCaptureController {
     // MARK: - Preview
 
     private func emitPreview() {
-        guard let cg = stitcher?.image, let callback = onPreviewUpdated else { return }
-        let ptSize = CGSize(width: CGFloat(cg.width) / backingScale,
-                            height: CGFloat(cg.height) / backingScale)
+        guard let callback = onPreviewUpdated, let stitcher, let cg = stitcher.makePreview() else { return }
+        // The preview is downscaled; the panel sizes itself from the full image's size.
+        let ptSize = CGSize(width: stitcher.pixelSize.width / backingScale,
+                            height: stitcher.pixelSize.height / backingScale)
         callback(NSImage(cgImage: cg, size: ptSize))
     }
 }
