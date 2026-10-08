@@ -1,5 +1,6 @@
 import Cocoa
 import QuickLookUI
+import OSLog
 
 enum ImageContextTransform: Int {
     case rotateLeft
@@ -358,6 +359,7 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
             try encodedData.write(to: url)
             return url
         } catch {
+            Log.app.error("Cannot write the thumbnail's scratch file: \(error.localizedDescription, privacy: .private)")
             return nil
         }
     }
@@ -652,7 +654,12 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
         guard let encodedData = ImageEncoder.encode(image) else { return }
 
         let tempURL = TmpScratchDirectory.makeURL(filename: FilenameFormatter.defaultImageFilename())
-        do { try encodedData.write(to: tempURL) } catch { return }
+        do {
+            try encodedData.write(to: tempURL)
+        } catch {
+            Log.app.error("Cannot write the thumbnail's drag file: \(error.localizedDescription, privacy: .private)")
+            return
+        }
 
         let draggingItem = NSDraggingItem(pasteboardWriter: tempURL as NSURL)
         draggingItem.setDraggingFrame(view.bounds, contents: image)

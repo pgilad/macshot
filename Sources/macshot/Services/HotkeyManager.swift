@@ -1,5 +1,6 @@
 import Cocoa
 import Carbon
+import OSLog
 
 class HotkeyManager {
 
@@ -153,6 +154,7 @@ class HotkeyManager {
         // A chord saved before this rule existed is reported, not dropped.
         guard Self.isAllowedGlobalChord(keyCode: keyCode, modifiers: modifiers) else {
             failures[slot] = .needsModifier
+            Log.hotkey.error("\(slot.label, privacy: .public): the saved chord has no ⌘, ⌥ or ⌃")
             return false
         }
 
@@ -170,6 +172,7 @@ class HotkeyManager {
                 return chord.keyCode == keyCode && chord.modifiers == modifiers
             }
             failures[slot] = owner.map { .usedBy($0) } ?? .refused(status)
+            Log.hotkey.error("\(slot.label, privacy: .public): RegisterEventHotKey failed with \(status)")
             return false
         }
         hotKeyRefs[slot] = ref

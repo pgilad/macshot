@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 // MARK: - DirectorySweeper
 //
@@ -139,11 +140,9 @@ nonisolated enum LaunchCleanup {
         DispatchQueue.global(qos: .utility).async {
             for cleaner in all {
                 let result = cleaner.sweep()
-                #if DEBUG
                 if result.removed > 0 {
-                    print("[\(cleaner.name)] removed \(result.removed) files, freed \(result.bytesFreed) bytes")
+                    Log.app.info("\(cleaner.name, privacy: .public): removed \(result.removed) files, \(result.bytesFreed) bytes")
                 }
-                #endif
             }
         }
     }

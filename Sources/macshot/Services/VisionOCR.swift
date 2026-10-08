@@ -1,4 +1,5 @@
 @preconcurrency import Vision
+import OSLog
 
 struct QRCodePayload: Equatable, Sendable {
     let value: String
@@ -99,6 +100,7 @@ enum VisionOCR {
         do {
             try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
         } catch {
+            Log.capture.error("QR code detection failed: \(error.localizedDescription, privacy: .public)")
             return []
         }
 

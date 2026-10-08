@@ -3,6 +3,7 @@ import Carbon
 import ServiceManagement
 import UniformTypeIdentifiers
 import Vision
+import OSLog
 
 enum CaptureMenuItemID: String, CaseIterable {
     case captureArea = "captureArea"
@@ -1550,6 +1551,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Reports a failure the user needs to know about. Losing a capture without
     /// any indication is worse than any error message.
     func showFailureToast(_ message: String) {
+        // The message can name a file, so it is private in the log.
+        Log.app.error("Failure shown to the user: \(message, privacy: .private)")
         errorToastController?.dismiss()
         let toast = ErrorToastController()
         errorToastController = toast

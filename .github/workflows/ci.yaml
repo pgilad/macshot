@@ -25,6 +25,10 @@ jobs:
       - run: swift --version
       - run: make test
       - run: make dist
+      # The app and the tests write errors to the unified log, not to the terminal.
+      - name: Show the app log
+        if: failure()
+        run: /usr/bin/log show --last 15m --style compact --info --predicate 'subsystem == "com.pgilad.macshot"'
 
   # The same tests on macOS 27, built with the macOS 27 SDK. GitHub marks this image as a preview.
   macos-27:
@@ -43,3 +47,7 @@ jobs:
       - run: sw_vers && swift --version
       - run: make test
       - run: make dist
+      # The app and the tests write errors to the unified log, not to the terminal.
+      - name: Show the app log
+        if: failure()
+        run: /usr/bin/log show --last 15m --style compact --info --predicate 'subsystem == "com.pgilad.macshot"'

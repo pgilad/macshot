@@ -1,4 +1,5 @@
 import Cocoa
+import OSLog
 
 extension NSApplication {
     /// Shows a macshot window in front of the app that the user works in. `activate()` is
@@ -12,6 +13,7 @@ extension NSApplication {
         window.makeKeyAndOrderFront(nil)
         if !isActive {
             window.orderFrontRegardless()
+            Log.app.notice("Ordered \(String(describing: type(of: window)), privacy: .public) front while macshot was not active")
         }
     }
 
