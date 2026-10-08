@@ -66,9 +66,7 @@ final class ScreenshotHistory {
          beforeIndexPublication: @escaping @Sendable () throws -> Void = {}) {
         self.maximumPendingBytes = max(1, maximumPendingBytes)
         self.maximumPendingSaves = max(1, maximumPendingSaves)
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        historyDir = directory ?? support.appendingPathComponent("com.pgilad.macshot/history")
+        historyDir = directory ?? Paths.dataDirectory.appendingPathComponent("history")
         try? FileManager.default.createDirectory(at: historyDir, withIntermediateDirectories: true,
                                                  attributes: [.posixPermissions: 0o700])
         let data = try? Data(contentsOf: historyDir.appendingPathComponent("index.json"))

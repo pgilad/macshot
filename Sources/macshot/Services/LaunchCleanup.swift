@@ -222,12 +222,7 @@ nonisolated private struct LegacyClipboardBackingDirectoryCleaner: LaunchCleaner
     let name = "LegacyClipboardBackingDirectoryCleaner"
 
     func sweep() -> DirectorySweeper.Result {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return DirectorySweeper.Result()
-        }
-        let dir = appSupport
-            .appendingPathComponent("com.pgilad.macshot", isDirectory: true)
-            .appendingPathComponent("clipboard", isDirectory: true)
+        let dir = Paths.dataDirectory.appendingPathComponent("clipboard", isDirectory: true)
         let result = DirectorySweeper.sweep(
             directory: dir,
             olderThan: 7 * 24 * 60 * 60,
