@@ -24,6 +24,15 @@ enum Permissions {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
     }
 
+    /// macOS can deny macshot the pasteboard contents of other apps (Privacy & Security ›
+    /// Paste from Other Apps). A read then finds nothing, so "no image on the clipboard"
+    /// would be the wrong message.
+    static var pasteboardAccessDenied: Bool {
+        NSPasteboard.general.accessBehavior == .alwaysDeny
+    }
+
+    static let pasteboardDeniedMessage = "In System Settings › Privacy & Security › Paste from Other Apps, macshot is set to Deny. Allow it, then try again."
+
     /// Privacy & Security › Paste from Other Apps.
     static func openPasteboardSettings() {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_Pasteboard")

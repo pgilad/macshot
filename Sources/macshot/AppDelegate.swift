@@ -1562,6 +1562,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .success(let image):
             DetachedEditorWindowController.open(image: image)
         case .failure(.unreadable):
+            if showAlertIfPasteboardAccessDenied() { return }
             let alert = NSAlert()
             alert.messageText = "No Image on Clipboard"
             alert.informativeText = "Copy an image to the clipboard first, then try again."
@@ -1571,6 +1572,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .failure(let rejection):
             showImageRejectedAlert(rejection)
         }
+    }
+
+    /// Returns true when it showed the alert (see `Permissions.pasteboardAccessDenied`).
+    private func showAlertIfPasteboardAccessDenied() -> Bool {
+        guard Permissions.pasteboardAccessDenied else { return false }
+        let alert = NSAlert()
+        alert.messageText = "macshot Cannot Read the Clipboard"
+        alert.informativeText = Permissions.pasteboardDeniedMessage
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            Permissions.openPasteboardSettings()
+        }
+        return true
     }
 
     private func showImageRejectedAlert(_ rejection: ImportedImage.Rejection) {
@@ -1599,6 +1615,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showNoPinClipboardContentAlert() {
+        if showAlertIfPasteboardAccessDenied() { return }
         let alert = NSAlert()
         alert.messageText = "No Image or Text on Clipboard"
         alert.informativeText = "Copy an image or text to the clipboard first, then try again."
