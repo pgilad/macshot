@@ -88,6 +88,8 @@ class HotkeyManager {
         /// The system refused the chord: another app registered it exclusively,
         /// or it is not allowed.
         case refused(OSStatus)
+        /// The chord has Shift as its only modifier (see `isAllowedGlobalChord`).
+        case needsModifier
     }
 
     private var hotKeyRefs: [HotkeySlot: EventHotKeyRef] = [:]
@@ -95,8 +97,40 @@ class HotkeyManager {
     private var eventHandlerRef: EventHandlerRef?
     /// Slots whose chord did not register in the last `register` call for them.
     private(set) var failures: [HotkeySlot: RegistrationFailure] = [:]
+    /// Above zero while a shortcut recorder runs (see `suspend()`).
+    private var suspendCount = 0
 
     private init() {}
+
+    /// A global hotkey takes its chord from every app. With Shift as the only modifier,
+    /// it would take a capital letter from all typing, so a chord needs ⌘, ⌥ or ⌃.
+    /// Function keys need no modifier.
+    static func isAllowedGlobalChord(keyCode: UInt32, modifiers: UInt32) -> Bool {
+        isFunctionKey(keyCode) || modifiers & UInt32(cmdKey | optionKey | controlKey) != 0
+    }
+
+    /// Stops all hotkeys while the user records a shortcut. A registered chord never
+    /// reaches the app's key events, so the recorder could not see it, and pressing
+    /// it would start that hotkey's action. Calls nest; `resume()` ends one.
+    func suspend() {
+        suspendCount += 1
+        guard suspendCount == 1 else { return }
+        for (_, ref) in hotKeyRefs {
+            UnregisterEventHotKey(ref)
+        }
+        hotKeyRefs.removeAll()
+    }
+
+    func resume() {
+        guard suspendCount > 0 else { return }
+        suspendCount -= 1
+        guard suspendCount == 0 else { return }
+        for slot in HotkeySlot.allCases {
+            if let callback = callbacks[slot] {
+                register(slot: slot, callback: callback)
+            }
+        }
+    }
 
     /// Register a callback for a hotkey slot. Reads keyCode/modifiers from UserDefaults.
     /// Returns false when the chord did not register (see `failures`).
@@ -111,8 +145,16 @@ class HotkeyManager {
             hotKeyRefs[slot] = nil
         }
 
+        // `resume()` registers the slot with this callback.
+        guard suspendCount == 0 else { return true }
+
         let (keyCode, modifiers) = Self.readHotkey(for: slot)
         guard modifiers != 0 || Self.isFunctionKey(keyCode) else { return true }  // no modifiers = disabled (unless function key)
+        // A chord saved before this rule existed is reported, not dropped.
+        guard Self.isAllowedGlobalChord(keyCode: keyCode, modifiers: modifiers) else {
+            failures[slot] = .needsModifier
+            return false
+        }
 
         installEventHandler()
         var ref: EventHotKeyRef?
@@ -161,6 +203,8 @@ class HotkeyManager {
             return "\(chord) for \(slot.label) does not work: \(other.label) already uses it."
         case .refused:
             return "\(chord) for \(slot.label) does not work: another app uses it, or macOS does not allow it."
+        case .needsModifier:
+            return "\(chord) for \(slot.label) does not work: a global shortcut needs \u{2318}, \u{2325} or \u{2303}."
         }
     }
 

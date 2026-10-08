@@ -356,6 +356,32 @@ final class HotkeyManagerTests {
         #expect(!HotkeyManager.isFunctionKey(UInt32(kVK_ANSI_A)), "a plain letter needs a modifier, so it mustn't be treated like F1")
     }
 
+    @Test func testAGlobalChordNeedsCommandOptionOrControl() {
+        let a = UInt32(kVK_ANSI_A)
+        #expect(!HotkeyManager.isAllowedGlobalChord(keyCode: a, modifiers: UInt32(shiftKey)),
+                "⇧A would take every capital A from all typing")
+        #expect(!HotkeyManager.isAllowedGlobalChord(keyCode: a, modifiers: 0))
+        #expect(HotkeyManager.isAllowedGlobalChord(keyCode: a, modifiers: UInt32(cmdKey)))
+        #expect(HotkeyManager.isAllowedGlobalChord(keyCode: a, modifiers: UInt32(optionKey | shiftKey)))
+        #expect(HotkeyManager.isAllowedGlobalChord(keyCode: a, modifiers: UInt32(controlKey)))
+        #expect(HotkeyManager.isAllowedGlobalChord(keyCode: UInt32(kVK_F5), modifiers: 0))
+        #expect(HotkeyManager.isAllowedGlobalChord(keyCode: UInt32(kVK_F5), modifiers: UInt32(shiftKey)))
+    }
+
+    @Test func testAShiftOnlyChordSavedEarlierIsReportedNotRegistered() {
+        let slot = HotkeyManager.HotkeySlot.clearHistory
+        let keys: [String: Any?] = [slot.keyCodeKey: kVK_ANSI_A, slot.modifiersKey: shiftKey, slot.disabledKey: nil]
+        withDefaults(keys) {
+            defer { HotkeyManager.shared.unregisterAll() }
+            #expect(!HotkeyManager.shared.register(slot: slot) {})
+            #expect(HotkeyManager.shared.failures[slot] == .needsModifier)
+            let message = HotkeyManager.failureMessage(for: [slot: .needsModifier])
+            // The letter depends on the keyboard layout, so only the modifier is checked.
+            #expect(message.hasPrefix("\u{21E7}"))
+            #expect(message.contains("for Clear History does not work: a global shortcut needs \u{2318}, \u{2325} or \u{2303}."))
+        }
+    }
+
     @Test func testSpecialKeysGetStableNames() {
         #expect(HotkeyManager.keyString(from: UInt32(kVK_Space)) == "Space")
         #expect(HotkeyManager.keyString(from: UInt32(kVK_F5)) == "F5")

@@ -1345,7 +1345,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         sender.title = "Press keys..."
         hotkeyFields[slot]?.stringValue = "Waiting..."
 
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        startRecordingMonitor { [weak self] event in
             guard let self = self else { return event }
             if event.keyCode == 53 {
                 self.stopShortcutRecording()
@@ -1358,7 +1358,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
             if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
             let keyCode = UInt32(event.keyCode)
-            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) { return nil }
+            guard HotkeyManager.isAllowedGlobalChord(keyCode: keyCode, modifiers: carbonMods) else {
+                self.hotkeyFields[slot]?.stringValue = "Add \u{2318}, \u{2325} or \u{2303}"
+                NSSound.beep()
+                return nil
+            }
             HotkeyManager.saveHotkey(for: slot, keyCode: keyCode, modifiers: carbonMods)
             self.stopShortcutRecording()
             self.onHotkeyChanged?()
@@ -1409,7 +1413,25 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             refreshHotkeyField(slot)
         }
         recordingSlot = nil
-        if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
+        stopRecordingMonitor()
+    }
+
+    /// Starts the key monitor of a shortcut recorder. Global hotkeys stop while it runs
+    /// (see `HotkeyManager.suspend()`).
+    private func startRecordingMonitor(_ handler: @escaping (NSEvent) -> NSEvent?) {
+        HotkeyManager.shared.suspend()
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Leave typing in other windows alone, for example in an editor.
+            guard let self, event.window === self.window else { return event }
+            return handler(event)
+        }
+    }
+
+    private func stopRecordingMonitor() {
+        guard let monitor = localMonitor else { return }
+        NSEvent.removeMonitor(monitor)
+        localMonitor = nil
+        HotkeyManager.shared.resume()
     }
 
     // MARK: - Editor Command Shortcuts
@@ -1430,7 +1452,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         sender.title = "Press keys..."
         commandShortcutFields[action]?.stringValue = "Waiting..."
 
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        startRecordingMonitor { [weak self] event in
             guard let self else { return event }
             if event.keyCode == 53 {
                 self.stopCommandShortcutRecording()
@@ -1480,7 +1502,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             commandShortcutButtons[action]?.title = "Set"
         }
         recordingCommandAction = nil
-        if let monitor = localMonitor { NSEvent.removeMonitor(monitor); localMonitor = nil }
+        stopRecordingMonitor()
     }
 
     // MARK: - Overlay Tool Shortcuts
@@ -1504,7 +1526,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         sender.title = "Press..."
         toolShortcutFields[action]?.stringValue = "…"
 
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        startRecordingMonitor { [weak self] event in
             guard let self = self else { return event }
             // Only accept single keys without modifiers (or allow Escape to cancel)
             if event.keyCode == 53 { // Escape — cancel
@@ -1551,7 +1573,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             toolShortcutButtons[action]?.title = "Set"
         }
         recordingToolAction = nil
-        if let m = localMonitor { NSEvent.removeMonitor(m); localMonitor = nil }
+        stopRecordingMonitor()
     }
 
     // MARK: - Tools Tab
@@ -2536,6 +2558,14 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stopCommandShortcutRecording()
         stopToolShortcutRecording()
         (NSApp.delegate as? AppDelegate)?.returnFocusIfNeeded()
+    }
+
+    /// The recorders take keys only from this window, so a recording would otherwise
+    /// keep the global hotkeys stopped while the user works in another app.
+    func windowDidResignKey(_ notification: Notification) {
+        stopShortcutRecording()
+        stopCommandShortcutRecording()
+        stopToolShortcutRecording()
     }
 }
 
