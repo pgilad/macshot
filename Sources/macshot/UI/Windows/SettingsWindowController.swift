@@ -2056,7 +2056,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         let speed = UserDefaults.standard.object(forKey: "scrollAutoScrollSpeed") as? Int ?? 3
         scrollSpeedPopup.selectItem(at: max(0, min(3, speed - 1)))
         scrollSpeedPopup.isEnabled = autoScroll
-        let maxH = UserDefaults.standard.object(forKey: "scrollMaxHeight") as? Int ?? 30000
+        let maxH = Preferences.scrollMaxHeight
         scrollMaxHeightField.integerValue = maxH
         scrollMaxHeightStepper.integerValue = maxH
         let frozenDetect = UserDefaults.standard.object(forKey: "scrollFrozenDetection") as? Bool ?? true
@@ -2226,7 +2226,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
     @objc private func scrollMaxHeightChanged(_ sender: NSStepper) {
         scrollMaxHeightField.integerValue = sender.integerValue
-        UserDefaults.standard.set(sender.integerValue, forKey: "scrollMaxHeight")
+        Preferences.scrollMaxHeight = sender.integerValue
     }
     @objc private func scrollFrozenDetectionChanged(_ sender: NSButton) {
         UserDefaults.standard.set(sender.state == .on, forKey: "scrollFrozenDetection")

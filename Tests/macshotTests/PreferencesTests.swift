@@ -12,7 +12,7 @@ final class PreferencesTests {
         Preferences.Key.historyUnlimited, Preferences.Key.historyOrderByLastEdit,
         Preferences.Key.showFloatingThumbnail, Preferences.Key.thumbnailStacking, Preferences.Key.thumbnailCorner,
         Preferences.Key.thumbnailScale, Preferences.Key.thumbnailAutoDismiss, Preferences.Key.thumbnailLetterbox,
-        Preferences.Key.captureCursor, Preferences.Key.imageFormat, Preferences.Key.downscaleRetina,
+        Preferences.Key.captureCursor, Preferences.Key.scrollMaxHeight, Preferences.Key.imageFormat, Preferences.Key.downscaleRetina,
         Preferences.Key.clipboardIncludesImageFormat, Preferences.Key.showToolShortcutsInTooltips,
         Preferences.Key.snapGuidesEnabled, Preferences.Key.boundarySnapEnabled, Preferences.Key.doubleClickToCopy,
         Preferences.Key.hideCaptureInstructions, Preferences.Key.disableSelectionOutsideShadow,
@@ -37,6 +37,7 @@ final class PreferencesTests {
             #expect(Preferences.thumbnailAutoDismiss == 5)
             #expect(!Preferences.thumbnailLetterbox)
             #expect(!Preferences.captureCursor)
+            #expect(Preferences.scrollMaxHeight == ScrollCaptureController.defaultMaxHeight)
             #expect(Preferences.imageFormat == nil)
             #expect(!Preferences.downscaleRetina)
             #expect(!Preferences.clipboardIncludesImageFormat)

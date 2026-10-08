@@ -22,12 +22,12 @@ import Vision
 /// - **Programmatic scrolling** via `CGEventCreateScrollWheelEvent2`.
 /// - **Frozen header detection** — identifies sticky headers and excludes from stitching.
 /// - **Scrollbar exclusion** — auto-detects scrollbar width, excludes from comparisons.
-/// - **Max height** — `defaultMaxHeight` pixels, or the `scrollMaxHeight` default.
+/// - **Max height** — `defaultMaxHeight` pixels, or `Preferences.scrollMaxHeight`.
 @MainActor
 final class ScrollCaptureController {
 
-    /// Auto-scroll stops once the stitched image is this tall, unless the
-    /// `scrollMaxHeight` default sets another height (0 means no limit).
+    /// Auto-scroll stops once the stitched image is this tall, unless
+    /// `Preferences.scrollMaxHeight` sets another height (0 means no limit).
     nonisolated static let defaultMaxHeight = 30000
 
     // MARK: - Public state
@@ -144,7 +144,7 @@ final class ScrollCaptureController {
         let ud = UserDefaults.standard
         autoScrollEnabled = ud.object(forKey: "scrollAutoScrollEnabled") as? Bool ?? false
         autoScrollSpeed = ud.object(forKey: "scrollAutoScrollSpeed") as? Int ?? 3
-        maxScrollHeight = ud.object(forKey: "scrollMaxHeight") as? Int ?? Self.defaultMaxHeight
+        maxScrollHeight = Preferences.scrollMaxHeight
         frozenDetectionEnabled = ud.object(forKey: "scrollFrozenDetection") as? Bool ?? true
 
         // Convert AppKit coords to CG coords (top-left origin) for the CGWindowList lookups

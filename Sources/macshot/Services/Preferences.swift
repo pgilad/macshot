@@ -25,6 +25,7 @@ nonisolated enum Preferences {
         static let thumbnailAutoDismiss = "thumbnailAutoDismiss"
         static let thumbnailLetterbox = "thumbnailLetterbox"
         static let captureCursor = "captureCursor"
+        static let scrollMaxHeight = "scrollMaxHeight"
         static let imageFormat = "imageFormat"
         static let downscaleRetina = "downscaleRetina"
         static let clipboardIncludesImageFormat = "clipboardIncludesImageFormat"
@@ -119,6 +120,11 @@ nonisolated enum Preferences {
     static var captureCursor: Bool {
         get { bool(Key.captureCursor, default: false) }
         set { defaults.set(newValue, forKey: Key.captureCursor) }
+    }
+    /// Pixels; 0 means no limit. See `ScrollCaptureController.defaultMaxHeight`.
+    static var scrollMaxHeight: Int {
+        get { int(Key.scrollMaxHeight, default: ScrollCaptureController.defaultMaxHeight) }
+        set { defaults.set(newValue, forKey: Key.scrollMaxHeight) }
     }
     /// An `ImageEncoder.Format` raw value, or nil for the default format.
     static var imageFormat: String? {
