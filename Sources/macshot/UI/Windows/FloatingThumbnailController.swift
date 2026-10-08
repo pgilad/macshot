@@ -205,14 +205,14 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
     var onDismiss: (() -> Void)?
 
     // Action callbacks
-    var onCopy:     (() -> Void)?
-    var onSave:     (() -> Void)?
-    var onSaveAs:   (() -> Void)?
-    var onPin:      (() -> Void)?
-    var onEdit:     (() -> Void)?
-    var onDelete:   (() -> Void)?
+    var onCopy: (() -> Void)?
+    var onSave: (() -> Void)?
+    var onSaveAs: (() -> Void)?
+    var onPin: (() -> Void)?
+    var onEdit: (() -> Void)?
+    var onDelete: (() -> Void)?
     var onCloseAll: (() -> Void)?
-    var onSaveAll:  (() -> Void)?
+    var onSaveAll: (() -> Void)?
     var onTransform: ((NSImage) -> Void)?
     var onOCR: (() -> Void)?
 
@@ -676,16 +676,16 @@ class FloatingThumbnailController: NSObject, NSDraggingSource, QLPreviewPanelDat
 private class ThumbnailView: NSView {
 
     var onDragStarted: ((NSEvent) -> Void)?
-    var onClose:    (() -> Void)?
-    var onCopy:     (() -> Void)?
-    var onSave:     (() -> Void)?
-    var onPin:      (() -> Void)?
-    var onEdit:     (() -> Void)?
-    var onDelete:   (() -> Void)?
+    var onClose: (() -> Void)?
+    var onCopy: (() -> Void)?
+    var onSave: (() -> Void)?
+    var onPin: (() -> Void)?
+    var onEdit: (() -> Void)?
+    var onDelete: (() -> Void)?
     var onCloseAll: (() -> Void)?
-    var onSaveAll:  (() -> Void)?
+    var onSaveAll: (() -> Void)?
     var onHoverEnter: (() -> Void)?
-    var onHoverExit:  (() -> Void)?
+    var onHoverExit: (() -> Void)?
     var onDismissDragStarted: ((ThumbnailDismissGesture) -> Void)?
     var onDismissDragChanged: ((CGFloat) -> Void)?
     var onDismissDragEnded: ((CGFloat) -> Void)?
@@ -715,11 +715,11 @@ private class ThumbnailView: NSView {
     private var trackingArea: NSTrackingArea?
 
     // Corner button hit rects (in view coords, updated in draw)
-    private var closeBtnRect:  NSRect = .zero
-    private var pinBtnRect:    NSRect = .zero
-    private var editBtnRect:   NSRect = .zero
-    private var copyBtnRect:   NSRect = .zero
-    private var saveBtnRect:   NSRect = .zero
+    private var closeBtnRect: NSRect = .zero
+    private var pinBtnRect: NSRect = .zero
+    private var editBtnRect: NSRect = .zero
+    private var copyBtnRect: NSRect = .zero
+    private var saveBtnRect: NSRect = .zero
 
     private var hoveredRect: NSRect = .zero
 
@@ -919,7 +919,7 @@ private class ThumbnailView: NSView {
         let btnsY = r.midY - totalH/2
 
         let copyRect = NSRect(x: r.midX - centerBtnW/2, y: btnsY + centerBtnH + centerGap, width: centerBtnW, height: centerBtnH)
-        let saveRect = NSRect(x: r.midX - centerBtnW/2, y: btnsY,                  width: centerBtnW, height: centerBtnH)
+        let saveRect = NSRect(x: r.midX - centerBtnW/2, y: btnsY, width: centerBtnW, height: centerBtnH)
         copyBtnRect = copyRect
         saveBtnRect = saveRect
 
@@ -1011,11 +1011,11 @@ private class ThumbnailView: NSView {
         let p = convert(event.locationInWindow, from: nil)
         defer { resetMouseDragState() }
 
-        if closeBtnRect.contains(p)  { onClose?();  return }
-        if pinBtnRect.contains(p)    { onPin?();    return }
-        if editBtnRect.contains(p)   { onEdit?();   return }
-        if copyBtnRect.contains(p)   { onCopy?();   return }
-        if saveBtnRect.contains(p)   { onSave?();   return }
+        if closeBtnRect.contains(p) { onClose?();  return }
+        if pinBtnRect.contains(p) { onPin?();    return }
+        if editBtnRect.contains(p) { onEdit?();   return }
+        if copyBtnRect.contains(p) { onCopy?();   return }
+        if saveBtnRect.contains(p) { onSave?();   return }
 
         // Click anywhere else on thumbnail — dismiss
         if isHovering { onClose?() }

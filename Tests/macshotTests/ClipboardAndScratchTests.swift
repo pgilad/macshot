@@ -2,7 +2,6 @@ import Cocoa
 import Testing
 @testable import macshot
 
-
 /// Pinned clipboard text is rendered on the main thread, so it needs a limit.
 final class ClipboardPinSafetyTests {
 

@@ -3,7 +3,6 @@ import UniformTypeIdentifiers
 
 extension OverlayView {
 
-
     func showRedactTypePopover(anchorRect: NSRect, anchorView: NSView? = nil) {
         if PopoverHelper.toggleClosedIfOpen() { return }
         let types = AutoRedactor.redactTypeNames

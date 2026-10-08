@@ -95,7 +95,7 @@ enum NumberFormat: Int, CaseIterable {
     }
 
     private static func toRoman(_ n: Int) -> String {
-        let values = [(1000,"M"),(900,"CM"),(500,"D"),(400,"CD"),(100,"C"),(90,"XC"),(50,"L"),(40,"XL"),(10,"X"),(9,"IX"),(5,"V"),(4,"IV"),(1,"I")]
+        let values = [(1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")]
         var result = ""
         var remaining = max(1, min(n, 3999))
         for (value, numeral) in values {
@@ -185,7 +185,7 @@ class Annotation {
             return false
         }
     }
-    var controlPoint: NSPoint? = nil  // optional bend point for line/arrow (legacy single bend)
+    var controlPoint: NSPoint?  // optional bend point for line/arrow (legacy single bend)
     /// Ordered waypoints for multi-anchor lines/arrows: [start, anchor1, anchor2, ..., end].
     /// When set, overrides startPoint/endPoint/controlPoint for rendering.
     var anchorPoints: [NSPoint]?
@@ -506,7 +506,7 @@ class Annotation {
             }
             points = pts
         }
-        
+
         if var cp = controlPoint {
             cp.x += dx; cp.y += dy
             controlPoint = cp
@@ -1951,7 +1951,7 @@ class Annotation {
     /// Called by commitAnnotation() on finalization. Also handles legacy `.blur` tool.
     func bakePixelate() {
         // Legacy blur annotations + unified pixelate tool
-        guard (tool == .pixelate || tool == .blur), bakedBlurNSImage == nil else { return }
+        guard tool == .pixelate || tool == .blur, bakedBlurNSImage == nil else { return }
         // Legacy .blur tool → set censorMode so drawing dispatches correctly
         if tool == .blur { censorMode = .blur }
 
@@ -2290,10 +2290,10 @@ class Annotation {
         let imageSize = image.size
         let scaleX = imageSize.width / bounds.width
         let scaleY = imageSize.height / bounds.height
-        
+
         let rect = boundingRect
         let scale = max(1.1, loupeMagnification)
-        
+
         // Always force a perfect circle
         let size = min(rect.width, rect.height)
         guard size > 10 else { return nil }
@@ -2313,7 +2313,7 @@ class Annotation {
         let srcSize = size / scale
         let srcX = centerX - srcSize / 2
         let srcY = centerY - srcSize / 2
-        
+
         // Extract the original region.
         // NSImage and the overlay view share the same coordinate system (Y=0 at bottom),
         // so no Y-flip is needed — just scale directly.
@@ -2323,7 +2323,7 @@ class Annotation {
             width: srcSize * scaleX,
             height: srcSize * scaleY
         )
-        
+
         let magnifiedImage = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
             if let ctx = NSGraphicsContext.current {
                 ctx.imageInterpolation = .high
@@ -2334,7 +2334,7 @@ class Annotation {
                        fraction: 1.0)
             return true
         }
-        
+
         return magnifiedImage
     }
 
@@ -2498,7 +2498,7 @@ class Annotation {
                 cgCtx.drawLinearGradient(
                     gradient,
                     start: CGPoint(x: squareRect.midX, y: squareRect.maxY),
-                    end:   CGPoint(x: squareRect.midX, y: squareRect.minY),
+                    end: CGPoint(x: squareRect.midX, y: squareRect.minY),
                     options: []
                 )
             }

@@ -5,12 +5,12 @@ struct HistoryEntry {
     let fileExtension: String // "png" or "jpg"
     let timestamp: Date       // creation time
     /// Last time the entry was edited & saved from the editor (nil = never).
-    var lastEditedAt: Date? = nil
+    var lastEditedAt: Date?
     var pixelWidth: Int
     var pixelHeight: Int
     var hasAnnotations: Bool = false  // true if editable raw data is saved alongside
     var thumbnail: NSImage?  // lazily cached, tiny
-    var revision: String? = nil
+    var revision: String?
 
     /// The time used for "order by last edit": the most recent of edit/creation.
     var effectiveSortDate: Date { lastEditedAt ?? timestamp }

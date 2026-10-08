@@ -70,10 +70,8 @@ extension NSPoint {
         let dx = x - start.x
         let dy = y - start.y
         var t: CGFloat = 1
-        if dx > 0 { t = min(t, (rect.maxX - start.x) / dx) }
-        else if dx < 0 { t = min(t, (rect.minX - start.x) / dx) }
-        if dy > 0 { t = min(t, (rect.maxY - start.y) / dy) }
-        else if dy < 0 { t = min(t, (rect.minY - start.y) / dy) }
+        if dx > 0 { t = min(t, (rect.maxX - start.x) / dx) } else if dx < 0 { t = min(t, (rect.minX - start.x) / dx) }
+        if dy > 0 { t = min(t, (rect.maxY - start.y) / dy) } else if dy < 0 { t = min(t, (rect.minY - start.y) / dy) }
         t = max(0, t)
         return NSPoint(x: start.x + dx * t, y: start.y + dy * t)
     }

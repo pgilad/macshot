@@ -126,9 +126,9 @@ class BeautifyRenderer {
             // Row 1
             // Ultraviolet — vivid purple/magenta with electric blue
             meshStyle( points: [
-                SIMD2(0, 0),    SIMD2(0.7, 0),   SIMD2(1, 0),
-                SIMD2(0, 0.3),  SIMD2(0.25, 0.7), SIMD2(1, 0.6),
-                SIMD2(0, 1),    SIMD2(0.65, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.7, 0), SIMD2(1, 0),
+                SIMD2(0, 0.3), SIMD2(0.25, 0.7), SIMD2(1, 0.6),
+                SIMD2(0, 1), SIMD2(0.65, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.55, 0.10, 0.95), c(0.80, 0.15, 0.80), c(1.0, 0.30, 0.55),
                 c(0.30, 0.15, 0.98), c(0.90, 0.40, 0.90), c(1.0, 0.50, 0.60),
@@ -138,9 +138,9 @@ class BeautifyRenderer {
             ]),
             // Inferno — hot pink/red smashing into orange/yellow
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.3, 0),   SIMD2(1, 0),
+                SIMD2(0, 0), SIMD2(0.3, 0), SIMD2(1, 0),
                 SIMD2(0, 0.65), SIMD2(0.75, 0.35), SIMD2(1, 0.5),
-                SIMD2(0, 1),    SIMD2(0.4, 1),   SIMD2(1, 1),
+                SIMD2(0, 1), SIMD2(0.4, 1), SIMD2(1, 1),
             ], colors: [
                 c(1.0, 0.25, 0.40), c(1.0, 0.50, 0.20), c(1.0, 0.85, 0.25),
                 c(0.95, 0.15, 0.50), c(1.0, 0.65, 0.30), c(1.0, 0.90, 0.40),
@@ -150,9 +150,9 @@ class BeautifyRenderer {
             ]),
             // Deep Ocean — rich blue/teal with bright cyan burst
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.6, 0),   SIMD2(1, 0),
-                SIMD2(0, 0.4),  SIMD2(0.3, 0.65), SIMD2(1, 0.55),
-                SIMD2(0, 1),    SIMD2(0.7, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.6, 0), SIMD2(1, 0),
+                SIMD2(0, 0.4), SIMD2(0.3, 0.65), SIMD2(1, 0.55),
+                SIMD2(0, 1), SIMD2(0.7, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.05, 0.15, 0.60), c(0.10, 0.40, 0.90), c(0.05, 0.20, 0.70),
                 c(0.08, 0.25, 0.75), c(0.20, 0.90, 0.95), c(0.10, 0.50, 0.85),
@@ -162,9 +162,9 @@ class BeautifyRenderer {
             ]),
             // Candy Floss — saturated pink/peach/lavender
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.45, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.6),  SIMD2(0.7, 0.4),  SIMD2(1, 0.55),
-                SIMD2(0, 1),    SIMD2(0.35, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.45, 0), SIMD2(1, 0),
+                SIMD2(0, 0.6), SIMD2(0.7, 0.4), SIMD2(1, 0.55),
+                SIMD2(0, 1), SIMD2(0.35, 1), SIMD2(1, 1),
             ], colors: [
                 c(1.0, 0.60, 0.70), c(1.0, 0.75, 0.55), c(0.95, 0.55, 0.75),
                 c(0.95, 0.50, 0.80), c(1.0, 0.85, 0.70), c(0.80, 0.55, 0.95),
@@ -174,9 +174,9 @@ class BeautifyRenderer {
             ]),
             // Emerald Fire — vivid green clashing with hot orange
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.55, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.5),  SIMD2(0.25, 0.55), SIMD2(1, 0.4),
-                SIMD2(0, 1),    SIMD2(0.6, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.55, 0), SIMD2(1, 0),
+                SIMD2(0, 0.5), SIMD2(0.25, 0.55), SIMD2(1, 0.4),
+                SIMD2(0, 1), SIMD2(0.6, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.10, 0.85, 0.40), c(0.30, 0.95, 0.50), c(0.90, 0.75, 0.15),
                 c(0.05, 0.70, 0.35), c(0.60, 0.90, 0.30), c(1.0, 0.60, 0.15),
@@ -186,9 +186,9 @@ class BeautifyRenderer {
             ]),
             // Electric Dusk — neon pink/orange sunset over deep blue
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.5, 0),   SIMD2(1, 0),
+                SIMD2(0, 0), SIMD2(0.5, 0), SIMD2(1, 0),
                 SIMD2(0, 0.35), SIMD2(0.65, 0.55), SIMD2(1, 0.4),
-                SIMD2(0, 1),    SIMD2(0.45, 1),  SIMD2(1, 1),
+                SIMD2(0, 1), SIMD2(0.45, 1), SIMD2(1, 1),
             ], colors: [
                 c(1.0, 0.50, 0.30), c(1.0, 0.35, 0.50), c(0.90, 0.25, 0.70),
                 c(1.0, 0.65, 0.20), c(0.85, 0.30, 0.60), c(0.45, 0.15, 0.80),
@@ -200,9 +200,9 @@ class BeautifyRenderer {
             // Row 2
             // Plasma — magenta/cyan/yellow high-energy
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.25, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.7),  SIMD2(0.8, 0.3),  SIMD2(1, 0.5),
-                SIMD2(0, 1),    SIMD2(0.55, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.25, 0), SIMD2(1, 0),
+                SIMD2(0, 0.7), SIMD2(0.8, 0.3), SIMD2(1, 0.5),
+                SIMD2(0, 1), SIMD2(0.55, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.95, 0.20, 0.60), c(1.0, 0.50, 0.15), c(1.0, 0.90, 0.20),
                 c(0.70, 0.10, 0.90), c(0.20, 0.85, 0.85), c(0.50, 0.95, 0.40),
@@ -212,9 +212,9 @@ class BeautifyRenderer {
             ]),
             // Silk Storm — whites/grays with vivid color pockets
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.65, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.45), SIMD2(0.3, 0.6),  SIMD2(1, 0.55),
-                SIMD2(0, 1),    SIMD2(0.5, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.65, 0), SIMD2(1, 0),
+                SIMD2(0, 0.45), SIMD2(0.3, 0.6), SIMD2(1, 0.55),
+                SIMD2(0, 1), SIMD2(0.5, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.92, 0.90, 0.95), c(0.70, 0.80, 0.98), c(0.55, 0.60, 0.98),
                 c(0.95, 0.85, 0.88), c(0.85, 0.75, 0.95), c(0.50, 0.70, 0.95),
@@ -224,9 +224,9 @@ class BeautifyRenderer {
             ]),
             // Opal — orange/teal/violet iridescent clash
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.7, 0),   SIMD2(1, 0),
-                SIMD2(0, 0.4),  SIMD2(0.25, 0.65), SIMD2(1, 0.5),
-                SIMD2(0, 1),    SIMD2(0.6, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.7, 0), SIMD2(1, 0),
+                SIMD2(0, 0.4), SIMD2(0.25, 0.65), SIMD2(1, 0.5),
+                SIMD2(0, 1), SIMD2(0.6, 1), SIMD2(1, 1),
             ], colors: [
                 c(1.0, 0.60, 0.15), c(1.0, 0.85, 0.30), c(0.20, 0.90, 0.90),
                 c(0.95, 0.40, 0.40), c(0.65, 0.70, 0.95), c(0.15, 0.75, 0.95),
@@ -236,9 +236,9 @@ class BeautifyRenderer {
             ]),
             // Nebula — deep purple/blue with hot pink explosion
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.55, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.55), SIMD2(0.3, 0.4),  SIMD2(1, 0.65),
-                SIMD2(0, 1),    SIMD2(0.7, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.55, 0), SIMD2(1, 0),
+                SIMD2(0, 0.55), SIMD2(0.3, 0.4), SIMD2(1, 0.65),
+                SIMD2(0, 1), SIMD2(0.7, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.10, 0.05, 0.40), c(0.30, 0.08, 0.60), c(0.08, 0.15, 0.55),
                 c(0.50, 0.10, 0.65), c(1.0, 0.30, 0.55), c(0.15, 0.30, 0.80),
@@ -248,9 +248,9 @@ class BeautifyRenderer {
             ]),
             // Sunset Blaze — intense orange/red to deep indigo
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.5, 0),   SIMD2(1, 0),
+                SIMD2(0, 0), SIMD2(0.5, 0), SIMD2(1, 0),
                 SIMD2(0, 0.35), SIMD2(0.4, 0.55), SIMD2(1, 0.4),
-                SIMD2(0, 1),    SIMD2(0.6, 1),   SIMD2(1, 1),
+                SIMD2(0, 1), SIMD2(0.6, 1), SIMD2(1, 1),
             ], colors: [
                 c(1.0, 0.85, 0.25), c(1.0, 0.55, 0.15), c(1.0, 0.30, 0.25),
                 c(1.0, 0.50, 0.10), c(0.90, 0.25, 0.40), c(0.55, 0.12, 0.60),
@@ -260,9 +260,9 @@ class BeautifyRenderer {
             ], fallbackAngle: 180),
             // Lagoon — vivid teal/cyan/deep blue tropical
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.4, 0),   SIMD2(1, 0),
-                SIMD2(0, 0.5),  SIMD2(0.7, 0.6),  SIMD2(1, 0.45),
-                SIMD2(0, 1),    SIMD2(0.35, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.4, 0), SIMD2(1, 0),
+                SIMD2(0, 0.5), SIMD2(0.7, 0.6), SIMD2(1, 0.45),
+                SIMD2(0, 1), SIMD2(0.35, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.10, 0.95, 0.70), c(0.20, 0.95, 0.90), c(0.15, 0.65, 0.98),
                 c(0.05, 0.80, 0.55), c(0.15, 0.90, 0.85), c(0.25, 0.50, 0.95),
@@ -274,9 +274,9 @@ class BeautifyRenderer {
             // Row 3 — maximum drama
             // Molten Core — black with searing orange/white-hot center
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.6, 0),   SIMD2(1, 0),
-                SIMD2(0, 0.5),  SIMD2(0.35, 0.45), SIMD2(1, 0.6),
-                SIMD2(0, 1),    SIMD2(0.5, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.6, 0), SIMD2(1, 0),
+                SIMD2(0, 0.5), SIMD2(0.35, 0.45), SIMD2(1, 0.6),
+                SIMD2(0, 1), SIMD2(0.5, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.08, 0.05, 0.05), c(0.20, 0.05, 0.02), c(0.10, 0.03, 0.05),
                 c(0.30, 0.08, 0.02), c(1.0, 0.70, 0.15), c(0.45, 0.10, 0.03),
@@ -286,9 +286,9 @@ class BeautifyRenderer {
             ]),
             // Aurora Borealis — green/cyan curtains over dark sky
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.35, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.6),  SIMD2(0.75, 0.35), SIMD2(1, 0.55),
-                SIMD2(0, 1),    SIMD2(0.45, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.35, 0), SIMD2(1, 0),
+                SIMD2(0, 0.6), SIMD2(0.75, 0.35), SIMD2(1, 0.55),
+                SIMD2(0, 1), SIMD2(0.45, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.05, 0.90, 0.50), c(0.10, 0.95, 0.80), c(0.20, 0.70, 0.95),
                 c(0.08, 0.70, 0.40), c(0.15, 0.85, 0.70), c(0.30, 0.50, 0.90),
@@ -298,11 +298,11 @@ class BeautifyRenderer {
             ], fallbackAngle: 180),
             // Prism Burst — rainbow refraction: every color at full saturation
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.3, 0),   SIMD2(1, 0),
-                SIMD2(0, 0.55), SIMD2(0.7, 0.5),  SIMD2(1, 0.45),
-                SIMD2(0, 1),    SIMD2(0.4, 1),   SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.3, 0), SIMD2(1, 0),
+                SIMD2(0, 0.55), SIMD2(0.7, 0.5), SIMD2(1, 0.45),
+                SIMD2(0, 1), SIMD2(0.4, 1), SIMD2(1, 1),
             ], colors: [
-                c(0.20, 0.40, 1.0),  c(1.0, 0.60, 0.10), c(1.0, 0.25, 0.50),
+                c(0.20, 0.40, 1.0), c(1.0, 0.60, 0.10), c(1.0, 0.25, 0.50),
                 c(0.10, 0.85, 0.70), c(1.0, 0.95, 0.50), c(0.90, 0.20, 0.80),
                 c(0.15, 0.90, 0.35), c(0.95, 0.80, 0.15), c(0.60, 0.10, 0.95),
             ], fallbackStops: [
@@ -310,9 +310,9 @@ class BeautifyRenderer {
             ]),
             // Velvet Night — dark burgundy/plum with rose-gold glow
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.55, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.55), SIMD2(0.3, 0.4),  SIMD2(1, 0.5),
-                SIMD2(0, 1),    SIMD2(0.65, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.55, 0), SIMD2(1, 0),
+                SIMD2(0, 0.55), SIMD2(0.3, 0.4), SIMD2(1, 0.5),
+                SIMD2(0, 1), SIMD2(0.65, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.25, 0.05, 0.15), c(0.40, 0.08, 0.20), c(0.30, 0.06, 0.25),
                 c(0.35, 0.10, 0.18), c(0.95, 0.65, 0.50), c(0.45, 0.12, 0.35),
@@ -322,21 +322,21 @@ class BeautifyRenderer {
             ]),
             // Cosmic Reef — deep space with teal/coral/gold nebula clouds
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.65, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.4),  SIMD2(0.25, 0.65), SIMD2(1, 0.55),
-                SIMD2(0, 1),    SIMD2(0.55, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.65, 0), SIMD2(1, 0),
+                SIMD2(0, 0.4), SIMD2(0.25, 0.65), SIMD2(1, 0.55),
+                SIMD2(0, 1), SIMD2(0.55, 1), SIMD2(1, 1),
             ], colors: [
                 c(0.06, 0.04, 0.20), c(0.15, 0.60, 0.70), c(0.08, 0.08, 0.30),
                 c(0.90, 0.45, 0.30), c(0.10, 0.10, 0.25), c(0.20, 0.50, 0.80),
-                c(1.0, 0.80, 0.25),  c(0.06, 0.06, 0.22), c(0.12, 0.35, 0.65),
+                c(1.0, 0.80, 0.25), c(0.06, 0.06, 0.22), c(0.12, 0.35, 0.65),
             ], fallbackStops: [
                 (c(0.06, 0.04, 0.20), 0), (c(0.90, 0.45, 0.30), 0.4), (c(1.0, 0.80, 0.25), 1),
             ]),
             // Ember Glow — searing warm gradient: gold/coral/crimson
             meshStyle(points: [
-                SIMD2(0, 0),    SIMD2(0.45, 0),  SIMD2(1, 0),
-                SIMD2(0, 0.6),  SIMD2(0.7, 0.4),  SIMD2(1, 0.5),
-                SIMD2(0, 1),    SIMD2(0.35, 1),  SIMD2(1, 1),
+                SIMD2(0, 0), SIMD2(0.45, 0), SIMD2(1, 0),
+                SIMD2(0, 0.6), SIMD2(0.7, 0.4), SIMD2(1, 0.5),
+                SIMD2(0, 1), SIMD2(0.35, 1), SIMD2(1, 1),
             ], colors: [
                 c(1.0, 0.85, 0.35), c(1.0, 0.65, 0.25), c(1.0, 0.50, 0.30),
                 c(1.0, 0.55, 0.20), c(0.95, 0.40, 0.35), c(0.90, 0.30, 0.45),

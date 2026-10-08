@@ -71,26 +71,22 @@ extension OverlayView {
         let r = selectionRect
         // Top edge
         if NSRect(x: r.minX, y: r.maxY - edgeThickness / 2, width: r.width, height: edgeThickness)
-            .contains(point)
-        {
+            .contains(point) {
             return .top
         }
         // Bottom edge
         if NSRect(x: r.minX, y: r.minY - edgeThickness / 2, width: r.width, height: edgeThickness)
-            .contains(point)
-        {
+            .contains(point) {
             return .bottom
         }
         // Left edge
         if NSRect(x: r.minX - edgeThickness / 2, y: r.minY, width: edgeThickness, height: r.height)
-            .contains(point)
-        {
+            .contains(point) {
             return .left
         }
         // Right edge
         if NSRect(x: r.maxX - edgeThickness / 2, y: r.minY, width: edgeThickness, height: r.height)
-            .contains(point)
-        {
+            .contains(point) {
             return .right
         }
 
@@ -201,8 +197,7 @@ extension OverlayView {
         // Control-click = right-click for color sampler (supports BetterTouchTool and other tools
         // that simulate right-click via control-click instead of rightMouseDown)
         if event.modifierFlags.contains(.control) && state == .selected
-            && currentTool == .colorSampler
-        {
+            && currentTool == .colorSampler {
             if let result = sampleCanvasColor(at: viewToCanvas(point)) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(result.hex, forType: .string)
@@ -215,8 +210,7 @@ extension OverlayView {
         // Control-click on line/arrow: add anchor point (same as right-click)
         if event.modifierFlags.contains(.control) && state == .selected {
             if let ann = selectedAnnotation,
-                ann.tool == .arrow || ann.tool == .line || ann.tool == .measure
-            {
+                ann.tool == .arrow || ann.tool == .line || ann.tool == .measure {
                 let canvasPoint = viewToCanvas(point)
                 if ann.hitTest(point: canvasPoint) {
                     addAnchorPoint(to: ann, at: canvasPoint)
@@ -235,8 +229,7 @@ extension OverlayView {
         if state == .selected
             && isDoubleClickToCopyEnabled
             && textEditor.isEditing
-            && handleDoubleClickToCopy(event: event, at: point)
-        {
+            && handleDoubleClickToCopy(event: event, at: point) {
             return
         }
 
@@ -307,8 +300,7 @@ extension OverlayView {
         // so the copied image looks like nothing was drawn during the double-click.
         if state == .selected
             && isDoubleClickToCopyEnabled
-            && handleDoubleClickToCopy(event: event, at: point)
-        {
+            && handleDoubleClickToCopy(event: event, at: point) {
             return
         }
 
@@ -669,8 +661,7 @@ extension OverlayView {
 
                 // Arrow/line/measure: .bottomLeft = startPoint, .topRight = endPoint, others = anchor points
                 if annotation.tool == .arrow || annotation.tool == .line
-                    || annotation.tool == .measure
-                {
+                    || annotation.tool == .measure {
                     let newPt = NSPoint(
                         x: annotationResizeOrigControlPoint.x + dx,
                         y: annotationResizeOrigControlPoint.y + dy)
@@ -1337,9 +1328,8 @@ extension OverlayView {
             let canvasPoint = viewToCanvas(point)
             // Check already-selected annotation first
             if let ann = selectedAnnotation,
-                (ann.tool == .arrow || ann.tool == .line || ann.tool == .measure),
-                ann.hitTest(point: canvasPoint)
-            {
+                ann.tool == .arrow || ann.tool == .line || ann.tool == .measure,
+                ann.hitTest(point: canvasPoint) {
                 addAnchorPoint(to: ann, at: canvasPoint)
                 cachedCompositedImage = nil
                 needsDisplay = true

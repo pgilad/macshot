@@ -224,8 +224,7 @@ final class ScreenshotHistoryTests {
         #expect(history.entries.count == 2)
         for entry in history.entries {
             let editable = try #require(history.loadEditableCapture(for: entry))
-            if editable.editState != nil { #expect(editable.annotations.isEmpty) }
-            else { #expect(editable.annotations.count == 2) }
+            if editable.editState != nil { #expect(editable.annotations.isEmpty) } else { #expect(editable.annotations.count == 2) }
             for suffix in ["_edit.json", "_annotations.json"] {
                 let url = history.sidecarURL(for: entry, suffix: suffix)
                 if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }

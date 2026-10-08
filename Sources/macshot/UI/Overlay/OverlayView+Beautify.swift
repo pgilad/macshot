@@ -322,8 +322,7 @@ extension OverlayView {
         beautifyToolbarAnimProgress = 0
         beautifyToolbarAnimTarget = beautifyEnabled
         beautifyToolbarAnimTimer?.invalidate()
-        beautifyToolbarAnimTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true)
-        { [weak self] timer in
+        beautifyToolbarAnimTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
             guard let self = self else {
                 timer.invalidate()
                 return

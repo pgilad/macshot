@@ -7,7 +7,7 @@ class ListPickerView: NSView {
     struct Item {
         let title: String
         let isSelected: Bool
-        var icon: NSImage? = nil
+        var icon: NSImage?
     }
 
     var items: [Item] = [] { didSet { rebuildRows() } }

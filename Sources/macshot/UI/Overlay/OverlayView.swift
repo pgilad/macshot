@@ -639,8 +639,8 @@ class OverlayView: NSView {
     var autoMeasureBitmapW: Int = 0
     var autoMeasureBitmapH: Int = 0
     // Snap/alignment guides
-    var snapGuideX: CGFloat? = nil  // vertical guide line X
-    var snapGuideY: CGFloat? = nil  // horizontal guide line Y
+    var snapGuideX: CGFloat?  // vertical guide line X
+    var snapGuideY: CGFloat?  // horizontal guide line Y
     let snapThreshold: CGFloat = 5
     var snapGuidesEnabled: Bool {
         Preferences.snapGuidesEnabled
@@ -652,14 +652,14 @@ class OverlayView: NSView {
         Preferences.showToolShortcutsInTooltips
     }
 
-    var cachedCompositedImage: NSImage? = nil {  // invalidated when annotations change
+    var cachedCompositedImage: NSImage? {  // invalidated when annotations change
         didSet { if !isDraggingAnnotation && !isResizingAnnotation && !isRotatingAnnotation { cachedAnnotationLayer = nil } }
     }
     /// Cached transparent image of committed annotations only (no screenshot).
     /// Drawn with applyCanvasTransform so zoom works correctly. Invalidated alongside cachedCompositedImage.
-    var cachedAnnotationLayer: NSImage? = nil
+    var cachedAnnotationLayer: NSImage?
     /// During drag/resize, this holds a cache of all annotations EXCEPT the ones being manipulated.
-    var cachedAnnotationLayerExcludingSelected: NSImage? = nil
+    var cachedAnnotationLayerExcludingSelected: NSImage?
     var cachedOpaqueRect: NSRect?  // cached opaque content bounds of screenshotImage
 
     // Crop tool state
@@ -688,7 +688,7 @@ class OverlayView: NSView {
     var multiSelectDeleteButtonRect: NSRect = .zero  // consolidated delete for multi-selection
 
     // Overlay error message
-    var overlayErrorMessage: String? = nil
+    var overlayErrorMessage: String?
 
     // Instant tooltip for hovered toolbar button
     var hoveredTooltip: String?
@@ -703,7 +703,7 @@ class OverlayView: NSView {
         return viewToCanvas(convert(windowPoint, from: nil))
     }
     var editorTooltipView: NSView?
-    private var overlayErrorTimer: Timer? = nil
+    private var overlayErrorTimer: Timer?
 
     var autoOCRMode: Bool = false  // set by "Capture OCR & QR" menu — triggers OCR immediately after selection
     var autoQuickSaveMode: Bool = false  // set by "Quick Capture" menu — quick-saves immediately after selection
@@ -898,15 +898,15 @@ class OverlayView: NSView {
     /// line feedback. nil when not snapping that axis.
     var boundarySnapGuideX: CGFloat?
     var boundarySnapGuideY: CGFloat?
-    var hoveredSnapRect: NSRect? = nil
-    var hoveredSnapWindowID: CGWindowID? = nil
+    var hoveredSnapRect: NSRect?
+    var hoveredSnapWindowID: CGWindowID?
     var windowSnapCooldown: Bool = true  // true until overlay has rendered
     /// True when the current selection was made via window snap (click without drag).
     /// Cleared when the user manually resizes the selection.
     var selectionIsWindowSnap: Bool = false
     /// Locked aspect ratio (width / height) for the selection, or nil for freeform.
     /// When set, drag-resize and the resolution box maintain this ratio.
-    var lockedAspect: CGFloat? = nil
+    var lockedAspect: CGFloat?
     /// When true, the locked aspect ratio persists across captures (and launches).
     /// Stored in UserDefaults so a new selection starts already constrained.
     var keepRatioForNextCaptures: Bool {
@@ -933,9 +933,9 @@ class OverlayView: NSView {
     static let preSelectionPresetAspectKey = "preSelectionResolutionPresetAspect"
     static let preSelectionPresetWidthKey = "preSelectionResolutionPresetWidth"
     static let preSelectionPresetHeightKey = "preSelectionResolutionPresetHeight"
-    var snappedWindowID: CGWindowID? = nil
+    var snappedWindowID: CGWindowID?
     /// Independently captured window image (with transparent corners) for beautify snap mode.
-    var snappedWindowImage: NSImage? = nil
+    var snappedWindowImage: NSImage?
     private var snapQueryInFlight: Bool = false
     private var pendingSnapQueryPoint: NSPoint?
     private var browserAccessibilityRetryWorkItems: [DispatchWorkItem] = []
@@ -1438,4 +1438,3 @@ extension OverlayView: AnnotationCanvas {
 // MARK: - TextEditingCanvas conformance
 
 extension OverlayView: TextEditingCanvas {}
-

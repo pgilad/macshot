@@ -441,8 +441,7 @@ extension OverlayView {
             frame.size = croppedPointSize
             enclosingScrollView?.magnification = 1.0
             // Update top bar size label
-            if let topBar = chromeParentView?.subviews.compactMap({ $0 as? EditorTopBarView }).first
-            {
+            if let topBar = chromeParentView?.subviews.compactMap({ $0 as? EditorTopBarView }).first {
                 topBar.updateSizeLabel(width: croppedCG.width, height: croppedCG.height)
                 topBar.updateZoom(1.0)
             }
@@ -605,8 +604,7 @@ extension OverlayView {
         // captured while a Retina display is also connected.
         let scale: CGFloat
         if let screenshot = captureSourceImage ?? screenshotImage,
-            let cg = screenshot.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        {
+            let cg = screenshot.cgImage(forProposedRect: nil, context: nil, hints: nil) {
             scale = CGFloat(cg.width) / screenshot.size.width
         } else {
             scale = window?.backingScaleFactor ?? 2.0

@@ -251,8 +251,7 @@ extension OverlayView {
             let cfg = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
             if let img = NSImage(
                 systemSymbolName: "arrow.triangle.2.circlepath",
-                accessibilityDescription: nil)?.withSymbolConfiguration(cfg)
-            {
+                accessibilityDescription: nil)?.withSymbolConfiguration(cfg) {
                 let tinted = NSImage(size: img.size, flipped: false) { rect in
                     img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
                     NSColor.white.setFill()
@@ -313,8 +312,7 @@ extension OverlayView {
             // White pencil icon
             let symbolConfig = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
             if let img = NSImage(systemSymbolName: "pencil", accessibilityDescription: nil)?
-                .withSymbolConfiguration(symbolConfig)
-            {
+                .withSymbolConfiguration(symbolConfig) {
                 let tinted = NSImage(size: img.size, flipped: false) { rect in
                     img.draw(in: rect)
                     NSColor.white.setFill()
@@ -426,7 +424,7 @@ extension OverlayView {
         // since boundingRect only considers startPoint/endPoint.
         let baseBBox: NSRect
         if let pts = annotation.points, !pts.isEmpty,
-           (annotation.tool == .pencil || annotation.tool == .marker) {
+           annotation.tool == .pencil || annotation.tool == .marker {
             var minX = CGFloat.greatestFiniteMagnitude, minY = CGFloat.greatestFiniteMagnitude
             var maxX = -CGFloat.greatestFiniteMagnitude, maxY = -CGFloat.greatestFiniteMagnitude
             for p in pts {

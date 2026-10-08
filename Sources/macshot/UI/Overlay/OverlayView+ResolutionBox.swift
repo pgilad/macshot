@@ -763,4 +763,3 @@ final class PreSelectionPresetButton: NSButton {
         super.draw(dirtyRect)
     }
 }
-

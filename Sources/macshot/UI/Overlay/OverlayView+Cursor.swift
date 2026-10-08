@@ -34,8 +34,7 @@ extension OverlayView {
 
         // Stamp cursor preview — track in view coords (same as annotations)
         if currentTool == .stamp && currentStampImage != nil && state == .selected
-            && !showBeautifyInOptionsRow
-        {
+            && !showBeautifyInOptionsRow {
             let canvasStampPt = viewToCanvas(point)
             let hoveringStamp = annotations.reversed().contains {
                 $0.tool == .stamp && $0.hitTest(point: canvasStampPt)
@@ -79,8 +78,7 @@ extension OverlayView {
         // renders without competing with CGWindowListCopyWindowInfo for the window server
         if windowSnapCooldown { return }
         if state == .idle && snapMode != .off
-            && !(remoteSelectionRect.width >= 1 && remoteSelectionRect.height >= 1)
-        {
+            && !(remoteSelectionRect.width >= 1 && remoteSelectionRect.height >= 1) {
             guard
                 let screenPoint = window.map({
                     NSPoint(x: $0.frame.origin.x + point.x, y: $0.frame.origin.y + point.y)
@@ -163,8 +161,7 @@ extension OverlayView {
         // Top-left <-> Bottom-right (backslash direction)
         if let cursor = NSCursor.perform(
             NSSelectorFromString("_windowResizeNorthWestSouthEastCursor"))?.takeUnretainedValue()
-            as? NSCursor
-        {
+            as? NSCursor {
             return cursor
         }
         return .crosshair
@@ -174,8 +171,7 @@ extension OverlayView {
         // Top-right <-> Bottom-left (slash direction)
         if let cursor = NSCursor.perform(
             NSSelectorFromString("_windowResizeNorthEastSouthWestCursor"))?.takeUnretainedValue()
-            as? NSCursor
-        {
+            as? NSCursor {
             return cursor
         }
         return .crosshair
@@ -448,29 +444,25 @@ extension OverlayView {
         let edgeT: CGFloat = 6
         // Corner handles
         if NSRect(x: r.minX - hs / 2, y: r.maxY - hs / 2, width: hs, height: hs).contains(point)
-            || NSRect(x: r.maxX - hs / 2, y: r.minY - hs / 2, width: hs, height: hs).contains(point)
-        {
+            || NSRect(x: r.maxX - hs / 2, y: r.minY - hs / 2, width: hs, height: hs).contains(point) {
             return Self.nwseCursor
         }
         if NSRect(x: r.maxX - hs / 2, y: r.maxY - hs / 2, width: hs, height: hs).contains(point)
-            || NSRect(x: r.minX - hs / 2, y: r.minY - hs / 2, width: hs, height: hs).contains(point)
-        {
+            || NSRect(x: r.minX - hs / 2, y: r.minY - hs / 2, width: hs, height: hs).contains(point) {
             return Self.neswCursor
         }
         // Edge handles
         if NSRect(x: r.minX + hs / 2, y: r.maxY - edgeT / 2, width: r.width - hs, height: edgeT)
             .contains(point)
             || NSRect(x: r.minX + hs / 2, y: r.minY - edgeT / 2, width: r.width - hs, height: edgeT)
-                .contains(point)
-        {
+                .contains(point) {
             return .resizeUpDown
         }
         if NSRect(x: r.minX - edgeT / 2, y: r.minY + hs / 2, width: edgeT, height: r.height - hs)
             .contains(point)
             || NSRect(
                 x: r.maxX - edgeT / 2, y: r.minY + hs / 2, width: edgeT, height: r.height - hs
-            ).contains(point)
-        {
+            ).contains(point) {
             return .resizeLeftRight
         }
         return nil

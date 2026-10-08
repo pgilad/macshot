@@ -194,8 +194,7 @@ enum AutoRedactor {
                     endPoint: NSPoint(x: viewX + viewW, y: viewY + viewH),
                     color: color, strokeWidth: 0)
                 ann.groupID = groupID
-                if redactTool == .rectangle { ann.rectFillStyle = .fill }
-                else if redactTool == .blur || redactTool == .pixelate {
+                if redactTool == .rectangle { ann.rectFillStyle = .fill } else if redactTool == .blur || redactTool == .pixelate {
                     ann.sourceImage = sourceImage
                     ann.sourceImageBounds = sourceImageBounds
                 }

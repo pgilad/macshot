@@ -113,7 +113,7 @@ extension OverlayView {
                 // being drawn, so re-iterating them every frame wastes CPU and causes
                 // event coalescing (fewer mouse events → over-smoothed strokes).
                 if !annotations.isEmpty && !isEditorMode {
-                    if (isDraggingAnnotation || isResizingAnnotation || isRotatingAnnotation),
+                    if isDraggingAnnotation || isResizingAnnotation || isRotatingAnnotation,
                        let staticLayer = cachedAnnotationLayerExcludingSelected {
                         // During drag/resize: draw cached static annotations + selected ones live
                         context.saveGraphicsState()
@@ -222,8 +222,7 @@ extension OverlayView {
 
             // Live loupe preview when loupe tool is active
             if currentTool == .loupe && selectionRect.contains(loupeCursorPoint)
-                && loupeCursorPoint != .zero
-            {
+                && loupeCursorPoint != .zero {
                 drawLoupePreview(at: loupeCursorPoint)
             }
             if currentTool == .colorSampler && colorSamplerPoint != .zero {
@@ -294,8 +293,7 @@ extension OverlayView {
 
                 // Re-draw loupe preview on top of beautify so it stays visible
                 if currentTool == .loupe && selectionRect.contains(loupeCursorPoint)
-                    && loupeCursorPoint != .zero
-                {
+                    && loupeCursorPoint != .zero {
                     context.saveGraphicsState()
                     applyCanvasTransform(to: context)
                     drawLoupePreview(at: loupeCursorPoint)
@@ -319,8 +317,7 @@ extension OverlayView {
                 }
 
                 // Re-draw drawing cursor dot preview on top of beautify
-                if (currentTool == .pencil || currentTool == .marker) && drawingCursorPoint != .zero && currentAnnotation == nil && !isDraggingAnnotation && !isResizingAnnotation && !isRotatingAnnotation
-                {
+                if (currentTool == .pencil || currentTool == .marker) && drawingCursorPoint != .zero && currentAnnotation == nil && !isDraggingAnnotation && !isResizingAnnotation && !isRotatingAnnotation {
                     context.saveGraphicsState()
                     applyCanvasTransform(to: context)
                     drawDrawingCursorPreview(at: drawingCursorPoint)
@@ -393,8 +390,7 @@ extension OverlayView {
             // Selection border — hidden in editor mode and when beautify/effects preview is active,
             // red during scroll capture, purple otherwise
             if shouldDrawSelectionBorder()
-                && !showBeautifyPreview && !showEffectsPreview
-            {
+                && !showBeautifyPreview && !showEffectsPreview {
                 let borderPath = NSBezierPath(rect: selectionRect)
                 borderPath.lineWidth = isScrollCapturing ? 2.5 : 2.0
                 (isScrollCapturing ? NSColor.systemRed : ToolbarLayout.accentColor).setStroke()
@@ -444,8 +440,7 @@ extension OverlayView {
 
                 // Draw text content when scroll view is hidden (color picker open)
                 if sv.isHidden, let tv = textEditView, let attrStr = tv.textStorage,
-                    attrStr.length > 0
-                {
+                    attrStr.length > 0 {
                     let inset = tv.textContainerInset
                     let textRect = NSRect(
                         x: sv.frame.minX + inset.width, y: sv.frame.minY + inset.height,
@@ -499,8 +494,7 @@ extension OverlayView {
 
             // Stamp cursor preview
             if let previewPt = stampPreviewPoint, let img = currentStampImage,
-                currentTool == .stamp
-            {
+                currentTool == .stamp {
                 let stampSize: CGFloat = currentStampSize
                 let aspect = img.size.width / max(img.size.height, 1)
                 let w = aspect >= 1 ? stampSize : stampSize * aspect

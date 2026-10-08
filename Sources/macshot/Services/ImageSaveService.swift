@@ -222,8 +222,7 @@ enum ImageSaveService {
     }
 
     private static func prepare(_ image: NSImage, completion: Completion?) -> ImageEncoder.PreparedImage? {
-        do { return try ImageEncoder.PreparedImage(image) }
-        catch {
+        do { return try ImageEncoder.PreparedImage(image) } catch {
             reportFailure("Could not encode the screenshot.")
             completionOnMain(completion, false)
             return nil

@@ -47,7 +47,7 @@ final class ScrollCaptureController {
 
     // MARK: - Callbacks
 
-    var onStripAdded:  ((Int) -> Void)?
+    var onStripAdded: ((Int) -> Void)?
     var onSessionDone: ((NSImage?) -> Void)?
     var onAutoScrollStarted: (() -> Void)?
     var onPreviewUpdated: ((NSImage) -> Void)?
@@ -101,7 +101,7 @@ final class ScrollCaptureController {
 
     // Scroll monitors (for manual scroll)
     private var scrollMonitorGlobal: Any?
-    private var scrollMonitorLocal:  Any?
+    private var scrollMonitorLocal: Any?
 
     // Auto-scroll
     private(set) var autoScrollActive: Bool = false
@@ -217,7 +217,7 @@ final class ScrollCaptureController {
         settlementTimer?.invalidate(); settlementTimer = nil
         pendingCaptureTask?.cancel(); pendingCaptureTask = nil
         if let m = scrollMonitorGlobal { NSEvent.removeMonitor(m); scrollMonitorGlobal = nil }
-        if let m = scrollMonitorLocal  { NSEvent.removeMonitor(m); scrollMonitorLocal  = nil }
+        if let m = scrollMonitorLocal { NSEvent.removeMonitor(m); scrollMonitorLocal  = nil }
         autoScrollActive = false
 
         // Deliver final image
@@ -244,7 +244,7 @@ final class ScrollCaptureController {
         settlementTimer?.invalidate(); settlementTimer = nil
         pendingCaptureTask?.cancel(); pendingCaptureTask = nil
         if let m = scrollMonitorGlobal { NSEvent.removeMonitor(m); scrollMonitorGlobal = nil }
-        if let m = scrollMonitorLocal  { NSEvent.removeMonitor(m); scrollMonitorLocal  = nil }
+        if let m = scrollMonitorLocal { NSEvent.removeMonitor(m); scrollMonitorLocal  = nil }
         autoScrollActive = false
     }
 
@@ -357,8 +357,8 @@ final class ScrollCaptureController {
     /// Captures a settled frame: grabs frames until two consecutive TIFF representations
     /// match byte-for-byte. Used for initial capture and manual scroll mode.
     private func captureSettledFrame() async -> CGImage? {
-        var previousTIFF: Data? = nil
-        var previousCG: CGImage? = nil
+        var previousTIFF: Data?
+        var previousCG: CGImage?
         var waitNs: UInt64 = 10_000_000  // 10ms
 
         for _ in 0..<30 {
@@ -486,8 +486,8 @@ final class ScrollCaptureController {
         try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
 
         // Wait for settlement: poll frames until two consecutive TIFFs match
-        var previousTIFF: Data? = nil
-        var settledCG: CGImage? = nil
+        var previousTIFF: Data?
+        var settledCG: CGImage?
         var waitNs: UInt64 = 12_000_000
 
         for _ in 0..<30 {
@@ -608,7 +608,7 @@ final class ScrollCaptureController {
             startManualScrollMonitors()
         } else {
             if let m = scrollMonitorGlobal { NSEvent.removeMonitor(m); scrollMonitorGlobal = nil }
-            if let m = scrollMonitorLocal  { NSEvent.removeMonitor(m); scrollMonitorLocal  = nil }
+            if let m = scrollMonitorLocal { NSEvent.removeMonitor(m); scrollMonitorLocal  = nil }
             settlementTimer?.invalidate(); settlementTimer = nil
             startAutoScroll()
         }
@@ -708,7 +708,7 @@ final class ScrollCaptureController {
         isCapturing = true
         defer { isCapturing = false }
 
-        let _ = await captureAndCompare()
+        _ = await captureAndCompare()
     }
 
     // MARK: - Vision shift detection

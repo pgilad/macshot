@@ -1,0 +1,27 @@
+# Run with `make lint`. CI runs it with --strict, so a warning fails the build.
+# The rules come from maccy. .swiftlint-baseline.json lists the findings that the code
+# had when SwiftLint was added (long lines and the size limits); only new ones fail.
+included:
+  - Package.swift
+  - Sources
+  - Tests
+disabled_rules:
+  - todo
+  # Multi-line collection literals end with a comma, so a new element is a one-line diff.
+  - trailing_comma
+line_length:
+  warning: 140
+  ignores_comments: true
+identifier_name:
+  # Geometry code names points, sizes and offsets x, y, w, h, dx, dy, p0 and so on.
+  min_length: 1
+large_tuple:
+  warning: 3
+cyclomatic_complexity:
+  warning: 15
+function_body_length:
+  warning: 100
+file_length:
+  warning: 1000
+type_body_length:
+  warning: 700

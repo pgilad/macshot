@@ -104,8 +104,7 @@ extension OverlayView {
     override func keyDown(with event: NSEvent) {
         // Character-based so the shortcut follows QWERTZ/AZERTY/Dvorak.
         if state == .idle && snapMode != .off
-            && KeyboardShortcutMatcher.matches(event, character: "f", modifiers: [])
-        {
+            && KeyboardShortcutMatcher.matches(event, character: "f", modifiers: []) {
             selectionRect = bounds
             state = .selected
             hoveredSnapRect = nil
@@ -135,8 +134,7 @@ extension OverlayView {
         if event.keyCode == 49 && textEditView == nil
             && !event.modifierFlags.contains(.command)
             && !event.modifierFlags.contains(.option)
-            && !event.modifierFlags.contains(.control)
-        {
+            && !event.modifierFlags.contains(.control) {
             // Swallow all repeats while repositioning to prevent system beep
             if spaceRepositioning { return }
 
@@ -149,8 +147,7 @@ extension OverlayView {
                 let isDraggingNewSelection = state == .selecting
 
                 if isDrawingAnnotation || isResizingExistingAnnotation
-                    || isResizingCaptureSelection || isDraggingNewSelection
-                {
+                    || isResizingCaptureSelection || isDraggingNewSelection {
                     spaceRepositioning = true
                     if isDrawingAnnotation {
                         spaceRepositionLast = lastDragPoint ?? currentCanvasMousePoint ?? .zero
@@ -249,8 +246,7 @@ extension OverlayView {
         default:
             // Auto-measure: hold "1" = vertical preview, hold "2" = horizontal preview
             if state == .selected && currentTool == .measure && textEditView == nil
-                && !event.modifierFlags.contains(.command)
-            {
+                && !event.modifierFlags.contains(.command) {
                 if let char = event.charactersIgnoringModifiers {
                     if char == "1" || char == "2" {
                         autoMeasureVertical = (char == "1")
@@ -264,8 +260,7 @@ extension OverlayView {
             }
             // Single-key tool shortcuts (only when selected, not editing text, no modifiers)
             if state == .selected && textEditView == nil && !event.modifierFlags.contains(.command)
-                && !event.modifierFlags.contains(.option) && !event.modifierFlags.contains(.control)
-            {
+                && !event.modifierFlags.contains(.option) && !event.modifierFlags.contains(.control) {
                 let action = KeyboardShortcutMatcher.toolCharacters(for: event)
                     .lazy
                     .compactMap { ToolShortcutManager.lookupAction(for: $0) }
@@ -356,8 +351,7 @@ extension OverlayView {
         if event.keyCode == 49 && textEditView == nil
             && !event.modifierFlags.contains(.command)
             && !event.modifierFlags.contains(.option)
-            && !event.modifierFlags.contains(.control)
-        {
+            && !event.modifierFlags.contains(.control) {
             return
         }
         // Clear auto-measure preview on key release (click to commit instead)

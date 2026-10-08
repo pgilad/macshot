@@ -25,18 +25,17 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
     private static var tabDefs: [TabDef] {
         [
-            TabDef(id: "general",   label: "General",   symbolName: "gearshape"),
-            TabDef(id: "capture",   label: "Capture",   symbolName: "camera.viewfinder"),
+            TabDef(id: "general", label: "General", symbolName: "gearshape"),
+            TabDef(id: "capture", label: "Capture", symbolName: "camera.viewfinder"),
             TabDef(id: "shortcuts", label: "Shortcuts", symbolName: "keyboard"),
-            TabDef(id: "tools",     label: "Tools",     symbolName: "paintbrush"),
-            TabDef(id: "about",     label: "About",     symbolName: "info.circle"),
+            TabDef(id: "tools", label: "Tools", symbolName: "paintbrush"),
+            TabDef(id: "about", label: "About", symbolName: "info.circle"),
         ]
     }
 
     private var tabContentContainer: NSView!
     private var tabContentViews: [String: NSView] = [:]
     private var currentTabID: String = "general"
-
 
     private var hotkeyFields: [HotkeyManager.HotkeySlot: NSTextField] = [:]
     private var hotkeyButtons: [HotkeyManager.HotkeySlot: NSButton] = [:]
@@ -318,7 +317,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         }
 
         override func mouseEntered(with event: NSEvent) { onHover?(self, true) }
-        override func mouseExited(with event: NSEvent)  { onHover?(self, false) }
+        override func mouseExited(with event: NSEvent) { onHover?(self, false) }
     }
 
     /// Creates a scrollable vertical stack matching the layout used by all settings tabs.
@@ -354,7 +353,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     private func makeGeneralTabView() -> NSView {
         let (scroll, stack) = makeSettingsScrollStack()
-
 
         // ── Application ──────────────────────────────────────
         stack.addArrangedSubview(sectionHeader("Application"))
@@ -478,8 +476,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         bgColorWell.action = #selector(bgColorChanged(_:))
 
         let accentCol = makeColorColumn(well: accentColorWell, caption: "Accent")
-        let iconCol   = makeColorColumn(well: iconColorWell,   caption: "Icon")
-        let bgCol     = makeColorColumn(well: bgColorWell,     caption: "Background")
+        let iconCol   = makeColorColumn(well: iconColorWell, caption: "Icon")
+        let bgCol     = makeColorColumn(well: bgColorWell, caption: "Background")
 
         let colorsRow = NSStackView(views: [accentCol, iconCol, bgCol])
         colorsRow.orientation = .horizontal
@@ -650,8 +648,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
-        if let window = window { alert.beginSheetModal(for: window, completionHandler: nil) }
-        else { alert.runModal() }
+        if let window = window { alert.beginSheetModal(for: window, completionHandler: nil) } else { alert.runModal() }
     }
 
     private func presentBackupInfo(title: String, message: String) {
@@ -659,8 +656,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         alert.messageText = title
         alert.informativeText = message
         alert.addButton(withTitle: "OK")
-        if let window = window { alert.beginSheetModal(for: window, completionHandler: nil) }
-        else { alert.runModal() }
+        if let window = window { alert.beginSheetModal(for: window, completionHandler: nil) } else { alert.runModal() }
     }
 
     // MARK: - Capture Tab
@@ -1368,8 +1364,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
             let modifiers = event.modifierFlags
             var carbonMods: UInt32 = 0
             if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
-            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
-            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.shift) { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option) { carbonMods |= UInt32(optionKey) }
             if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
             let keyCode = UInt32(event.keyCode)
             guard HotkeyManager.isAllowedGlobalChord(keyCode: keyCode, modifiers: carbonMods) else {
@@ -1811,7 +1807,6 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         }
     }
 
-
     // MARK: - Layout helpers
 
     private func sectionHeader(_ text: String) -> NSTextField {
@@ -2237,8 +2232,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
                                           .ellipse, .marker, .text, .number, .pixelate, .highlight, .loupe, .stamp, .measure]
         let defaultValues: [Int] = key == "enabledTools" ? allTools.map { $0.rawValue } : ToolbarActionPreferences.defaultEnabledRawValues
         var enabled = UserDefaults.standard.array(forKey: key) as? [Int] ?? defaultValues
-        if sender.state == .on { if !enabled.contains(sender.tag) { enabled.append(sender.tag) } }
-        else { enabled.removeAll { $0 == sender.tag } }
+        if sender.state == .on { if !enabled.contains(sender.tag) { enabled.append(sender.tag) } } else { enabled.removeAll { $0 == sender.tag } }
         UserDefaults.standard.set(enabled, forKey: key)
     }
     @objc private func accentColorChanged(_ sender: NSColorWell) {
@@ -2267,28 +2261,28 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         static let all: [ThemePreset] = [
             ThemePreset(name: "Default",
                         accent: ToolbarLayout.defaultAccentColor,
-                        icon:   ToolbarLayout.defaultIconColor,
-                        bg:     ToolbarLayout.defaultBgColor),
+                        icon: ToolbarLayout.defaultIconColor,
+                        bg: ToolbarLayout.defaultBgColor),
             ThemePreset(name: "Classic",
                         accent: NSColor(calibratedRed: 0.00, green: 0.48, blue: 1.00, alpha: 1.0),
-                        icon:   .white,
-                        bg:     NSColor(white: 0.12, alpha: 1.0)),
+                        icon: .white,
+                        bg: NSColor(white: 0.12, alpha: 1.0)),
             ThemePreset(name: "Ocean",
                         accent: NSColor(calibratedRed: 0.20, green: 0.70, blue: 0.75, alpha: 1.0),
-                        icon:   .white,
-                        bg:     NSColor(calibratedRed: 0.08, green: 0.12, blue: 0.18, alpha: 1.0)),
+                        icon: .white,
+                        bg: NSColor(calibratedRed: 0.08, green: 0.12, blue: 0.18, alpha: 1.0)),
             ThemePreset(name: "Sunset",
                         accent: NSColor(calibratedRed: 1.00, green: 0.55, blue: 0.20, alpha: 1.0),
-                        icon:   .white,
-                        bg:     NSColor(calibratedRed: 0.15, green: 0.10, blue: 0.12, alpha: 1.0)),
+                        icon: .white,
+                        bg: NSColor(calibratedRed: 0.15, green: 0.10, blue: 0.12, alpha: 1.0)),
             ThemePreset(name: "Forest",
                         accent: NSColor(calibratedRed: 0.30, green: 0.75, blue: 0.45, alpha: 1.0),
-                        icon:   .white,
-                        bg:     NSColor(calibratedRed: 0.08, green: 0.14, blue: 0.10, alpha: 1.0)),
+                        icon: .white,
+                        bg: NSColor(calibratedRed: 0.08, green: 0.14, blue: 0.10, alpha: 1.0)),
             ThemePreset(name: "Mono",
                         accent: NSColor(white: 0.30, alpha: 1.0),
-                        icon:   .white,
-                        bg:     NSColor(white: 0.10, alpha: 1.0)),
+                        icon: .white,
+                        bg: NSColor(white: 0.10, alpha: 1.0)),
         ]
     }
 
@@ -2445,13 +2439,13 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         if let existing = urlSchemeInfoPopover, existing.isShown { return }
 
         let commands: [(String, String)] = [
-            ("macshot://capture",             "Start area capture"),
-            ("macshot://capture-fullscreen",  "Capture the full screen"),
-            ("macshot://capture-last",        "Re-capture the last selected area"),
-            ("macshot://quick-capture",       "Quick capture (uses your Enter action)"),
-            ("macshot://ocr",                 "Capture area and read text/QR codes"),
-            ("macshot://scroll-capture",      "Start scroll capture"),
-            ("macshot://settings",            "Open this settings window"),
+            ("macshot://capture", "Start area capture"),
+            ("macshot://capture-fullscreen", "Capture the full screen"),
+            ("macshot://capture-last", "Re-capture the last selected area"),
+            ("macshot://quick-capture", "Quick capture (uses your Enter action)"),
+            ("macshot://ocr", "Capture area and read text/QR codes"),
+            ("macshot://scroll-capture", "Start scroll capture"),
+            ("macshot://settings", "Open this settings window"),
         ]
 
         let title = NSTextField(labelWithString: "Supported URL Scheme Commands")
@@ -2630,17 +2624,17 @@ extension SettingsWindowController {
         if let existing = filenameTemplateInfoPopover, existing.isShown { return }
 
         let tokens: [(String, String)] = [
-            ("{date}",      "2026-04-17"),
-            ("{time}",      "14-22-05"),
+            ("{date}", "2026-04-17"),
+            ("{time}", "14-22-05"),
             ("{timestamp}", "2026-04-17_14-22-05"),
-            ("{unix}",      "1745592125"),
-            ("{window}",    "Captured window title (screenshots only, blank otherwise)"),
-            ("{index}",     "Counter for multi-screen captures"),
-            ("{random}",    "8-character random string (e.g. k3j7x9q2)"),
-            ("{app}",       "Safari"),
+            ("{unix}", "1745592125"),
+            ("{window}", "Captured window title (screenshots only, blank otherwise)"),
+            ("{index}", "Counter for multi-screen captures"),
+            ("{random}", "8-character random string (e.g. k3j7x9q2)"),
+            ("{app}", "Safari"),
             ("{yyyy}/{MM}/{dd}", "2026/04/17"),
-            ("{HH}.{mm}.{ss}",   "14.22.05"),
-            ("{ms}",        "042"),
+            ("{HH}.{mm}.{ss}", "14.22.05"),
+            ("{ms}", "042"),
         ]
 
         let title = NSTextField(labelWithString: "Filename Template Tokens")

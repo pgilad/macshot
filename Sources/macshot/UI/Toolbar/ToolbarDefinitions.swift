@@ -40,8 +40,8 @@ struct ToolbarButton {
     let tooltip: String
     var isSelected: Bool = false
     var tintColor: NSColor = ToolbarLayout.iconColor
-    var selectedTintColor: NSColor? = nil  // optional status tint that remains visible while selected
-    var bgColor: NSColor? = nil  // for color swatches
+    var selectedTintColor: NSColor?  // optional status tint that remains visible while selected
+    var bgColor: NSColor?  // for color swatches
     var hasContextMenu: Bool = false  // draw small corner triangle to indicate right-click options
 }
 

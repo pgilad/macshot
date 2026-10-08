@@ -14,16 +14,16 @@ class ColorWheelRenderer {
     /// Rainbow hue spectrum + neutrals, all on one ring.
     /// 12 hues evenly spaced + 4 neutrals = 16 swatches around the circle.
     let colors: [NSColor] = [
-        NSColor(calibratedHue: 0.0,   saturation: 0.85, brightness: 1.0, alpha: 1),  // red
-        NSColor(calibratedHue: 1/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // orange
-        NSColor(calibratedHue: 2/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // yellow
-        NSColor(calibratedHue: 3/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // lime
-        NSColor(calibratedHue: 4/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // green
-        NSColor(calibratedHue: 5/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // teal
-        NSColor(calibratedHue: 6/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // cyan
-        NSColor(calibratedHue: 7/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // azure
-        NSColor(calibratedHue: 8/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // blue
-        NSColor(calibratedHue: 9/12,  saturation: 0.85, brightness: 1.0, alpha: 1),  // purple
+        NSColor(calibratedHue: 0.0, saturation: 0.85, brightness: 1.0, alpha: 1),  // red
+        NSColor(calibratedHue: 1/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // orange
+        NSColor(calibratedHue: 2/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // yellow
+        NSColor(calibratedHue: 3/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // lime
+        NSColor(calibratedHue: 4/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // green
+        NSColor(calibratedHue: 5/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // teal
+        NSColor(calibratedHue: 6/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // cyan
+        NSColor(calibratedHue: 7/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // azure
+        NSColor(calibratedHue: 8/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // blue
+        NSColor(calibratedHue: 9/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // purple
         NSColor(calibratedHue: 10/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // magenta
         NSColor(calibratedHue: 11/12, saturation: 0.85, brightness: 1.0, alpha: 1),  // pink
         .white,

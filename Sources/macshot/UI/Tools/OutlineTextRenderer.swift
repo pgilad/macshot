@@ -46,8 +46,7 @@ enum OutlineTextRenderer {
         s.removeAttribute(.strokeWidth, range: r)
         if let color {
             s.addAttribute(.macshotOutlineColor, value: color, range: r)
-            if let width { s.addAttribute(.macshotOutlineWidth, value: width, range: r) }
-            else { s.removeAttribute(.macshotOutlineWidth, range: r) }
+            if let width { s.addAttribute(.macshotOutlineWidth, value: width, range: r) } else { s.removeAttribute(.macshotOutlineWidth, range: r) }
         } else {
             s.removeAttribute(.macshotOutlineColor, range: r)
             s.removeAttribute(.macshotOutlineWidth, range: r)

@@ -6,8 +6,7 @@ extension OverlayView {
     // MARK: - Snap/Alignment Guides
 
     /// Collect all snap target X and Y values from the selection rect and existing annotations.
-    private func collectSnapTargets(excluding: Annotation? = nil) -> (xs: [CGFloat], ys: [CGFloat])
-    {
+    private func collectSnapTargets(excluding: Annotation? = nil) -> (xs: [CGFloat], ys: [CGFloat]) {
         var xs: [CGFloat] = []
         var ys: [CGFloat] = []
 

@@ -1152,7 +1152,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-
     @objc private func handleShowAndOpenPrefs() {
         if Preferences.hideMenuBarIcon {
             Preferences.hideMenuBarIcon = false
@@ -1542,7 +1541,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             copyPathToClipboard: copyPathToClipboard)
     }
 
-
     @objc private func pinFromHistory(_ notification: Notification) {
         guard let image = notification.object as? NSImage else { return }
         showPin(image: image)
@@ -1568,7 +1566,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         pin.show()
         pinControllers.append(pin)
     }
-
 
     // MARK: - Open Image
 

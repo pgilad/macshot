@@ -253,7 +253,6 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
         )
     }
 
-
     func runOCR(index: Int) {
         let entries = ScreenshotHistory.shared.entries
         guard index >= 0, index < entries.count else { return }
@@ -342,7 +341,6 @@ final class HistoryOverlayController: NSObject, QLPreviewPanelDataSource, QLPrev
         let pinItem = ImageContextMenu.item(title: "Pin to Screen", symbolName: "pin.fill", action: #selector(contextPin(_:)), target: self)
         pinItem.tag = globalIndex
         menu.addItem(pinItem)
-
 
         let qlItem = ImageContextMenu.item(title: "Quick Look", symbolName: "eye", action: #selector(contextQuickLook(_:)), target: self, keyEquivalent: " ")
         qlItem.keyEquivalentModifierMask = []

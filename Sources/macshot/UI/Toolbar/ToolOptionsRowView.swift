@@ -179,8 +179,6 @@ class ToolOptionsRowView: NSView {
             curX = addCornerRadiusSlider(at: curX, ov: ov)
         }
 
-
-
         // ── Pencil smooth mode selector ──
         if tool == .pencil {
             curX = addSeparator(at: curX)
@@ -789,8 +787,7 @@ class ToolOptionsRowView: NSView {
             if let grad = NSGradient(
                 colors: style.stops.map { $0.0 },
                 atLocations: style.stops.map { $0.1 },
-                colorSpace: .deviceRGB)
-            {
+                colorSpace: .deviceRGB) {
                 grad.draw(in: path, angle: style.angle - 90)
             }
             ToolbarLayout.iconColor.withAlphaComponent(0.3).setStroke()
@@ -1673,8 +1670,6 @@ class ToolOptionsRowView: NSView {
         }
         ov.needsDisplay = true
     }
-
-
 
     @objc private func boldToggled() { overlayView?.textEditor.toggleBold(); overlayView.map { $0.applyTextFormattingToSelectedAnnotations(); $0.needsDisplay = true; rebuild(for: $0.currentTool) } }
     @objc private func italicToggled() { overlayView?.textEditor.toggleItalic(); overlayView.map { $0.applyTextFormattingToSelectedAnnotations(); $0.needsDisplay = true; rebuild(for: $0.currentTool) } }

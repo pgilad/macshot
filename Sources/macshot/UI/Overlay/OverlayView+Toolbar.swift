@@ -1079,4 +1079,3 @@ private class TooltipBackgroundView: NSView {
         (text as NSString).draw(at: NSPoint(x: pad, y: pad / 2), withAttributes: attrs)
     }
 }
-

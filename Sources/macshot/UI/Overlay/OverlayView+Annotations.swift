@@ -276,8 +276,7 @@ extension OverlayView {
         }
         // Check rotation handle
         if annotationRotateHandleRect != .zero
-            && annotationRotateHandleRect.insetBy(dx: -6, dy: -6).contains(point)
-        {
+            && annotationRotateHandleRect.insetBy(dx: -6, dy: -6).contains(point) {
             isRotatingAnnotation = true
             // Snapshot for undo + change detection (rotate records an edit).
             preMoveSnapshots = [(selected, selected.clone())]
