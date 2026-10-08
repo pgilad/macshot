@@ -12,7 +12,7 @@ struct HistoryRecord: Codable, Sendable {
     let revision: String?
 
     nonisolated init(id: String, fileExtension: String, timestamp: Date, pixelWidth: Int, pixelHeight: Int,
-                    hasAnnotations: Bool?, lastEditedAt: Date?, revision: String? = nil) {
+                     hasAnnotations: Bool?, lastEditedAt: Date?, revision: String? = nil) {
         self.id = id; self.fileExtension = fileExtension; self.timestamp = timestamp
         self.pixelWidth = pixelWidth; self.pixelHeight = pixelHeight
         self.hasAnnotations = hasAnnotations; self.lastEditedAt = lastEditedAt; self.revision = revision

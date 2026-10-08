@@ -449,10 +449,8 @@ class ToolOptionsRowView: NSView {
         let isShapeTool = [AnnotationTool.rectangle, .ellipse].contains(editingAnnotation?.tool ?? ov.currentTool)
         let hasOutline = editingAnnotation?.outlineColor != nil || (isShapeTool && UserDefaults.standard.bool(forKey: "annotationOutlineEnabled"))
         if isShapeTool && hasOutline {
-            for (i, style) in LineStyle.allCases.enumerated() {
-                if style != .solid {
-                    seg.setEnabled(false, forSegment: i)
-                }
+            for (i, style) in LineStyle.allCases.enumerated() where style != .solid {
+                seg.setEnabled(false, forSegment: i)
             }
             // Force solid if currently dashed/dotted
             if currentStyle != .solid {
@@ -542,8 +540,8 @@ class ToolOptionsRowView: NSView {
     /// Add a uniform redact action button using NSSegmentedControl for consistent sizing.
     /// If `dropdownAction` is provided, adds a second narrow segment with a ▾ arrow.
     private func addRedactButton(at x: CGFloat, title: String, action: Selector,
-                                  font: NSFont, height: CGFloat, y: CGFloat,
-                                  dropdownAction: Selector? = nil) -> CGFloat {
+                                 font: NSFont, height: CGFloat, y: CGFloat,
+                                 dropdownAction: Selector? = nil) -> CGFloat {
         var curX = x
         let seg = NSSegmentedControl()
         seg.trackingMode = .momentary

@@ -609,7 +609,7 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
         // Find first/last visible filtered index.
         var firstVisible = -1
         var lastVisible = -1
-        for (fi, _) in filteredIndices.enumerated() {
+        for fi in filteredIndices.indices {
             guard fi < cardRects.count else { break }
             var rect = cardRects[fi]
             rect.origin.x -= scrollOffset
@@ -784,8 +784,8 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
             width: trashSize, height: trashSize)
         trashButtonRect = trashRect
         if let trashIcon = NSImage(systemSymbolName: "trash", accessibilityDescription: "Clear History")?
-            .withSymbolConfiguration(.init(pointSize: 12, weight: .medium)) {
-            let tinted = trashIcon.copy() as! NSImage
+            .withSymbolConfiguration(.init(pointSize: 12, weight: .medium)),
+           let tinted = trashIcon.copy() as? NSImage {
             tinted.isTemplate = false
             tinted.lockFocus()
             NSColor.white.withAlphaComponent(0.45).set()
@@ -1032,17 +1032,15 @@ private final class HistoryPanelView: NSView, NSDraggingSource {
         isDragging = false
 
         // Filter tabs — immediate action, no drag
-        for (i, tabRect) in filterTabRects.enumerated() {
-            if tabRect.contains(point) {
-                let filters = HistoryFilter.allCases
-                if i < filters.count {
-                    activeFilter = filters[i]
-                    hoveredIndex = -1
-                    applyFilter()
-                }
-                mouseDownCardIndex = -1
-                return
+        for (i, tabRect) in filterTabRects.enumerated() where tabRect.contains(point) {
+            let filters = HistoryFilter.allCases
+            if i < filters.count {
+                activeFilter = filters[i]
+                hoveredIndex = -1
+                applyFilter()
             }
+            mouseDownCardIndex = -1
+            return
         }
 
         // Trash button — clear all history with confirmation

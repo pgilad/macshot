@@ -150,9 +150,7 @@ class ScreenCaptureManager {
         configuration: SCScreenshotConfiguration
     ) async -> CGImage? {
         await withCheckedContinuation { continuation in
-            SCScreenshotManager.captureScreenshot(rect: rect, configuration: configuration) {
-                output,
-                error in
+            SCScreenshotManager.captureScreenshot(rect: rect, configuration: configuration) { output, error in
                 continuation.resume(returning: error == nil ? (output?.sdrImage ?? output?.hdrImage) : nil)
             }
         }

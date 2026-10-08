@@ -313,6 +313,8 @@ class DetachedEditorWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        // The editor tears itself down here, long before deinit, so it stops observing now.
+        // swiftlint:disable:next notification_center_detachment
         NotificationCenter.default.removeObserver(self)
         overlayView?.reset()
         overlayView?.overlayDelegate = nil

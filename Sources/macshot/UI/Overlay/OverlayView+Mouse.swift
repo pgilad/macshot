@@ -266,14 +266,12 @@ extension OverlayView {
                     (.left, NSRect(x: f.minX - hs / 2, y: f.midY - hs / 2, width: hs, height: hs)),
                     (.right, NSRect(x: f.maxX - hs / 2, y: f.midY - hs / 2, width: hs, height: hs)),
                 ]
-                for (handle, rect) in handles {
-                    if rect.contains(point) {
-                        isResizingTextBox = true
-                        textBoxResizeHandle = handle
-                        textBoxResizeStart = point
-                        textBoxOrigFrame = f
-                        return
-                    }
+                for (handle, rect) in handles where rect.contains(point) {
+                    isResizingTextBox = true
+                    textBoxResizeHandle = handle
+                    textBoxResizeStart = point
+                    textBoxOrigFrame = f
+                    return
                 }
             }
             // Clicking on the text editor itself — don't commit

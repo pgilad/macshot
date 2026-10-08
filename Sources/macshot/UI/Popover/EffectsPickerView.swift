@@ -205,7 +205,7 @@ class EffectsPickerView: NSView {
         let rows = (presets.count + cols - 1) / cols
         let gridH = CGFloat(rows) * swatchSize + CGFloat(max(0, rows - 1)) * swatchGap
 
-        for (i, _) in presets.enumerated() {
+        for i in presets.indices {
             let col = i % cols
             let row = i / cols
             let sx = padding + CGFloat(col) * (swatchSize + swatchGap)

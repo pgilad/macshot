@@ -401,8 +401,8 @@ class Annotation {
             guard let points = points else { return false }
             let strokeRadius = (tool == .marker ? strokeWidth * 6 : strokeWidth) / 2
             let effectiveThreshold = max(threshold, strokeRadius)
-            for p in points {
-                if hypot(p.x - point.x, p.y - point.y) < effectiveThreshold { return true }
+            for p in points where hypot(p.x - point.x, p.y - point.y) < effectiveThreshold {
+                return true
             }
             return false
         case .line, .measure:
@@ -1004,10 +1004,9 @@ class Annotation {
         }
         // Outline: draw wider stroke behind everything
         let outlineW: CGFloat = 3
-        if let oc = outlineColor {
+        if let oc = outlineColor, let outlinePath = path.copy() as? NSBezierPath {
             oc.setStroke()
             oc.setFill()
-            let outlinePath = path.copy() as! NSBezierPath
             outlinePath.lineWidth = strokeWidth + outlineW * 2
             outlinePath.lineCapStyle = .round
             outlinePath.stroke()
@@ -1971,12 +1970,12 @@ class Annotation {
 
         // Erase mode: sample edge colors and fill with smooth gradient
         if mode == .erase {
-            guard let _ = sourceImage else { return }
+            guard sourceImage != nil else { return }
             bakedBlurNSImage = bakeErase()
             return
         }
 
-        guard let _ = sourceImage, let regionImage = cropRegionFromSource() else { return }
+        guard sourceImage != nil, let regionImage = cropRegionFromSource() else { return }
         guard let tiffData = regionImage.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData),
               let cgImage = bitmap.cgImage else { return }

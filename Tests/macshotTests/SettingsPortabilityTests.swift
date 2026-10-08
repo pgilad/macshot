@@ -160,7 +160,7 @@ final class SettingsPortabilityTests {
             "imageFormat": "png",
         ]) {
             let result = try SettingsPortability.exportData()
-            let text = String(decoding: result.data, as: UTF8.self)
+            let text = try #require(String(bytes: result.data, encoding: .utf8))
             #expect(!text.contains("secret-value-1234"), "an API key reached the export file")
             #expect(!text.contains("another-secret"), "an S3 secret reached the export file")
         }

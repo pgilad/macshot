@@ -458,8 +458,9 @@ extension OverlayView {
 
         var position = CGPoint.zero
         var size = CGSize.zero
-        guard AXValueGetValue(positionRef as! AXValue, .cgPoint, &position),
-              AXValueGetValue(sizeRef as! AXValue, .cgSize, &size),
+        // The guard above checked both type IDs, so the downcasts cannot fail.
+        guard AXValueGetValue(unsafeDowncast(positionRef, to: AXValue.self), .cgPoint, &position),
+              AXValueGetValue(unsafeDowncast(sizeRef, to: AXValue.self), .cgSize, &size),
               position.x.isFinite, position.y.isFinite,
               size.width.isFinite, size.height.isFinite,
               size.width > 2, size.height > 2

@@ -68,10 +68,8 @@ enum OutlineTextRenderer {
         s.removeAttribute(.strokeWidth, range: full)
         // Re-express as an outline (auto-width) only where a stroke color existed
         // and no explicit outline is already present.
-        for (range, color) in conversions {
-            if s.attribute(.macshotOutlineColor, at: range.location, effectiveRange: nil) == nil {
-                s.addAttribute(.macshotOutlineColor, value: color, range: range)
-            }
+        for (range, color) in conversions where s.attribute(.macshotOutlineColor, at: range.location, effectiveRange: nil) == nil {
+            s.addAttribute(.macshotOutlineColor, value: color, range: range)
         }
     }
 

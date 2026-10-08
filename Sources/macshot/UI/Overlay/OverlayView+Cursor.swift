@@ -259,12 +259,12 @@ extension OverlayView {
                 let handlePoint: NSPoint
                 if let ann = selectedAnnotation, ann.rotation != 0 && ann.supportsRotation {
                     let center = NSPoint(x: ann.boundingRect.midX, y: ann.boundingRect.midY)
-                    let cos_r = cos(-ann.rotation)
-                    let sin_r = sin(-ann.rotation)
+                    let cosR = cos(-ann.rotation)
+                    let sinR = sin(-ann.rotation)
                     let dx = point.x - center.x
                     let dy = point.y - center.y
-                    handlePoint = NSPoint(x: center.x + dx * cos_r - dy * sin_r,
-                                          y: center.y + dx * sin_r + dy * cos_r)
+                    handlePoint = NSPoint(x: center.x + dx * cosR - dy * sinR,
+                                          y: center.y + dx * sinR + dy * cosR)
                 } else {
                     handlePoint = point
                 }
@@ -272,22 +272,19 @@ extension OverlayView {
                 // Resize handles — directional cursors for shapes, open hand for line/arrow points
                 let isShapeTool = [AnnotationTool.rectangle, .filledRectangle, .ellipse, .text,
                                    .pixelate, .stamp, .loupe, .highlight].contains(selectedAnnotation?.tool)
-                for (_, handleEntry) in annotationResizeHandleRects.enumerated() {
-                    let (handle, rect) = handleEntry
-                    if rect.insetBy(dx: -4, dy: -4).contains(handlePoint) {
-                        if isShapeTool {
-                            switch handle {
-                            case .topLeft, .bottomRight: Self.nwseCursor.set()
-                            case .topRight, .bottomLeft: Self.neswCursor.set()
-                            case .top, .bottom: NSCursor.resizeUpDown.set()
-                            case .left, .right: NSCursor.resizeLeftRight.set()
-                            default: NSCursor.openHand.set()
-                            }
-                        } else {
-                            NSCursor.openHand.set()
+                for (handle, rect) in annotationResizeHandleRects where rect.insetBy(dx: -4, dy: -4).contains(handlePoint) {
+                    if isShapeTool {
+                        switch handle {
+                        case .topLeft, .bottomRight: Self.nwseCursor.set()
+                        case .topRight, .bottomLeft: Self.neswCursor.set()
+                        case .top, .bottom: NSCursor.resizeUpDown.set()
+                        case .left, .right: NSCursor.resizeLeftRight.set()
+                        default: NSCursor.openHand.set()
                         }
-                        return
+                    } else {
+                        NSCursor.openHand.set()
                     }
+                    return
                 }
 
                 // Rotation handle

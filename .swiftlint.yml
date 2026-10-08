@@ -9,6 +9,9 @@ disabled_rules:
   - todo
   # Multi-line collection literals end with a comma, so a new element is a one-line diff.
   - trailing_comma
+  # Persisted string enums keep explicit raw values, so renaming a case cannot change a
+  # stored value.
+  - redundant_string_enum_value
 line_length:
   warning: 140
   ignores_comments: true

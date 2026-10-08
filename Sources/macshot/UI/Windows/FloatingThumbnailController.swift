@@ -140,10 +140,8 @@ enum ImageContextMenu {
         if let defaultApp = NSWorkspace.shared.urlForApplication(toOpen: fileURL) {
             result.append(defaultApp)
         }
-        for appURL in NSWorkspace.shared.urlsForApplications(toOpen: fileURL) {
-            if !result.contains(appURL) {
-                result.append(appURL)
-            }
+        for appURL in NSWorkspace.shared.urlsForApplications(toOpen: fileURL) where !result.contains(appURL) {
+            result.append(appURL)
         }
         return result
     }

@@ -83,7 +83,7 @@ extension OverlayView {
     /// and right-click-anchored select (mouseMoved) so both flows produce
     /// identical geometry.
     func updateSelectionRect(to point: NSPoint, shiftHeld: Bool,
-                                     modifiers: NSEvent.ModifierFlags = []) {
+                             modifiers: NSEvent.ModifierFlags = []) {
         var point = point
         if spaceRepositioning {
             let dx = point.x - spaceRepositionLast.x

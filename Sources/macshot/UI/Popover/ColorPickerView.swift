@@ -337,18 +337,16 @@ class ColorPickerView: NSView {
         }
 
         // Custom slots
-        for (i, r) in customSlotRects.enumerated() {
-            if r.contains(point) {
-                selectedColorSlot = i
-                if let saved = customColors[i] {
-                    selectedColor = saved
-                    syncHSBFromColor(saved)
-                    onColorChanged?(saved)
-                }
-                onCustomSlotSelected?(i)
-                needsDisplay = true
-                return
+        for (i, r) in customSlotRects.enumerated() where r.contains(point) {
+            selectedColorSlot = i
+            if let saved = customColors[i] {
+                selectedColor = saved
+                syncHSBFromColor(saved)
+                onColorChanged?(saved)
             }
+            onCustomSlotSelected?(i)
+            needsDisplay = true
+            return
         }
 
         // Opacity

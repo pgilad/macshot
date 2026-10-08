@@ -21,19 +21,19 @@ class OCRResultController: NSObject {
     // MARK: - Build
 
     private func buildWindow(text: String, image: NSImage?, qrCodes: [QRCodePayload]) {
-        let W: CGFloat = 720
-        let H: CGFloat = 460
+        let panelW: CGFloat = 720
+        let panelH: CGFloat = 460
         let previewW: CGFloat = image != nil ? 240 : 0
         let gap: CGFloat = 0
 
         guard let screen = NSScreen.preferred else { return }
         let origin = NSPoint(
-            x: screen.visibleFrame.midX - W / 2,
-            y: screen.visibleFrame.midY - H / 2
+            x: screen.visibleFrame.midX - panelW / 2,
+            y: screen.visibleFrame.midY - panelH / 2
         )
 
         let panel = KeyablePanel(
-            contentRect: NSRect(origin: origin, size: NSSize(width: W, height: H)),
+            contentRect: NSRect(origin: origin, size: NSSize(width: panelW, height: panelH)),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -51,12 +51,12 @@ class OCRResultController: NSObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isMovableByWindowBackground = false
 
-        let cv = NSView(frame: NSRect(x: 0, y: 0, width: W, height: H))
+        let cv = NSView(frame: NSRect(x: 0, y: 0, width: panelW, height: panelH))
         cv.autoresizingMask = [.width, .height]
 
         // ── Left: image preview ──────────────────────────────
         if let image = image {
-            let previewContainer = NSView(frame: NSRect(x: 0, y: 0, width: previewW, height: H))
+            let previewContainer = NSView(frame: NSRect(x: 0, y: 0, width: previewW, height: panelH))
             previewContainer.autoresizingMask = [.height]
             previewContainer.wantsLayer = true
             previewContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.25).cgColor
@@ -73,7 +73,7 @@ class OCRResultController: NSObject {
             previewContainer.addSubview(imgView)
 
             // Vertical separator
-            let sep = NSBox(frame: NSRect(x: previewW, y: 0, width: 1, height: H))
+            let sep = NSBox(frame: NSRect(x: previewW, y: 0, width: 1, height: panelH))
             sep.boxType = .custom
             sep.borderColor = NSColor.separatorColor
             sep.fillColor = NSColor.separatorColor
@@ -84,12 +84,12 @@ class OCRResultController: NSObject {
 
         // ── Right: text area + controls ──────────────────────
         let rightX = previewW + gap
-        let rightW = W - rightX
+        let rightW = panelW - rightX
         let footerH: CGFloat = 52
         let headerH: CGFloat = 52
 
         // Header bar (stats)
-        let header = NSView(frame: NSRect(x: rightX, y: H - headerH, width: rightW, height: headerH))
+        let header = NSView(frame: NSRect(x: rightX, y: panelH - headerH, width: rightW, height: headerH))
         header.autoresizingMask = [.width, .minYMargin]
         cv.addSubview(header)
 
@@ -119,7 +119,7 @@ class OCRResultController: NSObject {
         headerRow.addArrangedSubview(countLbl)
 
         // Header separator
-        let headerSep = NSBox(frame: NSRect(x: rightX, y: H - headerH - 1, width: rightW, height: 1))
+        let headerSep = NSBox(frame: NSRect(x: rightX, y: panelH - headerH - 1, width: rightW, height: 1))
         headerSep.boxType = .separator
         headerSep.autoresizingMask = [.width, .minYMargin]
         cv.addSubview(headerSep)
@@ -157,7 +157,7 @@ class OCRResultController: NSObject {
 
         // Scrollable text view
         let textAreaY = footerH + 1
-        let textAreaH = H - headerH - 1 - footerH - 1 - qrSectionH
+        let textAreaH = panelH - headerH - 1 - footerH - 1 - qrSectionH
         let scrollView = NSScrollView(frame: NSRect(x: rightX, y: textAreaY + qrSectionH, width: rightW, height: textAreaH))
         scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true

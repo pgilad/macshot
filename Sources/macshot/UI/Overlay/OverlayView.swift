@@ -1201,8 +1201,7 @@ class OverlayView: NSView {
         overlayErrorTimer?.invalidate()
         overlayErrorMessage = message
         needsDisplay = true
-        overlayErrorTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) {
-            [weak self] _ in
+        overlayErrorTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.overlayErrorMessage = nil
                 self?.needsDisplay = true

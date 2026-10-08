@@ -241,7 +241,7 @@ private final class VCenterTextFieldCell: NSTextFieldCell {
 private final class ResolutionNumberField: NSTextField {
     private var acceptingMouseFocus = false
 
-    override class var cellClass: AnyClass? {
+    override static var cellClass: AnyClass? {
         get { VCenterTextFieldCell.self }
         set {}
     }

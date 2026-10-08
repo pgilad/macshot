@@ -64,10 +64,8 @@ class FontPickerView: NSScrollView {
         result.append(("", false, true))
 
         let popularSet = Set(Self.popularFonts)
-        for family in NSFontManager.shared.availableFontFamilies.sorted() {
-            if !popularSet.contains(family) {
-                result.append((family, false, false))
-            }
+        for family in NSFontManager.shared.availableFontFamilies.sorted() where !popularSet.contains(family) {
+            result.append((family, false, false))
         }
 
         return result

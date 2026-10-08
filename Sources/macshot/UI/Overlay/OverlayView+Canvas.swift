@@ -11,7 +11,7 @@ extension OverlayView {
         else { return }
 
         // Save state for undo
-        let prevImage = original.copy() as! NSImage
+        guard let prevImage = original.copy() as? NSImage else { return }
         undoStack.append(.imageTransform(previousImage: prevImage, previousSnappedWindowImage: nil, annotationOffsets: []))
         redoStack.removeAll()
 
@@ -59,7 +59,7 @@ extension OverlayView {
             let cgImage = original.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
 
-        let prevImage = original.copy() as! NSImage
+        guard let prevImage = original.copy() as? NSImage else { return }
         undoStack.append(.imageTransform(previousImage: prevImage, previousSnappedWindowImage: nil, annotationOffsets: []))
         redoStack.removeAll()
 
@@ -205,7 +205,7 @@ extension OverlayView {
         ctx.draw(oldCG, in: CGRect(x: drawX, y: drawY, width: CGFloat(oldCG.width), height: CGFloat(oldCG.height)))
 
         guard let newCG = ctx.makeImage() else { return }
-        let prevImage = original.copy() as! NSImage
+        guard let prevImage = original.copy() as? NSImage else { return }
         let shiftDx = -targetRect.origin.x
         let shiftDy = -targetRect.origin.y
         let offsets = annotations.map { ($0, shiftDx, shiftDy) }
@@ -417,7 +417,7 @@ extension OverlayView {
         else { return }
 
         // Save state for undo before modifying
-        let prevImage = originalImage.copy() as! NSImage
+        guard let prevImage = originalImage.copy() as? NSImage else { return }
         undoStack.append(.imageTransform(previousImage: prevImage, previousSnappedWindowImage: nil, annotationOffsets: []))
         redoStack.removeAll()
 

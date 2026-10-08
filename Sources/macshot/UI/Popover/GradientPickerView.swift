@@ -89,8 +89,8 @@ class GradientPickerView: NSView {
         plusPath.fill()
         let symbolConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
         if let plusIcon = NSImage(systemSymbolName: "photo.badge.plus", accessibilityDescription: nil)?
-            .withSymbolConfiguration(symbolConfig) {
-            let tinted = plusIcon.copy() as! NSImage
+            .withSymbolConfiguration(symbolConfig),
+           let tinted = plusIcon.copy() as? NSImage {
             tinted.lockFocus()
             ToolbarLayout.iconColor.set()
             NSRect(origin: .zero, size: tinted.size).fill(using: .sourceAtop)

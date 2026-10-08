@@ -347,8 +347,8 @@ enum ImageSaveService {
     /// `fileExists` and `write` calls let concurrent saves select the same
     /// free path and race, silently replacing one capture.
     nonisolated private static func writeWithoutOverwriting(_ data: Data,
-                                                in dirURL: URL,
-                                                filename: String) throws -> URL {
+                                                            in dirURL: URL,
+                                                            filename: String) throws -> URL {
         let base = (filename as NSString).deletingPathExtension
         let ext = (filename as NSString).pathExtension
         var candidate = dirURL.appendingPathComponent(filename)

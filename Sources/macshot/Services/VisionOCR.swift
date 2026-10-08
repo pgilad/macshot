@@ -159,7 +159,7 @@ final class OCRRecognitionSession: @unchecked Sendable {
     nonisolated(unsafe) private var cancelAttempt: (@Sendable () -> Void)?
 
     nonisolated init(timeout: TimeInterval, startAttempt: @escaping StartAttempt,
-         completion: @escaping Completion) {
+                     completion: @escaping Completion) {
         self.timeout = timeout
         self.startAttempt = startAttempt
         self.completion = completion
@@ -188,7 +188,7 @@ final class OCRRecognitionSession: @unchecked Sendable {
     }
 
     nonisolated private func receive(_ result: Result<[OCRTextObservation], Error>,
-                         attempt: Int, level: VNRequestTextRecognitionLevel) {
+                                     attempt: Int, level: VNRequestTextRecognitionLevel) {
         guard completion != nil, attempt == generation else { return }
         generation += 1 // Discard late results even while the next attempt starts.
         // Release the timer's ownership immediately, including captured pixels.

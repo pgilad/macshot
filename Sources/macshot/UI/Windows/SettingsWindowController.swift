@@ -1856,8 +1856,8 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
     /// Two-column grid of checkboxes in a rounded box, fills parent width.
     private func makeToggleGrid(items: [(tag: Int, label: String)],
-                                 defaultsKey: String,
-                                 enabledValues: [Int]?) -> NSView {
+                                defaultsKey: String,
+                                enabledValues: [Int]?) -> NSView {
         let box = NSView()
         box.translatesAutoresizingMaskIntoConstraints = false
         box.wantsLayer = true
@@ -2069,21 +2069,17 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     }
 
     private func selectImageFormat(_ format: ImageEncoder.Format) {
-        for item in imageFormatPopup.itemArray {
-            if item.representedObject as? String == format.rawValue {
-                imageFormatPopup.select(item)
-                return
-            }
+        for item in imageFormatPopup.itemArray where item.representedObject as? String == format.rawValue {
+            imageFormatPopup.select(item)
+            return
         }
         imageFormatPopup.selectItem(at: 0)
     }
 
     private func selectSaveAction(_ action: SaveActionPreference) {
-        for item in saveActionPopup.itemArray {
-            if item.representedObject as? Int == action.rawValue {
-                saveActionPopup.select(item)
-                return
-            }
+        for item in saveActionPopup.itemArray where item.representedObject as? Int == action.rawValue {
+            saveActionPopup.select(item)
+            return
         }
         saveActionPopup.selectItem(at: 0)
     }

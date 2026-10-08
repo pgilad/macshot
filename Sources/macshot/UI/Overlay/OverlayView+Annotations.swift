@@ -215,13 +215,13 @@ extension OverlayView {
         let handleTestPoint: NSPoint
         if selected.rotation != 0 && selected.supportsRotation {
             let center = NSPoint(x: selected.boundingRect.midX, y: selected.boundingRect.midY)
-            let cos_r = cos(-selected.rotation)
-            let sin_r = sin(-selected.rotation)
+            let cosR = cos(-selected.rotation)
+            let sinR = sin(-selected.rotation)
             let dx = point.x - center.x
             let dy = point.y - center.y
             handleTestPoint = NSPoint(
-                x: center.x + dx * cos_r - dy * sin_r,
-                y: center.y + dx * sin_r + dy * cos_r)
+                x: center.x + dx * cosR - dy * sinR,
+                y: center.y + dx * sinR + dy * cosR)
         } else {
             handleTestPoint = point
         }

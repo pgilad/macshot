@@ -34,8 +34,8 @@ final class StampEmojiTests {
         let bitmap = try #require(ImageProbe.bitmap(from: image))
         var opaquePixels = 0
         for x in stride(from: 0, to: bitmap.pixelsWide, by: 4) {
-            for y in stride(from: 0, to: bitmap.pixelsHigh, by: 4) {
-                if (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.1 { opaquePixels += 1 }
+            for y in stride(from: 0, to: bitmap.pixelsHigh, by: 4) where (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.1 {
+                opaquePixels += 1
             }
         }
         #expect(opaquePixels > 10, "the stamp rendered blank")
