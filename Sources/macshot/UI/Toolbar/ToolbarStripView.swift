@@ -6,6 +6,10 @@ class ToolbarStripView: NSView {
 
     enum Orientation { case horizontal, vertical }
 
+    // VoiceOver reads the strip as a toolbar that holds its buttons.
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .toolbar }
+
     let orientation: Orientation
     private(set) var buttonViews: [ToolbarButtonView] = []
     /// Set to true in editor mode so gap clicks pass through to the image beneath.

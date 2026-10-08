@@ -220,3 +220,31 @@ final class ClipboardTextPinRendererTests {
         }
     }
 }
+
+/// Toolbar buttons draw themselves, so VoiceOver knows them only from what they report.
+final class ToolbarButtonAccessibilityTests {
+
+    @Test func testAButtonIsNamedByItsTooltipAndCanBePressed() {
+        let button = ToolbarButtonView(action: .undo, sfSymbol: "arrow.uturn.backward", tooltip: "Undo")
+        var pressed: [String] = []
+        button.onClick = { action in pressed.append("\(action)") }
+        #expect(button.isAccessibilityElement())
+        #expect(button.accessibilityRole() == .button)
+        #expect(button.accessibilityLabel() == "Undo")
+        #expect(button.accessibilityPerformPress())
+        #expect(pressed == ["undo"])
+    }
+
+    @Test func testTheSelectedToolIsReportedAsSelected() {
+        let button = ToolbarButtonView(action: .tool(.arrow), sfSymbol: "arrow.up.right", tooltip: "Arrow")
+        #expect(!button.isAccessibilitySelected())
+        button.isOn = true
+        #expect(button.isAccessibilitySelected())
+    }
+
+    @Test func testAButtonWithoutAClickActionCannotBePressed() {
+        let button = ToolbarButtonView(action: .undo, sfSymbol: nil, tooltip: "")
+        #expect(button.accessibilityLabel() == nil)
+        #expect(!button.accessibilityPerformPress())
+    }
+}

@@ -286,6 +286,28 @@ class ToolbarButtonView: NSView {
         addCursorRect(bounds, cursor: .arrow)
     }
 
+    // MARK: - Accessibility
+
+    // The button draws itself, so it tells VoiceOver what it is: a button named by its
+    // tooltip, selected when it shows the current tool or a turned-on option, and
+    // pressable. A button that only starts a drag (move) has no press action.
+
+    override func isAccessibilityElement() -> Bool { true }
+
+    override func accessibilityRole() -> NSAccessibility.Role? { .button }
+
+    override func accessibilityLabel() -> String? {
+        tooltipText.isEmpty ? nil : tooltipText
+    }
+
+    override func isAccessibilitySelected() -> Bool { isOn }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard let onClick else { return false }
+        onClick(action)
+        return true
+    }
+
     // MARK: - Custom checkerboard icon
 
     /// Generate a checkerboard icon matching the style of SF Symbols, tinted with the given color.

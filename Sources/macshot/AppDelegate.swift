@@ -499,6 +499,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// the chosen SF Symbol as a 22pt template image; anything else — including an empty or
     /// invalid symbol name — falls back to the bundled icon so the item is never blank.
     private func applyPreferredIconImage(to button: NSStatusBarButton) {
+        // VoiceOver names the item from this label; the bundled icon has no description.
+        button.setAccessibilityLabel("macshot")
         let mode = UserDefaults.standard.string(forKey: Self.statusBarIconModeKey) ?? "default"
         let symbolName = UserDefaults.standard.string(forKey: Self.statusBarIconSymbolNameKey) ?? ""
 
