@@ -184,4 +184,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 
 ## Releasing
 
-Not set up. Build from source with `make install`. `make dist` produces `build/macshot-<version>-arm64.zip` with a SHA-256 file.
+`make dist` produces `build/macshot-<version>-arm64.zip` with a SHA-256 file. `.github/workflows/release.yaml` publishes it from a `v*` tag that matches `VERSION`: it runs the tests, signs with the "macshot Release Signing" certificate from the `release` environment, attests the build provenance and writes the notes from the commits since the previous tag plus `.github/release-notes.md`. Commits whose subject starts with "Release " and a digit are left out of the notes.
+
+- Once per repository: `scripts/create-release-identity.sh` makes the self-signed certificate, limits the `release` environment to `v*` tags and stores the identity in its secrets. Each release must use the same certificate, or macOS asks users for the permissions again.
+- To release: set `VERSION`, commit "Release x.y.z", then `git tag -a vx.y.z -m "macshot x.y.z" && git push origin vx.y.z`.

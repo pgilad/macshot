@@ -30,6 +30,10 @@ make install            # build, sign, copy to /Applications and start
 
 To update, run `git pull` and `make install`.
 
+### Download
+
+A `v*` tag publishes a signed arm64 build on the [Releases](https://github.com/pgilad/macshot/releases) page, with a SHA-256 file and a build provenance attestation. The app is not notarized: on first start, macOS blocks it, and you must click **Open Anyway** in **System Settings → Privacy & Security**. macshot makes no network requests, so it does not check for updates.
+
 ## Features
 
 - Capture an area, a window (with transparent corners), a full display or the last area again. Selections can span displays.

@@ -1,0 +1,91 @@
+name: Release
+
+# Set the version in VERSION, commit, then push a matching tag:
+#   git tag -a v5.0.1 -m "macshot 5.0.1" && git push origin v5.0.1
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 30
+    # Holds the signing certificate. Only v* tags can use it. See scripts/create-release-identity.sh.
+    environment: release
+    permissions:
+      contents: write # create the release
+      id-token: write # sign the build provenance
+      attestations: write # store the build provenance
+    env:
+      # A fixed Xcode, so a runner image update cannot change the compiler.
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      SWIFT_FLAGS: -Xswiftc -warnings-as-errors
+    steps:
+      # Pinned to a commit, not a movable tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # All commits and tags: the build number is the commit count, and the notes list
+          # the commits since the previous tag.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the tag against VERSION
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match VERSION ($VERSION)."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - run: make test
+      - name: Import the signing certificate
+        env:
+          MACSHOT_SIGNING_P12: ${{ secrets.MACSHOT_SIGNING_P12 }}
+          MACSHOT_SIGNING_P12_PASSWORD: ${{ secrets.MACSHOT_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -z "$MACSHOT_SIGNING_P12" ]; then
+            echo "::error::No signing certificate in the release environment. Run scripts/create-release-identity.sh."
+            exit 1
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$MACSHOT_SIGNING_P12" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          security import "$RUNNER_TEMP/signing.p12" -k "$KEYCHAIN" -P "$MACSHOT_SIGNING_P12_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/signing.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          # codesign finds the identity only in a keychain on the search list.
+          # shellcheck disable=SC2046
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+      - run: make dist
+        env:
+          MACSHOT_SIGN_IDENTITY: macshot Release Signing
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: build/macshot-${{ env.VERSION }}-arm64.zip
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            if [ -n "$PREVIOUS" ]; then
+              echo "## Changes since $PREVIOUS"
+              echo
+              # Without the "Release x.y.z" commits that only change VERSION.
+              git log --no-merges --invert-grep --grep='^Release [0-9]' --format='- %s' "$PREVIOUS..$GITHUB_REF_NAME"
+              echo
+            fi
+            sed "s/__VERSION__/$VERSION/g" .github/release-notes.md
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "macshot $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "build/macshot-$VERSION-arm64.zip" "build/macshot-$VERSION-arm64.zip.sha256"
+      - name: Delete the signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
