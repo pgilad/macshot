@@ -82,13 +82,14 @@ extension OverlayView {
         window?.level = .normal
         panel.beginSheetModal(for: window!) { [weak self] response in
             self?.window?.level = savedLevel ?? .normal
-            guard let self = self, response == .OK, let url = panel.url,
-                  let image = NSImage(contentsOf: url) else { return }
-            // Store image data (PNG) in UserDefaults for persistence
-            if let tiff = image.tiffRepresentation,
-               let bitmap = NSBitmapImageRep(data: tiff),
-               let pngData = bitmap.representation(using: .png, properties: [:]) {
-                UserDefaults.standard.set(pngData, forKey: "beautifyCustomBgImageData")
+            guard let self = self, response == .OK, let url = panel.url else { return }
+            let image: NSImage
+            switch CustomBeautifyBackground.store(contentsOf: url) {
+            case .success(let stored):
+                image = stored
+            case .failure(let rejection):
+                self.showOverlayError(rejection.message)
+                return
             }
             self.customBeautifyBackground = image
             self.prepareBeautifyBackgroundCache()
@@ -102,8 +103,7 @@ extension OverlayView {
     }
 
     func loadCustomBeautifyBackground() {
-        guard let data = UserDefaults.standard.data(forKey: "beautifyCustomBgImageData"),
-              let image = NSImage(data: data) else { return }
+        guard let image = CustomBeautifyBackground.load() else { return }
         customBeautifyBackground = image
         prepareBeautifyBackgroundCache()
     }

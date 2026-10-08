@@ -500,8 +500,7 @@ class OverlayView: NSView {
     /// clean-state signature was captured. Safe to call repeatedly.
     func ensureCustomBeautifyBackgroundLoaded() {
         guard beautifyStyleIndex == -1, customBeautifyBackground == nil else { return }
-        if let data = UserDefaults.standard.data(forKey: "beautifyCustomBgImageData"),
-           let img = NSImage(data: data) {
+        if let img = CustomBeautifyBackground.load() {
             customBeautifyBackground = img
             prepareBeautifyBackgroundCache()
         }

@@ -69,18 +69,17 @@ enum StampEmojis {
         return img
     }
 
-    /// Show a file picker to load a custom stamp image.
-    static func loadStampImage(completion: @escaping (NSImage) -> Void) {
+    /// Show a file picker to load a custom stamp image. `completion` gets the image, or
+    /// the reason it cannot be used.
+    static func loadStampImage(completion: @escaping (Result<NSImage, ImportedImage.Rejection>) -> Void) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image, .png, .jpeg]
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.level = NSWindow.Level(258)
         panel.begin { response in
-            guard response == .OK, let url = panel.url,
-                let image = NSImage(contentsOf: url)
-            else { return }
-            completion(image)
+            guard response == .OK, let url = panel.url else { return }
+            completion(ImportedImage.checked(NSImage(contentsOf: url)))
         }
     }
 }

@@ -1555,18 +1555,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openImageFromClipboard() {
-        let pasteboard = NSPasteboard.general
-        guard let image = NSImage(pasteboard: pasteboard), image.isValid,
-              image.size.width > 0, image.size.height > 0 else {
+        switch ImportedImage.checked(NSImage(pasteboard: NSPasteboard.general)) {
+        case .success(let image):
+            DetachedEditorWindowController.open(image: image)
+        case .failure(.unreadable):
             let alert = NSAlert()
             alert.messageText = "No Image on Clipboard"
             alert.informativeText = "Copy an image to the clipboard first, then try again."
             alert.alertStyle = .informational
             alert.addButton(withTitle: "OK")
             alert.runModal()
-            return
+        case .failure(let rejection):
+            showImageRejectedAlert(rejection)
         }
-        DetachedEditorWindowController.open(image: image)
+    }
+
+    private func showImageRejectedAlert(_ rejection: ImportedImage.Rejection) {
+        let alert = NSAlert()
+        alert.messageText = "Image Too Large"
+        alert.informativeText = rejection.message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     @objc private func pinFromClipboard() {
@@ -1578,6 +1588,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         switch ClipboardPinService.image(from: item) {
         case .image(let image):
             showPin(image: image)
+        case .rejected(let rejection):
+            showImageRejectedAlert(rejection)
         case .unsupported:
             showNoPinClipboardContentAlert()
         }
@@ -1610,8 +1622,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openImageFile(url: URL) {
         // ImageIO decodes every supported type, WebP included.
-        guard let image = NSImage(contentsOf: url) else { return }
-        DetachedEditorWindowController.open(image: image)
+        switch ImportedImage.checked(NSImage(contentsOf: url)) {
+        case .success(let image):
+            DetachedEditorWindowController.open(image: image)
+        case .failure(let rejection):
+            showFailureToast("\(url.lastPathComponent): \(rejection.message)")
+        }
     }
 
     /// Handle files opened via Finder "Open With", drag-to-dock, or command line.

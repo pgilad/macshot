@@ -746,8 +746,7 @@ class ToolOptionsRowView: NSView {
     private static func gradientSwatchImage(styleIndex: Int, size: CGFloat) -> NSImage {
         // Custom image background swatch
         if styleIndex == -1 {
-            if let data = UserDefaults.standard.data(forKey: "beautifyCustomBgImageData"),
-               let img = NSImage(data: data) {
+            if let img = CustomBeautifyBackground.load() {
                 return NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
                     let r = NSRect(x: 0, y: 0, width: size, height: size)
                     let path = NSBezierPath(roundedRect: r, xRadius: 4, yRadius: 4)
@@ -1704,10 +1703,15 @@ class ToolOptionsRowView: NSView {
 
     @objc private func loadImageClicked() {
         guard let ov = overlayView else { return }
-        StampEmojis.loadStampImage { [weak ov] image in
-            ov?.currentStampImage = image
-            ov?.currentStampEmoji = nil
-            ov?.needsDisplay = true
+        StampEmojis.loadStampImage { [weak ov] result in
+            switch result {
+            case .success(let image):
+                ov?.currentStampImage = image
+                ov?.currentStampEmoji = nil
+                ov?.needsDisplay = true
+            case .failure(let rejection):
+                ov?.showOverlayError(rejection.message)
+            }
         }
     }
 

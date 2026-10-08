@@ -512,14 +512,19 @@ extension OverlayView {
 
     /// Editor only: paste an image from the clipboard as a draggable stamp placed
     /// below the canvas (auto-expands to fit), mirroring the "Add Capture" flow.
-    /// Returns true if an image was found and pasted.
+    /// Returns true if an image was found: pasted, or reported as too large.
     func pasteImageFromClipboard() -> Bool {
         guard isEditorMode else { return false }
-        guard let image = NSImage(pasteboard: NSPasteboard.general), image.size.width > 0, image.size.height > 0 else {
+        switch ImportedImage.checked(NSImage(pasteboard: NSPasteboard.general)) {
+        case .success(let image):
+            addCaptureImage(image)
+            return true
+        case .failure(let rejection) where rejection != .unreadable:
+            showOverlayError(rejection.message)
+            return true
+        case .failure:
             return false
         }
-        addCaptureImage(image)
-        return true
     }
 
     /// Push undo entries for a finished drag/resize/rotate manipulation, but only

@@ -2,14 +2,25 @@ import AppKit
 
 enum ClipboardPinResult {
     case image(NSImage)
+    /// The clipboard has an image that is too large (see `ImportedImage`). Its text, if
+    /// any, is not pinned instead.
+    case rejected(ImportedImage.Rejection)
     case unsupported
 }
 
 enum ClipboardPinService {
 
-    static func image(from item: NSPasteboardItem) -> ClipboardPinResult {
-        if let image = imageFromItem(item) {
+    static func image(
+        from item: NSPasteboardItem,
+        maximumPixels: Int = SavedCaptureValidation.maximumImagePixels
+    ) -> ClipboardPinResult {
+        switch imageFromItem(item, maximumPixels: maximumPixels) {
+        case .success(let image):
             return .image(image)
+        case .failure(let rejection) where rejection != .unreadable:
+            return .rejected(rejection)
+        case .failure:
+            break
         }
         if let image = textImageFromItem(item) {
             return .image(image)
@@ -17,7 +28,12 @@ enum ClipboardPinService {
         return .unsupported
     }
 
-    private static func imageFromItem(_ item: NSPasteboardItem) -> NSImage? {
+    /// The first usable image flavor. When none is usable, the first rejection that is
+    /// not `.unreadable`, so a too-large image is reported.
+    private static func imageFromItem(
+        _ item: NSPasteboardItem,
+        maximumPixels: Int
+    ) -> Result<NSImage, ImportedImage.Rejection> {
         let imageTypes: [NSPasteboard.PasteboardType] = [
             .png,
             .tiff,
@@ -27,20 +43,23 @@ enum ClipboardPinService {
             NSPasteboard.PasteboardType("com.compuserve.gif"),
         ]
 
-        for type in imageTypes {
-            guard let data = item.data(forType: type),
-                  let image = NSImage(data: data),
-                  isUsable(image) else { continue }
-            return image
+        var candidates: [() -> NSImage?] = imageTypes.compactMap { type in
+            item.data(forType: type).map { data in { NSImage(data: data) } }
+        }
+        if let fileURL = fileURLFromItem(item) {
+            candidates.append { NSImage(contentsOf: fileURL) }
         }
 
-        if let fileURL = fileURLFromItem(item),
-           let image = NSImage(contentsOf: fileURL),
-           isUsable(image) {
-            return image
+        var rejection = ImportedImage.Rejection.unreadable
+        for candidate in candidates {
+            switch ImportedImage.checked(candidate(), maximumPixels: maximumPixels) {
+            case .success(let image):
+                return .success(image)
+            case .failure(let reason):
+                if rejection == .unreadable { rejection = reason }
+            }
         }
-
-        return nil
+        return .failure(rejection)
     }
 
     /// Plain text only. Rich text and HTML are not read: their importers are
@@ -73,8 +92,4 @@ enum ClipboardPinService {
         return nil
     }
 
-    private static func isUsable(_ image: NSImage) -> Bool {
-        image.isValid && image.size.width.isFinite && image.size.height.isFinite
-            && image.size.width > 0 && image.size.height > 0
-    }
 }

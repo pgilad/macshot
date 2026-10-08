@@ -32,6 +32,32 @@ struct BeautifyStyle {
     }
 }
 
+/// The custom image background, stored as PNG data in UserDefaults.
+enum CustomBeautifyBackground {
+    static let defaultsKey = "beautifyCustomBgImageData"
+    /// The longest side of the stored image. The background fills the area behind a
+    /// capture, so it needs no more pixels than a capture of the largest Mac display.
+    static let maximumPixelSize = 6144
+
+    /// A background stored before the size limit existed is checked like an imported image.
+    static func load() -> NSImage? {
+        guard let data = UserDefaults.standard.data(forKey: defaultsKey) else { return nil }
+        return try? ImportedImage.checked(NSImage(data: data)).get()
+    }
+
+    /// Reads the image at `url`, scales it down and stores it. The full image is never
+    /// decoded.
+    static func store(contentsOf url: URL) -> Result<NSImage, ImportedImage.Rejection> {
+        if case .failure(let rejection) = ImportedImage.checked(NSImage(contentsOf: url)) {
+            return .failure(rejection)
+        }
+        guard let data = ImportedImage.downsampledPNGData(contentsOf: url, maxPixelSize: maximumPixelSize),
+              let image = NSImage(data: data) else { return .failure(.unreadable) }
+        UserDefaults.standard.set(data, forKey: defaultsKey)
+        return .success(image)
+    }
+}
+
 struct BeautifyConfig {
     var mode: BeautifyMode = .window
     var styleIndex: Int = 0
