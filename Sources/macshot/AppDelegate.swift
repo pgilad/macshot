@@ -535,14 +535,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         registerHotkey()
 
         // Launch-at-login: sync the login item to the imported value.
-        let enabled = UserDefaults.standard.bool(forKey: "launchAtLogin")
-        do {
-            if enabled { try SMAppService.mainApp.register() }
-            else { try SMAppService.mainApp.unregister() }
-        } catch {
-            #if DEBUG
-            print("reapplySettingsAfterImport: login item update failed: \(error)")
-            #endif
+        if let message = LaunchAtLogin.set(UserDefaults.standard.bool(forKey: LaunchAtLogin.defaultsKey)) {
+            showFailureToast(message)
         }
 
         // Menu bar icon visibility + appearance.

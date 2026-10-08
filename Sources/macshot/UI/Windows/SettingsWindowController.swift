@@ -65,6 +65,9 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     private var historyOrderByLastEditCheckbox: NSButton!
     private var thumbnailScaleLabel: NSTextField!
     private var launchAtLoginCheckbox: NSButton!
+    /// Says when macOS waits for approval of the login item, or refused a change.
+    private var launchAtLoginNote: NSTextField!
+    private var launchAtLoginApproveButton: NSButton!
     private var hideMenuBarIconCheckbox: NSButton!
     private var menuBarIconModePopup: NSPopUpButton!
     private var menuBarIconPresetPopup: NSPopUpButton!
@@ -359,6 +362,17 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
 
         launchAtLoginCheckbox = NSButton(checkboxWithTitle: "Launch at login", target: self, action: #selector(launchAtLoginChanged(_:)))
         stack.addArrangedSubview(indented(launchAtLoginCheckbox))
+        stack.setCustomSpacing(4, after: stack.arrangedSubviews.last!)
+        launchAtLoginNote = NSTextField(wrappingLabelWithString: "")
+        launchAtLoginNote.font = NSFont.systemFont(ofSize: 10)
+        launchAtLoginApproveButton = NSButton(title: "Open Login Items", target: self, action: #selector(openLoginItems))
+        launchAtLoginApproveButton.controlSize = .small
+        let launchAtLoginStatusRow = NSStackView(views: [launchAtLoginNote, launchAtLoginApproveButton])
+        launchAtLoginStatusRow.orientation = .vertical
+        launchAtLoginStatusRow.alignment = .leading
+        launchAtLoginStatusRow.spacing = 4
+        launchAtLoginStatusRow.detachesHiddenViews = true
+        stack.addArrangedSubview(indented(launchAtLoginStatusRow))
         stack.setCustomSpacing(6, after: stack.arrangedSubviews.last!)
 
         hideMenuBarIconCheckbox = NSButton(checkboxWithTitle: "Hide menu bar icon", target: self, action: #selector(hideMenuBarIconChanged(_:)))
@@ -1981,8 +1995,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         default: thumbnailCornerPopup.selectItem(at: 0)
         }
 
-        let launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
-        launchAtLoginCheckbox.state = launchAtLogin ? .on : .off
+        refreshLaunchAtLogin()
 
         hideMenuBarIconCheckbox.state = UserDefaults.standard.bool(forKey: "hideMenuBarIcon") ? .on : .off
 
@@ -2401,16 +2414,28 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         return Calendar(identifier: .gregorian).date(from: comps) ?? Date()
     }
     @objc private func launchAtLoginChanged(_ sender: NSButton) {
-        let enabled = sender.state == .on
-        UserDefaults.standard.set(enabled, forKey: "launchAtLogin")
-        do {
-            if enabled { try SMAppService.mainApp.register() }
-            else { try SMAppService.mainApp.unregister() }
-        } catch {
-            #if DEBUG
-            print("Failed to update login item: \(error)")
-            #endif
+        refreshLaunchAtLogin(error: LaunchAtLogin.set(sender.state == .on))
+    }
+
+    @objc private func openLoginItems() {
+        LaunchAtLogin.openLoginItemsSettings()
+    }
+
+    /// Shows the state that macOS keeps (see `LaunchAtLogin`), so a login item that the
+    /// user turned off in System Settings does not show as on.
+    private func refreshLaunchAtLogin(error: String? = nil) {
+        guard launchAtLoginCheckbox != nil else { return }
+        let status = LaunchAtLogin.status
+        launchAtLoginCheckbox.state = status == .enabled || status == .requiresApproval ? .on : .off
+        if let error {
+            launchAtLoginNote.stringValue = error
+            launchAtLoginNote.textColor = .systemRed
+        } else if status == .requiresApproval {
+            launchAtLoginNote.stringValue = "macOS waits for your approval in System Settings › General › Login Items."
+            launchAtLoginNote.textColor = .secondaryLabelColor
         }
+        launchAtLoginNote.isHidden = error == nil && status != .requiresApproval
+        launchAtLoginApproveButton.isHidden = status != .requiresApproval
     }
 
     @objc private func urlSchemeChanged(_ sender: NSButton) {
@@ -2557,6 +2582,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         stopCommandShortcutRecording()
         stopToolShortcutRecording()
         (NSApp.delegate as? AppDelegate)?.returnFocusIfNeeded()
+    }
+
+    /// The user may come back from System Settings › General › Login Items.
+    func windowDidBecomeKey(_ notification: Notification) {
+        refreshLaunchAtLogin()
     }
 
     /// The recorders take keys only from this window, so a recording would otherwise
