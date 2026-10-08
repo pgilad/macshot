@@ -1,5 +1,5 @@
 # macshot builds with the Command Line Tools only: `xcode-select --install`.
-# Common tasks: make install, make test, make self-test, make app.
+# Common tasks: make install, make test, make self-test, make lint, make app.
 
 SWIFT ?= swift
 APP_DIR ?= build/macshot.app
@@ -12,8 +12,10 @@ SWIFT_FLAGS ?=
 # The Command Line Tools ship the Swift Testing macro plugin outside the default search path.
 TESTING_PLUGINS := $(shell xcode-select -p)/usr/lib/swift/host/plugins/testing
 TEST_FLAGS := $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
+# SwiftLint needs SourceKit. Without Xcode, it must look in the Command Line Tools.
+LINT_ENV := $(if $(findstring CommandLineTools,$(shell xcode-select -p)),TOOLCHAIN_DIR=$(shell xcode-select -p),)
 
-.PHONY: build app dist install test perf self-test snapshots readme-images run clean signing-identity
+.PHONY: build app dist install test perf lint lint-baseline self-test snapshots readme-images run clean signing-identity
 
 build: ## Debug build
 	$(SWIFT) build $(SWIFT_FLAGS)
@@ -34,6 +36,12 @@ install: app ## Build, then replace the app in /Applications and start it
 
 test: ## Unit tests, one at a time: they share UserDefaults and the pasteboard
 	$(SWIFT) test --no-parallel $(SWIFT_FLAGS) $(TEST_FLAGS)
+
+lint: ## SwiftLint; a finding that is not in the baseline fails (brew install swiftlint)
+	$(LINT_ENV) swiftlint lint --strict --quiet --baseline .swiftlint-baseline.json
+
+lint-baseline: ## Record the current findings as the baseline. Only to remove fixed ones.
+	$(LINT_ENV) swiftlint lint --quiet --write-baseline .swiftlint-baseline.json || true
 
 self-test: build ## Editor, tools, text undo, save, history and Settings in real windows
 	.build/debug/macshot --self-test

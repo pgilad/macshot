@@ -1,3 +1,5 @@
+// Over SwiftLint's size limits since before SwiftLint was added: see .swiftlint.yml.
+// swiftlint:disable file_length type_body_length function_body_length cyclomatic_complexity
 import Cocoa
 
 /// Raw values are persisted (history annotations, `enabledTools`,

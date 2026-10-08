@@ -1,3 +1,5 @@
+// Over SwiftLint's size limits since before SwiftLint was added: see .swiftlint.yml.
+// swiftlint:disable function_body_length cyclomatic_complexity
 import Cocoa
 
 /// Keyboard shortcuts and key events.

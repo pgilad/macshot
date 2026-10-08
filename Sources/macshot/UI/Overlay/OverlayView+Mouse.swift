@@ -1,3 +1,5 @@
+// Over SwiftLint's size limits since before SwiftLint was added: see .swiftlint.yml.
+// swiftlint:disable file_length function_body_length cyclomatic_complexity
 import Cocoa
 
 /// Mouse events: selection, annotation dragging and the right-click color wheel.

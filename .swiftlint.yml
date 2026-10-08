@@ -1,6 +1,13 @@
 # Run with `make lint`. CI runs it with --strict, so a warning fails the build.
-# The rules come from maccy. .swiftlint-baseline.json lists the findings that the code
-# had when SwiftLint was added (long lines and the size limits); only new ones fail.
+# The rules come from maccy. Code that broke them when SwiftLint was added is excepted
+# in two ways, and only new findings fail:
+# - Files over a size limit (file, type or function length, complexity) disable those
+#   rules in their first lines. A baseline cannot hold these findings: their message
+#   holds the current size, so any edit would make them new. When a file gets under a
+#   limit, superfluous_disable_command says so; remove the rule from its first lines.
+# - .swiftlint-baseline.json lists the other old findings, mostly long lines. Change a
+#   listed line and it must follow the rules. `make lint-baseline` records the current
+#   findings; use it only to drop fixed ones.
 included:
   - Package.swift
   - Sources
@@ -12,6 +19,9 @@ disabled_rules:
   # Persisted string enums keep explicit raw values, so renaming a case cannot change a
   # stored value.
   - redundant_string_enum_value
+blanket_disable_command:
+  # The size-limit exceptions in the first lines of old files cover the whole file.
+  allowed_rules: [file_length, type_body_length, function_body_length, cyclomatic_complexity]
 line_length:
   warning: 140
   ignores_comments: true

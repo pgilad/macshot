@@ -1,3 +1,5 @@
+// Over SwiftLint's size limits since before SwiftLint was added: see .swiftlint.yml.
+// swiftlint:disable file_length type_body_length function_body_length cyclomatic_complexity
 import Cocoa
 import Carbon
 import ServiceManagement

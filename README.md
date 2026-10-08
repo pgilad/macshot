@@ -99,12 +99,16 @@ This fork started from macshot 4.4.0-beta.6 by sw33tLie. It removes screen recor
 ## Development
 
 ```fish
-make test   # unit tests (Swift Testing)
-make app    # release build in build/macshot.app
-make run    # build and start build/macshot.app
+make test            # unit tests (Swift Testing)
+make self-test       # the editor, Settings and saving in real windows (debug build)
+make lint            # SwiftLint (brew install swiftlint)
+make perf            # scroll capture stitching timings (release build)
+make readme-images   # render the README screenshots
+make app             # release build in build/macshot.app
+make run             # build and start build/macshot.app
 ```
 
-The tests run headless: they need no Screen Recording permission and no windows.
+The tests run headless: they need no Screen Recording permission and no windows. None of these targets captures the screen.
 
 ## License
 

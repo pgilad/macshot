@@ -1,3 +1,5 @@
+// Over SwiftLint's size limits since before SwiftLint was added: see .swiftlint.yml.
+// swiftlint:disable cyclomatic_complexity
 import Cocoa
 
 /// Snap alignment guides and the auto measure preview.

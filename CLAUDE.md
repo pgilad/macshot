@@ -19,6 +19,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 make test               # Swift Testing, one test at a time
 make self-test          # debug build only: editor, tools, text undo, save, history and Settings in real windows
 make readme-images      # render the editor with sample annotations (make snapshots) into docs/images
+make lint               # SwiftLint with .swiftlint.yml; only findings that are not excepted fail (brew install swiftlint)
 make perf               # opt-in timings in a release build: scroll capture stitching up to the height limit
 make app                # release build, assembled and signed in build/macshot.app
 make install            # make app, then replace /Applications/macshot.app and start it
@@ -32,7 +33,8 @@ swift build             # debug build only
 - The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission and no window server dependency. `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
 - `make self-test` runs `macshot --self-test` from the debug binary. It drives the editor, every tool handler, a text session followed by ⌘Z, a save, a history round trip, every Settings tab and the About panel in real windows, with a temporary data folder, and puts the binary's UserDefaults domain back. It never captures the screen. The code is inside `#if DEBUG`, so release builds do not have it. Add a check there for behavior that needs the window server.
 - `Tests/macshotTests/PerformanceTests.swift` runs only when `MACSHOT_PERF=1` is set, which `make perf` does. It prints the times and fails only on a large slowdown. Put the before and after numbers of a performance change in the commit message, not in a comment.
-- CI (`.github/workflows/ci.yaml`) runs `make test`, `make self-test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
+- SwiftLint uses maccy's rules. Old code is excepted in two ways, explained in `.swiftlint.yml`: files over a size limit disable those rules in their first two lines, and `.swiftlint-baseline.json` lists the other old findings (mostly long lines). New code must pass. Do not add a file to either exception; split the code or fix the finding. When a file gets under a limit, remove the rule from its first lines.
+- CI (`.github/workflows/ci.yaml`) runs `make lint` (macOS 26 job), `make test`, `make self-test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
 
 ## Architecture
 
