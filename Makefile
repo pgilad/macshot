@@ -1,5 +1,5 @@
 # macshot builds with the Command Line Tools only: `xcode-select --install`.
-# Common tasks: make install, make test, make app.
+# Common tasks: make install, make test, make self-test, make app.
 
 SWIFT ?= swift
 APP_DIR ?= build/macshot.app
@@ -13,7 +13,7 @@ SWIFT_FLAGS ?=
 TESTING_PLUGINS := $(shell xcode-select -p)/usr/lib/swift/host/plugins/testing
 TEST_FLAGS := $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
 
-.PHONY: build app dist install test run clean signing-identity
+.PHONY: build app dist install test self-test run clean signing-identity
 
 build: ## Debug build
 	$(SWIFT) build $(SWIFT_FLAGS)
@@ -34,6 +34,9 @@ install: app ## Build, then replace the app in /Applications and start it
 
 test: ## Unit tests, one at a time: they share UserDefaults and the pasteboard
 	$(SWIFT) test --no-parallel $(SWIFT_FLAGS) $(TEST_FLAGS)
+
+self-test: build ## Editor, tools, text undo, save, history and Settings in real windows
+	.build/debug/macshot --self-test
 
 run: app ## Start the bundled build from build/
 	open "$(APP_DIR)"

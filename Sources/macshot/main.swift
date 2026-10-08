@@ -12,6 +12,13 @@ UserDefaults.standard.set(false, forKey: "NSViewUsesAutomaticLayerBackingStores"
 // so the delegate stays alive for the life of the app.
 MainActor.assumeIsolated {
     let app = NSApplication.shared
+    #if DEBUG
+    // Development checks: `macshot --self-test`. See Diagnostics.
+    if Diagnostics.startIfRequested(CommandLine.arguments) {
+        app.setActivationPolicy(.accessory)
+        app.run()
+    }
+    #endif
     let delegate = AppDelegate()
     app.delegate = delegate
     app.run()

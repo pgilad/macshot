@@ -24,6 +24,7 @@ jobs:
           persist-credentials: false
       - run: swift --version
       - run: make test
+      - run: make self-test
       - run: make dist
       # The app and the tests write errors to the unified log, not to the terminal.
       - name: Show the app log
@@ -46,6 +47,7 @@ jobs:
           persist-credentials: false
       - run: sw_vers && swift --version
       - run: make test
+      - run: make self-test
       - run: make dist
       # The app and the tests write errors to the unified log, not to the terminal.
       - name: Show the app log

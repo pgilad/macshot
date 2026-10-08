@@ -40,6 +40,7 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - run: make test
+      - run: make self-test
       - name: Import the signing certificate
         env:
           MACSHOT_SIGNING_P12: ${{ secrets.MACSHOT_SIGNING_P12 }}

@@ -17,6 +17,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 
 ```fish
 make test               # Swift Testing, one test at a time
+make self-test          # debug build only: editor, tools, text undo, save, history and Settings in real windows
 make app                # release build, assembled and signed in build/macshot.app
 make install            # make app, then replace /Applications/macshot.app and start it
 make signing-identity   # once per Mac: a local certificate so permissions survive rebuilds
@@ -27,7 +28,8 @@ swift build             # debug build only
 - The data folder comes from `Paths.dataDirectory` (in the app container). A debug binary from `swift build` has no sandbox, so debug builds accept `MACSHOT_DATA_DIR`.
 - Resources are plain files in `Resources/`, copied into the bundle by `scripts/bundle.sh`. Load them with `NSImage(named:)`. There is no asset catalog and no SwiftPM resource bundle.
 - The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission and no window server dependency. `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
-- CI (`.github/workflows/ci.yaml`) runs `make test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
+- `make self-test` runs `macshot --self-test` from the debug binary. It drives the editor, every tool handler, a text session followed by ⌘Z, a save, a history round trip, every Settings tab and the About panel in real windows, with a temporary data folder, and puts the binary's UserDefaults domain back. It never captures the screen. The code is inside `#if DEBUG`, so release builds do not have it. Add a check there for behavior that needs the window server.
+- CI (`.github/workflows/ci.yaml`) runs `make test`, `make self-test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
 
 ## Architecture
 
@@ -38,6 +40,8 @@ Menu bar agent app. No main window. A global hotkey (default ⇧⌘X) or the men
 ```
 Sources/macshot/
 ├── main.swift                          # Entry point
+├── Diagnostics/
+│   └── SelfTest.swift                  # `--self-test` (debug builds only)
 ├── AppDelegate.swift                   # Lifecycle, status item, hotkeys, capture orchestration, URL scheme
 ├── Capture/
 │   ├── ScreenCaptureManager.swift      # ScreenCaptureKit capture: displays, windows
