@@ -443,6 +443,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "About macshot", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())
+        // ⌘, opens Settings from any macshot window, not only from the menu bar menu.
+        let settingsItem = appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: "Quit macshot", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appMenuItem.submenu = appMenu
 
@@ -623,7 +627,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let prefsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        let prefsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         prefsItem.target = self
         prefsItem.image = NSImage(systemSymbolName: "gear", accessibilityDescription: nil)
         menu.addItem(prefsItem)
@@ -2114,6 +2118,17 @@ extension AppDelegate: OverlayWindowControllerDelegate {
 }
 
 // MARK: - PinWindowControllerDelegate
+
+extension AppDelegate: NSMenuItemValidation {
+    /// The capture overlay covers every window, so Settings would open behind it.
+    /// (The menu bar menu does not auto-enable its items; `menuWillOpen` sets them.)
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(openSettings) {
+            return overlayControllers.isEmpty
+        }
+        return true
+    }
+}
 
 extension AppDelegate: PinWindowControllerDelegate {
     func pinWindowDidClose(_ controller: PinWindowController) {
