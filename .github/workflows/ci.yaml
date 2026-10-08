@@ -15,6 +15,8 @@ jobs:
     env:
       # A fixed Xcode, so a runner image update cannot change the compiler.
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      # The build has no compiler warnings. Keep it that way.
+      SWIFT_FLAGS: -Xswiftc -warnings-as-errors
     steps:
       # Pinned to a commit, not a movable tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,6 +32,7 @@ jobs:
     timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
+      SWIFT_FLAGS: -Xswiftc -warnings-as-errors
       # In this VM, Vision cannot compile its accurate text recognition model, so those
       # OCR tests fail. The macOS 26 job and a Mac run them.
       MACSHOT_SKIP_ACCURATE_OCR: '1'

@@ -26,7 +26,7 @@ swift build             # debug build only
 - `scripts/bundle.sh` builds the release binary, fills the `Resources/Info.plist` template (`__VERSION__` from `VERSION`, `__BUILD__` from the commit count, `__COMMIT__`), converts `Resources/AppIcon.iconset` with `iconutil`, copies the PNG resources and signs with the hardened runtime. Without the "macshot Local Signing" identity it signs ad-hoc, and macOS forgets the Screen Recording permission after each rebuild.
 - Resources are plain files in `Resources/`, copied into the bundle by `scripts/bundle.sh`. Load them with `NSImage(named:)`. There is no asset catalog and no SwiftPM resource bundle.
 - The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission and no window server dependency. `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
-- CI (`.github/workflows/ci.yaml`) runs `make test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27. Actions are pinned to commits.
+- CI (`.github/workflows/ci.yaml`) runs `make test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
 
 ## Architecture
 

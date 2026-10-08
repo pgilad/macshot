@@ -6,7 +6,7 @@ APP_DIR ?= build/macshot.app
 INSTALL_DIR ?= /Applications
 VERSION := $(shell tr -d '[:space:]' < VERSION)
 DIST_ZIP ?= build/macshot-$(VERSION)-arm64.zip
-# Extra flags for swift build and swift test, for example -Xswiftc -warnings-as-errors.
+# Extra flags for swift build and swift test. CI uses -Xswiftc -warnings-as-errors.
 SWIFT_FLAGS ?=
 
 # The Command Line Tools ship the Swift Testing macro plugin outside the default search path.
