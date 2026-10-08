@@ -2164,6 +2164,7 @@ extension AppDelegate: NSMenuDelegate {
             item.target = self
             item.tag = i
             item.image = ScreenshotHistory.shared.loadThumbnail(for: entry)
+            item.keepImageVisible()
             menu.addItem(item)
         }
 

@@ -6,7 +6,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 
 - **Language:** Swift 6.2 toolchain in the Swift 6 language mode, `defaultIsolation(MainActor.self)` and the upcoming features listed in `Package.swift`.
 - **UI:** AppKit. Every window is created in code. SwiftUI is used only by `BeautifyRenderer` for `MeshGradient` + `ImageRenderer`.
-- **Target:** macOS 26 and later, tested on 27. Do not add `#available` checks for older releases.
+- **Target:** macOS 26 and later, tested on 27. Do not add `#available` checks for older releases. A macOS 27 API needs `if #available(macOS 27, *)` inside `#if compiler(>=6.4)`: CI also builds with Xcode 26.6 (Swift 6.3, macOS 26 SDK), which does not have it. See `NSMenuItem.keepImageVisible()`.
 - **Bundle ID:** `com.pgilad.macshot`.
 - **Sandbox:** on, with no network entitlement. Entitlements are in `Resources/macshot.entitlements`: user-selected files read-write, app-scope bookmarks, and the `com.apple.axserver` mach-lookup exception for the Accessibility API. Do not add `network.client`; nothing in the app may make network requests.
 - **LSUIElement:** YES (menu bar app; switches to `.regular` while editor windows are open).

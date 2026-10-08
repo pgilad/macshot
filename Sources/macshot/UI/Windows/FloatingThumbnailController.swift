@@ -120,6 +120,7 @@ enum ImageContextMenu {
                 appItem.representedObject = appURL
                 appItem.image = NSWorkspace.shared.icon(forFile: appURL.path)
                 appItem.image?.size = NSSize(width: 16, height: 16)
+                appItem.keepImageVisible()
                 submenu.addItem(appItem)
             }
         }
