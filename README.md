@@ -20,7 +20,7 @@
   </picture>
 </p>
 
-macshot freezes the screen, lets you select an area, window or display, and gives you annotation tools before you copy, save or pin the result. This fork of [sw33tLie/macshot](https://github.com/sw33tLie/macshot) keeps the screenshot tool and removes everything that records, uploads or connects to the network.
+macshot freezes the screen, lets you select an area, window or display, and gives you annotation tools before you copy, save or pin the result. This fork of [sw33tLie/macshot](https://github.com/sw33tLie/macshot) keeps the screenshot tool and removes everything that records or uploads.
 
 ## Install
 
@@ -35,11 +35,11 @@ make install            # build, sign, copy to /Applications and start
 
 `make signing-identity` creates a local code-signing certificate, so macOS keeps the Screen Recording permission after each rebuild. On first start, grant **Screen Recording** (in System Settings: **Screen & System Audio Recording**). Scroll capture's auto-scroll and element snapping also ask for **Accessibility** (on macOS 27: **Device Control and Data Access**).
 
-To update, run `git pull` and `make install`.
+To update, run `git pull` and `make install`. **Check for Updates…** in the menu bar menu tells you when a new release is out.
 
 ### Download
 
-A `v*` tag publishes a signed arm64 build on the [Releases](https://github.com/pgilad/macshot/releases) page, with a SHA-256 file and a build provenance attestation. The app is not notarized: on first start, macOS blocks it, and you must click **Open Anyway** in **System Settings → Privacy & Security**. macshot makes no network requests, so it does not check for updates.
+A `v*` tag publishes a signed arm64 build on the [Releases](https://github.com/pgilad/macshot/releases) page, with a SHA-256 file and a build provenance attestation. The app is not notarized: on first start, macOS blocks it, and you must click **Open Anyway** in **System Settings → Privacy & Security**. To update, replace the app with a newer release. **Check for Updates…** in the menu bar menu tells you when a new release is out.
 
 ## Features
 
@@ -84,7 +84,7 @@ Tools have single-key shortcuts after you select an area: <kbd>A</kbd> arrow, <k
 
 ## Privacy
 
-- No network access. The app has no network entitlement, so the App Sandbox blocks every outgoing connection. There is no telemetry, no auto-updater and no upload.
+- No telemetry, no auto-updater and no upload. The only network request is the update check: once a day, and when you choose **Check for Updates…**, macshot asks the GitHub API for the latest release. It sends nothing about you or your captures. To turn off the daily check, go to **Settings → About**.
 - OCR, QR reading, auto-redact and background removal run on this Mac with Apple's Vision framework.
 - The app links only Apple frameworks.
 - Captures stay in the app container and the save folder you choose. History keeps the 10 most recent captures by default. A capture with redactions is kept only flattened, so the redacted pixels cannot be recovered from history.

@@ -10,6 +10,9 @@ import Cocoa
 /// permission. It uses a temporary data folder, and it puts the UserDefaults domain of the
 /// debug binary back as it was.
 ///
+/// `macshot --check-update <version>` asks GitHub for the latest release, as if `<version>`
+/// runs. It uses the network, so the self-test and CI do not run it.
+///
 /// Release builds do not contain this code.
 enum Diagnostics {
     /// Returns true when a diagnostic started. It calls `exit` when it ends.
@@ -21,6 +24,18 @@ enum Diagnostics {
         if let index = arguments.firstIndex(of: "--render-snapshots"), arguments.indices.contains(index + 1) {
             let directory = URL(filePath: arguments[index + 1], directoryHint: .isDirectory)
             Task { exit(await SnapshotRenderer.render(to: directory) ? 0 : 1) }
+            return true
+        }
+        if let index = arguments.firstIndex(of: "--check-update"), arguments.indices.contains(index + 1) {
+            let version = AppVersion(arguments[index + 1])
+            Task {
+                let state = await UpdateChecker.fetchState(current: version)
+                print(state)
+                if case .failed = state {
+                    exit(1)
+                }
+                exit(0)
+            }
             return true
         }
         return false
@@ -211,6 +226,12 @@ final class SelfTest {
             NSApp.sendAction(action, to: item.target, from: item)
             check(window.title.hasSuffix(item.label), "Settings shows the \(item.label) tab")
         }
+        // The update check. Nothing here clicks Check Now: the self-test makes no network request.
+        if let about = items.first(where: { $0.itemIdentifier.rawValue == "about" }), let action = about.action {
+            NSApp.sendAction(action, to: about.target, from: about)
+        }
+        check(!DiagnosticInput.descendants(of: window.contentView, ofType: UpdateSettingsView.self).isEmpty,
+              "Settings › About shows the update check")
         window.close()
         await DiagnosticInput.settle()
     }

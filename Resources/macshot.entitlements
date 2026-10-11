@@ -2,9 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Screenshots can hold secrets. The sandbox limits what a bug in macshot can reach.
-	     There is no network entitlement, so the sandbox blocks every outgoing connection. -->
+	<!-- Screenshots can hold secrets. The sandbox limits what a bug in macshot can reach. -->
 	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- The update check asks api.github.com for the latest release: once a day (on by
+	     default, Settings › About turns it off), and when the user chooses Check for Updates.
+	     It is the only network request in macshot. -->
+	<key>com.apple.security.network.client</key>
 	<true/>
 	<!-- Save panels, Open Image… and the chosen save folder. -->
 	<key>com.apple.security.files.user-selected.read-write</key>

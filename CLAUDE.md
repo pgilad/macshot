@@ -8,7 +8,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 - **UI:** AppKit. Every window is created in code. SwiftUI is used only by `BeautifyRenderer` for `MeshGradient` + `ImageRenderer`.
 - **Target:** macOS 26 and later, tested on 27. Do not add `#available` checks for older releases. A macOS 27 API needs `if #available(macOS 27, *)` inside `#if compiler(>=6.4)`: CI also builds with Xcode 26.6 (Swift 6.3, macOS 26 SDK), which does not have it. See `NSMenuItem.keepImageVisible()`.
 - **Bundle ID:** `com.pgilad.macshot`.
-- **Sandbox:** on, with no network entitlement. Entitlements are in `Resources/macshot.entitlements`: user-selected files read-write, app-scope bookmarks, and the `com.apple.axserver` mach-lookup exception for the Accessibility API. Do not add `network.client`; nothing in the app may make network requests.
+- **Sandbox:** on. Entitlements are in `Resources/macshot.entitlements`: user-selected files read-write, app-scope bookmarks, `network.client` for the update check only, and the `com.apple.axserver` mach-lookup exception for the Accessibility API. Nothing else in the app may make network requests.
 - **LSUIElement:** YES (menu bar app; switches to `.regular` while editor windows are open).
 - **Permissions:** Screen Recording. Accessibility only for scroll capture auto-scroll and element snapping.
 - **Dependencies:** none. Apple frameworks only: AppKit, ScreenCaptureKit, Vision, CoreImage, ImageIO, Carbon (hotkeys), ServiceManagement (launch at login).
@@ -30,8 +30,9 @@ swift build             # debug build only
 - `scripts/bundle.sh` builds the release binary, fills the `Resources/Info.plist` template (`__VERSION__` from `VERSION`, `__BUILD__` from the commit count, `__COMMIT__`), converts `Resources/AppIcon.iconset` with `iconutil`, copies the PNG resources and signs with the hardened runtime. Without the "macshot Local Signing" identity it signs ad-hoc, and macOS forgets the Screen Recording permission after each rebuild.
 - The data folder comes from `Paths.dataDirectory` (in the app container). A debug binary from `swift build` has no sandbox, so debug builds accept `MACSHOT_DATA_DIR`.
 - Resources are plain files in `Resources/`, copied into the bundle by `scripts/bundle.sh`. Load them with `NSImage(named:)`. There is no asset catalog and no SwiftPM resource bundle.
-- The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission and no window server dependency. `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
-- `make self-test` runs `macshot --self-test` from the debug binary. It drives the editor, every tool handler, a text session followed by ⌘Z, a save, a history round trip, every Settings tab and the About panel in real windows, with a temporary data folder, and puts the binary's UserDefaults domain back. It never captures the screen. The code is inside `#if DEBUG`, so release builds do not have it. Add a check there for behavior that needs the window server.
+- The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission, no window server dependency and no network (`UpdateChecker` takes a replacement for its request). `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
+- `make self-test` runs `macshot --self-test` from the debug binary. It drives the editor, every tool handler, a text session followed by ⌘Z, a save, a history round trip, every Settings tab and the About panel in real windows, with a temporary data folder, and puts the binary's UserDefaults domain back. It never captures the screen and makes no network request. The code is inside `#if DEBUG`, so release builds do not have it. Add a check there for behavior that needs the window server.
+- `.build/debug/macshot --check-update <version>` (debug builds) asks GitHub for the latest release as if `<version>` runs, and prints the result. It uses the network, so the self-test and CI do not run it.
 - `Tests/macshotTests/PerformanceTests.swift` runs only when `MACSHOT_PERF=1` is set, which `make perf` does. It prints the times and fails only on a large slowdown. Put the before and after numbers of a performance change in the commit message, not in a comment.
 - SwiftLint uses maccy's rules. Old code is excepted in two ways, explained in `.swiftlint.yml`: files over a size limit disable those rules in their first two lines, and `.swiftlint-baseline.json` lists the other old findings (mostly long lines). New code must pass. Do not add a file to either exception; split the code or fix the finding. When a file gets under a limit, remove the rule from its first lines.
 - CI (`.github/workflows/ci.yaml`) runs `make lint` (macOS 26 job), `make test`, `make self-test` and `make dist` on macOS 26 (Xcode 26.6) and macOS 27, with `-warnings-as-errors`: the build must have no compiler warnings. Actions are pinned to commits.
@@ -61,7 +62,7 @@ Sources/macshot/
 │   ├── CaptureEditState.swift          # Beautify/effects state saved with a capture
 │   ├── LenientDecoding.swift           # Backward/forward-compatible Codable helpers
 │   └── SavedCaptureValidation.swift    # Bounds checks for saved captures and sidecars
-├── Services/                           # Encoding, saving, history, OCR, redaction, shortcuts, settings
+├── Services/                           # Encoding, saving, history, OCR, redaction, shortcuts, settings, update check
 └── UI/
     ├── Overlay/                        # OverlayView (canvas) and its OverlayView+Feature.swift extensions, OverlayWindowController, scroll capture HUD
     ├── Editor/                         # EditorView, DetachedEditorWindowController, top bar, centering clip view
@@ -148,6 +149,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 - Capture: displays one at a time (on macOS 26 `replayd` serializes concurrent screenshot requests and charges more per queued request).
 - Scroll capture: async frame grabs; `isCapturing` serializes capture-and-compare.
 - OCR: Vision on a detached task, results to the main actor.
+- Update check: the GitHub request is `@concurrent`; `UpdateChecker.state` changes on the main actor and posts `UpdateChecker.didChange`.
 - Saving and history writes: background queues; completions on the main actor.
 - UI: all drawing, state and input on the main thread.
 
@@ -160,7 +162,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 - `[weak self]` in escaping closures. Minimal allocations during mouse tracking. Tear down overlay windows and images promptly after capture (`autoreleasepool` for overlay teardown).
 - UserDefaults for all preferences. A setting that the Settings window shares with other code goes through `Preferences` (one key and one default); do not read its key with another fallback. Key names are persisted.
 - Extension files (`OverlayView+Feature.swift`) for self-contained features that need OverlayView state.
-- **No network.** Do not add URLSession, WebKit or any other network client, and do not add the network entitlement.
+- **One network request: the update check.** `UpdateChecker` asks the GitHub API for the latest release of pgilad/macshot once a day (on by default, Settings › About turns it off) and from Check for Updates… in the menus. It sends nothing about the user or the captures and only tells the user; it never downloads or installs. Do not add any other network request, URLSession use, WebKit or other network client.
 - **No third-party packages.**
 - **Persisted models decode leniently.** Swift's synthesized `init(from:)` requires a key for every non-optional property even when it has a default, so a new field breaks every older file. Any `Codable` type written to disk or UserDefaults needs a hand-written `init(from:)` using `decode(_:or:)` / `decodeOptional(_:)` from `Model/LenientDecoding.swift`, and arrays decode through `LenientArrayDecoder`. This applies to `CodableAnnotation`, `CaptureEditState`, `ScreenshotHistory.IndexEntry`, and anything new.
 - **History cleanup is conservative.** Missing or salvaged indexes do not establish orphanhood. `HistoryFileCleanup` only reclaims old unreferenced thumbnails/previews using a captured cutoff. Index identifiers must be UUIDs, extensions recognized image types, and duplicate rows are removed before retention.

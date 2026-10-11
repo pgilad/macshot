@@ -196,6 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             setMenuBarIconVisible(false)
         }
         registerHotkey()
+        UpdateChecker.shared.start()
         // Pre-warm CoreAudio so the first capture sound doesn't stall ~1s.
         if let sound = Self.captureSound {
             sound.volume = 0
@@ -446,6 +447,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu()
         let aboutItem = appMenu.addItem(withTitle: "About macshot", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
+        let updateItem = appMenu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
         appMenu.addItem(NSMenuItem.separator())
         // ⌘, opens Settings from any macshot window, not only from the menu bar menu.
         let settingsItem = appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
@@ -641,6 +644,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(pinClipboardItem)
 
         menu.addItem(NSMenuItem.separator())
+
+        let updateItem = NSMenuItem(title: UpdateChecker.shared.menuTitle, action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        updateItem.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: nil)
+        menu.addItem(updateItem)
 
         let prefsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         prefsItem.target = self
@@ -1742,6 +1750,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsController?.showWindow()
     }
 
+    // MARK: - Updates
+
+    @objc private func checkForUpdates() {
+        // The result alert activates macshot. A menu bar menu does not, so this is the app
+        // that the user works in.
+        let frontApp = NSWorkspace.shared.frontmostApplication
+        Task {
+            await UpdateChecker.shared.check(showingResult: true)
+            if previousApp == nil {
+                previousApp = frontApp
+            }
+            returnFocusIfNeeded()
+        }
+    }
+
     // MARK: - Quit
 
     @objc private func quitApp() {
@@ -2166,6 +2189,8 @@ extension AppDelegate: NSMenuDelegate {
         for item in menu.items where item.action != #selector(quitApp) {
             item.isEnabled = !dialogIsOpen
         }
+        // An automatic check that found a new version shows it here.
+        menu.items.first { $0.action == #selector(checkForUpdates) }?.title = UpdateChecker.shared.menuTitle
     }
 
     func menuDidClose(_ menu: NSMenu) {

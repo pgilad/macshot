@@ -35,6 +35,8 @@ nonisolated enum Preferences {
         static let doubleClickToCopy = "doubleClickToCopy"
         static let hideCaptureInstructions = "hideCaptureInstructions"
         static let disableSelectionOutsideShadow = "disableSelectionOutsideShadow"
+        static let checkForUpdates = "checkForUpdates"
+        static let lastUpdateCheck = "lastUpdateCheck"
     }
 
     // MARK: - General
@@ -165,6 +167,19 @@ nonisolated enum Preferences {
     static var disableSelectionOutsideShadow: Bool {
         get { bool(Key.disableSelectionOutsideShadow, default: false) }
         set { defaults.set(newValue, forKey: Key.disableSelectionOutsideShadow) }
+    }
+
+    // MARK: - Updates
+
+    /// Ask GitHub once a day for a new release. On by default. Settings › About turns it off.
+    static var checkForUpdates: Bool {
+        get { bool(Key.checkForUpdates, default: true) }
+        set { defaults.set(newValue, forKey: Key.checkForUpdates) }
+    }
+    /// The time of the last update check that got an answer, automatic or not.
+    static var lastUpdateCheck: Date? {
+        get { defaults.object(forKey: Key.lastUpdateCheck) as? Date }
+        set { defaults.set(newValue, forKey: Key.lastUpdateCheck) }
     }
 
     // MARK: - Storage

@@ -16,6 +16,7 @@ final class PreferencesTests {
         Preferences.Key.clipboardIncludesImageFormat, Preferences.Key.showToolShortcutsInTooltips,
         Preferences.Key.snapGuidesEnabled, Preferences.Key.boundarySnapEnabled, Preferences.Key.doubleClickToCopy,
         Preferences.Key.hideCaptureInstructions, Preferences.Key.disableSelectionOutsideShadow,
+        Preferences.Key.checkForUpdates, Preferences.Key.lastUpdateCheck,
     ]
 
     @Test func testTheDefaultsWhenNothingIsStored() {
@@ -47,6 +48,7 @@ final class PreferencesTests {
             #expect(Preferences.doubleClickToCopy)
             #expect(!Preferences.hideCaptureInstructions)
             #expect(!Preferences.disableSelectionOutsideShadow)
+            #expect(Preferences.checkForUpdates, "the daily update check is on until the user turns it off")
         }
     }
 

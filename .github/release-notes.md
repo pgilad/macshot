@@ -6,7 +6,7 @@ Requires macOS 26 or later on Apple silicon.
 2. Open macshot. macOS blocks the first start, because the app is not notarized. Go to **System Settings → Privacy & Security** and click **Open Anyway**.
 3. Grant **Screen Recording** (in System Settings: **Screen & System Audio Recording**). Scroll capture's auto-scroll and element snapping also ask for **Accessibility** (on macOS 27: **Device Control and Data Access**).
 
-To update, quit macshot and replace the app. If macOS blocks the new version, do step 2 again. macshot makes no network requests, so it does not check for updates: watch this repository's releases. All releases are signed with the same certificate, so macOS keeps the permissions.
+To update, quit macshot and replace the app. If macOS blocks the new version, do step 2 again. macshot checks GitHub once a day and tells you when a new release is out. To turn this off, go to **Settings → About**. All releases are signed with the same certificate, so macOS keeps the permissions.
 
 If you used a build from source before, macOS does not apply its permissions to a release. Remove macshot from the Screen Recording list (and the Accessibility list) and add it again.
 

@@ -1719,7 +1719,11 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
         versionLabel.font = NSFont.systemFont(ofSize: 12)
         versionLabel.textColor = .secondaryLabelColor
         stack.addArrangedSubview(versionLabel)
-        stack.setCustomSpacing(20, after: versionLabel)
+        stack.setCustomSpacing(16, after: versionLabel)
+
+        let updates = UpdateSettingsView()
+        stack.addArrangedSubview(updates)
+        stack.setCustomSpacing(20, after: updates)
 
         // Description
         let desc = NSTextField(wrappingLabelWithString: "A free, open-source screenshot tool for macOS.\nFully native, built with Swift and AppKit.")

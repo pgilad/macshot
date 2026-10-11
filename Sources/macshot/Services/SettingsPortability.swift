@@ -58,6 +58,8 @@ enum SettingsPortability {
         // or wrongly re-enables ones the user disabled. (enabledTools/enabledActions DO transfer.)
         "knownToolRawValues", "knownActionTags",
         "useWindowTitleInFilename",
+        // The time of this Mac's last update check.
+        "lastUpdateCheck",
     ]
 
     /// Prefixes of OS/framework key families macOS injects into every app's domain. Stable —
