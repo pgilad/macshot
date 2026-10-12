@@ -29,11 +29,15 @@ Requires macOS 26 or later on Apple silicon. Build from source with the Command 
 ```fish
 git clone https://github.com/pgilad/macshot.git
 cd macshot
-make signing-identity   # once per Mac
+scripts/create-signing-identity.sh /path/to/gilad-peleg-local-signing.p12
 make install            # build, sign, copy to /Applications and start
 ```
 
-`make signing-identity` creates a local code-signing certificate, so macOS keeps the Screen Recording permission after each rebuild. On first start, grant **Screen Recording** (in System Settings: **Screen & System Audio Recording**). Scroll capture's auto-scroll and element snapping also ask for **Accessibility** (on macOS 27: **Device Control and Data Access**).
+Import the shared `Gilad Peleg Local Signing` identity from your 1Password backup on each build Mac. Keychain asks for the backup password. `make signing-identity` checks that the identity is valid; it does not create another key. Reusing the identity keeps the app's signing identity stable across rebuilds. On first start, grant **Screen Recording** (in System Settings: **Screen & System Audio Recording**). Scroll capture's auto-scroll and element snapping also ask for **Accessibility** (on macOS 27: **Device Control and Data Access**).
+
+Local builds require this identity by default. To use another identity, set `MACSHOT_SIGN_IDENTITY`. For an ad-hoc build, run `env MACSHOT_SIGN_IDENTITY=- make app`; CI uses this option explicitly.
+
+The bundle ID is now `com.giladpeleg.macshot`. Data and settings from the former `com.pgilad.macshot` sandbox remain in that container and are not migrated automatically. Grant the permissions to the new app after installation.
 
 To update, run `git pull` and `make install`. **Check for Updates…** in the menu bar menu tells you when a new release is out.
 
@@ -94,7 +98,7 @@ See [PRIVACY.md](PRIVACY.md) for the details.
 
 ## About this fork
 
-This fork started from macshot 4.4.0-beta.6 by sw33tLie. It removes screen recording and the video editor, uploads to imgbb, Google Drive and S3, OCR translation, Sparkle auto-update, rich-text clipboard pins, WebP saving, translations of the app, and all third-party Swift packages. It requires macOS 26 and builds with SwiftPM. Its bundle ID is `com.pgilad.macshot`, so it does not share data or permissions with upstream macshot.
+This fork started from macshot 4.4.0-beta.6 by sw33tLie. It removes screen recording and the video editor, uploads to imgbb, Google Drive and S3, OCR translation, Sparkle auto-update, rich-text clipboard pins, WebP saving, translations of the app, and all third-party Swift packages. It requires macOS 26 and builds with SwiftPM. Its bundle ID is `com.giladpeleg.macshot`, so it does not share data or permissions with upstream macshot.
 
 ## Development
 

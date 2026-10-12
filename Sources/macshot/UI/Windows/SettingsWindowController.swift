@@ -635,7 +635,7 @@ class SettingsWindowController: NSWindowController, NSToolbarDelegate, NSWindowD
     @objc private func revealSettingsFileClicked(_ sender: NSButton) {
         let prefsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Preferences", isDirectory: true)
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.pgilad.macshot"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.giladpeleg.macshot"
         let plist = prefsDir.appendingPathComponent("\(bundleID).plist")
         if FileManager.default.fileExists(atPath: plist.path) {
             NSWorkspace.shared.activateFileViewerSelecting([plist])

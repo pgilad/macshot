@@ -150,7 +150,7 @@ final class OCRRecognitionSession: @unchecked Sendable {
         var errorDescription: String? { "Text recognition timed out. Please try again." }
     }
 
-    private let queue = DispatchQueue(label: "com.pgilad.macshot.ocr", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.giladpeleg.macshot.ocr", qos: .userInitiated)
     private let timeout: TimeInterval
     private let startAttempt: StartAttempt
     nonisolated(unsafe) private var completion: Completion?

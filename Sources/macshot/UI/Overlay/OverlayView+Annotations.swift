@@ -455,7 +455,7 @@ extension OverlayView {
 
     // MARK: - Annotation Copy/Paste
 
-    static let annotationPasteboardType = NSPasteboard.PasteboardType("com.pgilad.macshot.annotations")
+    static let annotationPasteboardType = NSPasteboard.PasteboardType("com.giladpeleg.macshot.annotations")
 
     /// Copy selected annotations to the pasteboard.
     func copySelectedAnnotations() {

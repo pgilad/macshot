@@ -11,7 +11,7 @@ Quit macshot normally and let pending saves finish. Make a copy of the entire
 history directory, including `index.json`, before changing anything. The app
 uses:
 
-`~/Library/Containers/com.pgilad.macshot/Data/Library/Application Support/com.pgilad.macshot/history`
+`~/Library/Containers/com.giladpeleg.macshot/Data/Library/Application Support/com.giladpeleg.macshot/history`
 
 These instructions do not require modifying the index or deleting the source.
 

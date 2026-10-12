@@ -18,11 +18,11 @@ macshot runs only on your Mac. It collects nothing and sends nothing.
 
 ## Data on your Mac
 
-Everything is in the app's sandbox container, `~/Library/Containers/com.pgilad.macshot/`, except the captures you save to a folder you choose.
+Everything is in the app's sandbox container, `~/Library/Containers/com.giladpeleg.macshot/`, except the captures you save to a folder you choose.
 
 - **Saved captures** go to the save folder you choose. macshot keeps access to that folder with a security-scoped bookmark.
-- **History** keeps the 10 most recent captures by default (Settings can change the number, make it unlimited or turn it off) in `Data/Library/Application Support/com.pgilad.macshot/history/`. The folder is readable only by you. To reopen a capture with editable annotations, history also keeps the image without annotations. When a capture has redactions (pixelate, blur, solid fill or erase), history keeps only the flattened image, so the redacted pixels cannot be recovered from it.
-- **Settings** are in `Data/Library/Preferences/com.pgilad.macshot.plist`. Settings export leaves out your save folder and history.
+- **History** keeps the 10 most recent captures by default (Settings can change the number, make it unlimited or turn it off) in `Data/Library/Application Support/com.giladpeleg.macshot/history/`. The folder is readable only by you. To reopen a capture with editable annotations, history also keeps the image without annotations. When a capture has redactions (pixelate, blur, solid fill or erase), history keeps only the flattened image, so the redacted pixels cannot be recovered from it.
+- **Settings** are in `Data/Library/Preferences/com.giladpeleg.macshot.plist`. Settings export leaves out your save folder and history.
 - **The clipboard** is read only when you choose Pin from Clipboard, Open from Clipboard or paste into the editor. Copied captures contain image data only, never a file path.
 
 ## On-device processing

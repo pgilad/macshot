@@ -2,15 +2,21 @@
 # Builds macshot.app from source with the Command Line Tools (no Xcode needed) and signs it.
 #
 # Environment:
-#   MACSHOT_SIGN_IDENTITY  Code signing identity. Default: "macshot Local Signing" if it is
-#                          valid, else ad-hoc ("-"). See scripts/create-signing-identity.sh.
+#   MACSHOT_SIGN_IDENTITY  Override the shared local signing identity. See README for ad-hoc builds.
 #   APP_DIR                Output path. Default: build/macshot.app
 #   SWIFT_FLAGS            Extra flags for swift build, for example -Xswiftc -warnings-as-errors
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 APP_DIR=${APP_DIR:-build/macshot.app}
-DEFAULT_IDENTITY="macshot Local Signing"
+IDENTITY=${MACSHOT_SIGN_IDENTITY:-"Gilad Peleg Local Signing"}
+
+# Release keychains may not have user trust. codesign checks explicit overrides when signing.
+if [ -z "${MACSHOT_SIGN_IDENTITY:-}" ] && ! security find-identity -v -p codesigning | grep -Fq -- "$IDENTITY"; then
+  echo "error: no valid signing identity: $IDENTITY" >&2
+  echo "Import the signing identity from your backup, then run make signing-identity." >&2
+  exit 1
+fi
 
 VERSION=$(tr -d '[:space:]' < VERSION)
 BUILD=$(git rev-list --count HEAD 2>/dev/null || echo 1)
@@ -36,18 +42,6 @@ printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"
 iconutil --convert icns --output "$APP_DIR/Contents/Resources/AppIcon.icns" Resources/AppIcon.iconset
 cp Resources/StatusBarIcon.png Resources/StatusBarIcon@2x.png Resources/PermissionsGuide.png \
   "$APP_DIR/Contents/Resources/"
-
-IDENTITY=${MACSHOT_SIGN_IDENTITY:-}
-if [ -z "$IDENTITY" ]; then
-  if security find-identity -v -p codesigning | grep -q "\"$DEFAULT_IDENTITY\""; then
-    IDENTITY="$DEFAULT_IDENTITY"
-  else
-    IDENTITY="-"
-    echo "warning: no valid \"$DEFAULT_IDENTITY\" identity; signing ad-hoc." >&2
-    echo "warning: with an ad-hoc signature, macOS forgets the Screen Recording permission after each rebuild." >&2
-    echo "warning: run scripts/create-signing-identity.sh once to fix this." >&2
-  fi
-fi
 
 echo "==> Signing with identity: $IDENTITY"
 codesign --force --options runtime --timestamp=none \

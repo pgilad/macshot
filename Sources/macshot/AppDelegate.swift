@@ -141,12 +141,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Prevent multiple instances — if already running, activate the existing one and quit
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.pgilad.macshot"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.giladpeleg.macshot"
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
         if running.count > 1 {
             // Tell the existing instance to show its icon and open Settings
             DistributedNotificationCenter.default().postNotificationName(
-                .init("com.pgilad.macshot.showAndOpenPrefs"),
+                .init("com.giladpeleg.macshot.showAndOpenPrefs"),
                 object: nil, userInfo: nil, deliverImmediately: true
             )
             NSApp.terminate(nil)
@@ -208,7 +208,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Listen for duplicate-launch notification to restore icon
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(handleShowAndOpenPrefs),
-            name: .init("com.pgilad.macshot.showAndOpenPrefs"), object: nil
+            name: .init("com.giladpeleg.macshot.showAndOpenPrefs"), object: nil
         )
 
         // Dismiss overlays when the user switches spaces

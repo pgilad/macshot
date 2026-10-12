@@ -7,7 +7,7 @@ Native macOS screenshot and annotation tool. Swift + AppKit, built with SwiftPM 
 - **Language:** Swift 6.2 toolchain in the Swift 6 language mode, `defaultIsolation(MainActor.self)` and the upcoming features listed in `Package.swift`.
 - **UI:** AppKit. Every window is created in code. SwiftUI is used only by `BeautifyRenderer` for `MeshGradient` + `ImageRenderer`.
 - **Target:** macOS 26 and later, tested on 27. Do not add `#available` checks for older releases. A macOS 27 API needs `if #available(macOS 27, *)` inside `#if compiler(>=6.4)`: CI also builds with Xcode 26.6 (Swift 6.3, macOS 26 SDK), which does not have it. See `NSMenuItem.keepImageVisible()`.
-- **Bundle ID:** `com.pgilad.macshot`.
+- **Bundle ID:** `com.giladpeleg.macshot`.
 - **Sandbox:** on. Entitlements are in `Resources/macshot.entitlements`: user-selected files read-write, app-scope bookmarks, `network.client` for the update check only, and the `com.apple.axserver` mach-lookup exception for the Accessibility API. Nothing else in the app may make network requests.
 - **LSUIElement:** YES (menu bar app; switches to `.regular` while editor windows are open).
 - **Permissions:** Screen Recording. Accessibility only for scroll capture auto-scroll and element snapping.
@@ -23,11 +23,11 @@ make lint               # SwiftLint with .swiftlint.yml; only findings that are 
 make perf               # opt-in timings in a release build: scroll capture stitching up to the height limit
 make app                # release build, assembled and signed in build/macshot.app
 make install            # make app, then replace /Applications/macshot.app and start it
-make signing-identity   # once per Mac: a local certificate so permissions survive rebuilds
+make signing-identity   # check the shared identity imported from the backup
 swift build             # debug build only
 ```
 
-- `scripts/bundle.sh` builds the release binary, fills the `Resources/Info.plist` template (`__VERSION__` from `VERSION`, `__BUILD__` from the commit count, `__COMMIT__`), converts `Resources/AppIcon.iconset` with `iconutil`, copies the PNG resources and signs with the hardened runtime. Without the "macshot Local Signing" identity it signs ad-hoc, and macOS forgets the Screen Recording permission after each rebuild.
+- `scripts/bundle.sh` builds the release binary, fills the `Resources/Info.plist` template (`__VERSION__` from `VERSION`, `__BUILD__` from the commit count, `__COMMIT__`), converts `Resources/AppIcon.iconset` with `iconutil`, copies the PNG resources and signs with the hardened runtime. Local builds require the shared "Gilad Peleg Local Signing" identity from the backup. `MACSHOT_SIGN_IDENTITY` overrides it; CI explicitly selects ad-hoc signing. `scripts/create-signing-identity.sh` checks or imports an existing identity instead of making another key.
 - The data folder comes from `Paths.dataDirectory` (in the app container). A debug binary from `swift build` has no sandbox, so debug builds accept `MACSHOT_DATA_DIR`.
 - Resources are plain files in `Resources/`, copied into the bundle by `scripts/bundle.sh`. Load them with `NSImage(named:)`. There is no asset catalog and no SwiftPM resource bundle.
 - The tests import the app with `@testable import macshot`. They run headless: no Screen Recording permission, no window server dependency and no network (`UpdateChecker` takes a replacement for its request). `make test` passes `--no-parallel`, because the tests share `UserDefaults.standard` and the pasteboard.
@@ -175,7 +175,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 - **Clipboard pins read plain text only.** Do not parse RTF, RTFD or HTML from the pasteboard.
 - **Editor saves keep their original state.** Capture the image, cloned annotations, edit state and editor revision together before showing a save panel or starting an asynchronous output.
 - **Filename components are sanitized one by one** with `FilenameSanitizer`. Template expansion is one pass. A `/` in a template creates subfolders (`FilenameFormatter.formatRelativePath`); empty, `.` and `..` components are dropped, and `ImageSaveService.createSubfolders` only creates folders below an existing save folder. Slashes inside token values never create folders.
-- **Log with `Log` (os.Logger, subsystem `com.pgilad.macshot`).** Screen content, OCR and clipboard text and file paths are never public in a message: use `privacy: .private`. Read the log with `log show --last 30m --info --predicate 'subsystem == "com.pgilad.macshot"'`. CI prints it when a job fails.
+- **Log with `Log` (os.Logger, subsystem `com.giladpeleg.macshot`).** Screen content, OCR and clipboard text and file paths are never public in a message: use `privacy: .private`. Read the log with `log show --last 30m --info --predicate 'subsystem == "com.giladpeleg.macshot"'`. CI prints it when a job fails.
 - **Report failures the user can't otherwise see.** `ImageSaveService.onFailure` is wired to `AppDelegate.showFailureToast(_:)` (an `ErrorToastController`). Never swallow a lost capture into an ignored `false`.
 - **Saves outlive their windows.** Image saves run as `MediaExportCoordinator` jobs and publish through `AtomicMediaSave`. `ApplicationTerminationCoordinator` keeps the event loop running while saves and history writes drain, then retries Quit.
 - **Keyboard shortcuts:** character-based commands go through `KeyboardShortcutMatcher`; do not compare raw letter key codes or read `charactersIgnoringModifiers`. Use `EditorCommandShortcutManager` for undo/redo chords and `ToolShortcutManager` for single-key tools. Raw `event.keyCode` checks are only for layout-independent keys (Escape, Return, Tab, Space, Delete, arrows, function keys). Global Carbon hotkeys stay physical key-code bindings; translate them only for display with `KeyboardShortcutMatcher.currentLayoutCharacter(for:)`. A global hotkey needs ⌘, ⌥ or ⌃ unless it is a function key (`HotkeyManager.isAllowedGlobalChord`), and the Settings recorders suspend the hotkeys while they run.

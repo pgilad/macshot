@@ -9,6 +9,9 @@ DIST_ZIP ?= build/macshot-$(VERSION)-arm64.zip
 # Extra flags for swift build and swift test. CI uses -Xswiftc -warnings-as-errors.
 SWIFT_FLAGS ?=
 
+# CI builds need no private key unless a release identity is supplied.
+CI_SIGN_ENV := $(if $(filter true,$(CI)),MACSHOT_SIGN_IDENTITY="$${MACSHOT_SIGN_IDENTITY:--}",)
+
 # The Command Line Tools ship the Swift Testing macro plugin outside the default search path.
 TESTING_PLUGINS := $(shell xcode-select -p)/usr/lib/swift/host/plugins/testing
 TEST_FLAGS := $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
@@ -21,7 +24,7 @@ build: ## Debug build
 	$(SWIFT) build $(SWIFT_FLAGS)
 
 app: ## Release build, bundled and signed, in build/macshot.app
-	APP_DIR=$(APP_DIR) SWIFT_FLAGS="$(SWIFT_FLAGS)" scripts/bundle.sh
+	$(CI_SIGN_ENV) APP_DIR=$(APP_DIR) SWIFT_FLAGS="$(SWIFT_FLAGS)" scripts/bundle.sh
 
 dist: app ## Release build zipped for download, with a SHA-256 file
 	rm -f "$(DIST_ZIP)" "$(DIST_ZIP).sha256"
@@ -29,7 +32,7 @@ dist: app ## Release build zipped for download, with a SHA-256 file
 	cd "$(dir $(DIST_ZIP))" && shasum -a 256 "$(notdir $(DIST_ZIP))" > "$(notdir $(DIST_ZIP)).sha256"
 
 install: app ## Build, then replace the app in /Applications and start it
-	-osascript -e 'tell application id "com.pgilad.macshot" to quit' >/dev/null 2>&1
+	-osascript -e 'tell application "$(INSTALL_DIR)/macshot.app" to quit' >/dev/null 2>&1
 	rm -rf "$(INSTALL_DIR)/macshot.app"
 	cp -R "$(APP_DIR)" "$(INSTALL_DIR)/macshot.app"
 	open "$(INSTALL_DIR)/macshot.app"
@@ -59,7 +62,7 @@ perf: ## Scroll capture stitching timings up to the height limit, release build
 run: app ## Start the bundled build from build/
 	open "$(APP_DIR)"
 
-signing-identity: ## Create the "macshot Local Signing" certificate (once per Mac)
+signing-identity: ## Check the shared local signing identity
 	scripts/create-signing-identity.sh
 
 clean:
