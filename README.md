@@ -45,6 +45,8 @@ To update, run `git pull` and `make install`. **Check for Updates…** in the me
 
 A `v*` tag publishes a signed arm64 build on the [Releases](https://github.com/pgilad/macshot/releases) page, with a SHA-256 file and a build provenance attestation. The app is not notarized: on first start, macOS blocks it, and you must click **Open Anyway** in **System Settings → Privacy & Security**. To update, replace the app with a newer release. **Check for Updates…** in the menu bar menu tells you when a new release is out.
 
+Releases use the same `Gilad Peleg Local Signing` identity as local builds. To set up the repository's release secrets, run `scripts/configure-release-signing.sh /path/to/gilad-peleg-local-signing.p12` with the shared backup. The script asks for its password; it does not create a certificate.
+
 ## Features
 
 - Capture an area, a window (with transparent corners), a full display or the last area again. Selections can span displays.

@@ -13,7 +13,7 @@ jobs:
   release:
     runs-on: macos-26
     timeout-minutes: 30
-    # Holds the signing certificate. Only v* tags can use it. See scripts/create-release-identity.sh.
+    # Holds the shared signing identity. Only v* tags can use it. See scripts/configure-release-signing.sh.
     environment: release
     permissions:
       contents: write # create the release
@@ -47,7 +47,7 @@ jobs:
           MACSHOT_SIGNING_P12_PASSWORD: ${{ secrets.MACSHOT_SIGNING_P12_PASSWORD }}
         run: |
           if [ -z "$MACSHOT_SIGNING_P12" ]; then
-            echo "::error::No signing certificate in the release environment. Run scripts/create-release-identity.sh."
+            echo "::error::No signing certificate in the release environment. Run scripts/configure-release-signing.sh with the shared .p12 backup."
             exit 1
           fi
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
@@ -64,7 +64,7 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
       - run: make dist
         env:
-          MACSHOT_SIGN_IDENTITY: macshot Release Signing
+          MACSHOT_SIGN_IDENTITY: Gilad Peleg Local Signing
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: build/macshot-${{ env.VERSION }}-arm64.zip

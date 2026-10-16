@@ -198,7 +198,7 @@ TextEditingCanvas                — coordinate transforms + annotation storage 
 
 ## Releasing
 
-`make dist` produces `build/macshot-<version>-arm64.zip` with a SHA-256 file. `.github/workflows/release.yaml` publishes it from a `v*` tag that matches `VERSION`: it runs the tests, signs with the "macshot Release Signing" certificate from the `release` environment, attests the build provenance and writes the notes from the commits since the previous tag plus `.github/release-notes.md`. Commits whose subject starts with "Release " and a digit are left out of the notes.
+`make dist` produces `build/macshot-<version>-arm64.zip` with a SHA-256 file. `.github/workflows/release.yaml` publishes it from a `v*` tag that matches `VERSION`: it runs the tests, signs with the shared "Gilad Peleg Local Signing" identity from the `release` environment, attests the build provenance and writes the notes from the commits since the previous tag plus `.github/release-notes.md`. Commits whose subject starts with "Release " and a digit are left out of the notes.
 
-- Once per repository: `scripts/create-release-identity.sh` makes the self-signed certificate, limits the `release` environment to `v*` tags and stores the identity in its secrets. Each release must use the same certificate, or macOS asks users for the permissions again.
+- Once per repository: `scripts/configure-release-signing.sh /path/to/gilad-peleg-local-signing.p12` checks the shared backup, asks for its password, limits the `release` environment to `v*` tags and stores the identity in its secrets. Use the same backup as local builds; do not create another certificate.
 - To release: set `VERSION`, commit "Release x.y.z", then `git tag -a vx.y.z -m "macshot x.y.z" && git push origin vx.y.z`.
